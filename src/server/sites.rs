@@ -183,7 +183,7 @@ pub async fn server_update_site_ssl(
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
-                site.site_type == crate::models::site::SiteType::Php,
+                site.site_type,
                 force_https,
                 hsts_enabled && ssl_enabled && force_https,
                 hsts_max_age,

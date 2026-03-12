@@ -11,6 +11,9 @@ pub enum SiteType {
     #[serde(rename = "PHP")]
     #[cfg_attr(feature = "server", sqlx(rename = "PHP"))]
     Php,
+    #[serde(rename = "WordPress")]
+    #[cfg_attr(feature = "server", sqlx(rename = "WordPress"))]
+    WordPress,
     #[serde(rename = "ReverseProxy")]
     ReverseProxy,
     #[serde(rename = "NodeJS")]
@@ -23,6 +26,7 @@ impl std::fmt::Display for SiteType {
         match self {
             SiteType::Static => write!(f, "Static"),
             SiteType::Php => write!(f, "PHP"),
+            SiteType::WordPress => write!(f, "WordPress"),
             SiteType::ReverseProxy => write!(f, "Reverse Proxy"),
             SiteType::NodeJs => write!(f, "Node.js"),
         }

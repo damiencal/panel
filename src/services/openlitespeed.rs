@@ -2,6 +2,7 @@
 /// Handles installation, configuration, virtual host management, and lifecycle operations.
 use super::{shell, ManagedService, ServiceError};
 use crate::models::service::{ServiceStatus, ServiceType};
+use crate::models::site::SiteType;
 use async_trait::async_trait;
 use std::path::Path;
 use tokio::fs;
@@ -125,7 +126,7 @@ impl OpenLiteSpeedService {
         &self,
         domain: &str,
         doc_root: &str,
-        php_enabled: bool,
+        site_type: SiteType,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate inputs at the service layer
         crate::utils::validators::validate_domain(domain)
@@ -143,14 +144,7 @@ impl OpenLiteSpeedService {
         // Generate config without HSTS/force-HTTPS; these are applied later
         // via update_vhost_config once SSL is issued.
         let vhost_config = self.generate_vhost_config(
-            domain,
-            doc_root,
-            php_enabled,
-            false,
-            false,
-            31536000,
-            false,
-            false,
+            domain, doc_root, site_type, false, false, 31536000, false, false,
         )?;
         let config_path = format!("{}/vhconf.conf", vhost_dir);
 
@@ -174,7 +168,7 @@ impl OpenLiteSpeedService {
         &self,
         domain: &str,
         doc_root: &str,
-        php_enabled: bool,
+        site_type: SiteType,
         force_https: bool,
         hsts_enabled: bool,
         hsts_max_age: i64,
@@ -190,7 +184,7 @@ impl OpenLiteSpeedService {
         let vhost_config = self.generate_vhost_config(
             domain,
             doc_root,
-            php_enabled,
+            site_type,
             force_https,
             hsts_enabled,
             hsts_max_age,
@@ -223,7 +217,11 @@ impl OpenLiteSpeedService {
 
     /// Generate virtual host configuration.
     ///
-    /// - `force_https`: emit a rewrite rule that redirects all HTTP requests to HTTPS.
+    /// - `site_type`: determines rewrite rules, PHP handler, and caching.  Use
+    ///   `WordPress` for WP sites (permalink rewrites, security blocks, PHP),
+    ///   `Static` for asset-only sites (no PHP, CORS headers, max cache), and
+    ///   `Php` (or any other variant) for a generic PHP config.
+    /// - `force_https`: redirect all HTTP requests to HTTPS.
     /// - `hsts_enabled`: emit a `Strict-Transport-Security` response header.
     ///   Only meaningful when `force_https` is also `true`.
     /// - `hsts_max_age`: `max-age` value in seconds (minimum 31536000 for preload).
@@ -234,7 +232,7 @@ impl OpenLiteSpeedService {
         &self,
         domain: &str,
         doc_root: &str,
-        php_enabled: bool,
+        site_type: SiteType,
         force_https: bool,
         hsts_enabled: bool,
         hsts_max_age: i64,
@@ -255,44 +253,9 @@ impl OpenLiteSpeedService {
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_safe_path(doc_root, "/home/")
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
-        let vhost_name = format!("vhost_{}", domain.replace(".", "_"));
-        let php_handler = if php_enabled {
-            format!(
-                r#"
-  <context /cgi-bin/>
-    <location                   /var/www/cgi-bin/>
-    <allowBrowse                0
-    <enableScript               1
-    <cgi>
-      <handler>
-        <suffix>php</suffix>
-        <handlerType>lsapi</handlerType>
-        <handlerPath>{}</handlerPath>
-      </handler>
-    </cgi>
-  </context>
-"#,
-                LSPHP_BIN
-            )
-        } else {
-            String::new()
-        };
 
-        // HTTP → HTTPS redirect rewrite block (force_https).
-        let force_https_block = if force_https {
-            // RewriteCond + RewriteRule on separate lines inside the rules value.
-            concat!(
-                "rewrite {\n",
-                "  enable                  1\n",
-                "  rules                   RewriteCond %{HTTPS} !on\n",
-                "                          RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]\n",
-                "}\n"
-            ).to_string()
-        } else {
-            String::new()
-        };
+        let vhost_name = format!("vhost_{}", domain.replace('.', "_"));
 
-        // HSTS response header inside the root context block.
         let hsts_header = if hsts_enabled {
             let mut value = format!("Strict-Transport-Security: max-age={}", hsts_max_age);
             if hsts_include_subdomains {
@@ -306,7 +269,262 @@ impl OpenLiteSpeedService {
             String::new()
         };
 
-        let config = format!(
+        let config = match site_type {
+            SiteType::WordPress => {
+                Self::wordpress_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header)
+            }
+            SiteType::Static => {
+                Self::static_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header)
+            }
+            _ => Self::php_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header),
+        };
+
+        Ok(config)
+    }
+
+    /// Build a `rewrite { }` block from an ordered list of rule lines.
+    /// The first rule is placed inline with the `rules` key; subsequent lines
+    /// are indented to the same column.  Returns an empty string if `rules` is
+    /// empty.
+    fn build_rewrite_block(rules: &[&str]) -> String {
+        if rules.is_empty() {
+            return String::new();
+        }
+        let mut iter = rules.iter();
+        let first = iter.next().unwrap();
+        let rest: String = iter
+            .map(|r| format!("\n                          {r}"))
+            .collect();
+        format!("rewrite {{\n  enable                  1\n  rules                   {first}{rest}\n}}\n\n")
+    }
+
+    /// Shared log block used by all vhost types.
+    fn log_block(domain: &str) -> String {
+        format!(
+            "accessLog              /usr/local/lsws/logs/{domain}.access.log {{\n\
+  useServer             0\n\
+  logFormat             combined\n\
+  rollingSize           10M\n\
+  keepDays              30\n\
+}}\n\n\
+errorLog               /usr/local/lsws/logs/{domain}.error.log {{\n\
+  useServer             0\n\
+  logLevel              NOTICE\n\
+  rollingSize           10M\n\
+  keepDays              30\n\
+}}\n\n",
+            domain = domain,
+        )
+    }
+
+    /// Static-asset cache block used by WordPress and Static site types.
+    /// Sets CORS, gzip/brotli compression, and a far-future cache expiry for
+    /// all common static file extensions, inspired by the CloudPanel nginx
+    /// WordPress and Static vhost templates.
+    fn asset_cache_block() -> &'static str {
+        concat!(
+            "<staticContext>\n",
+            "  <suffix>css, js, jpg, jpeg, gif, png, ico, gz, svg, svgz, ttf, otf, woff, woff2, eot, mp4, ogg, ogv, webm, webp, zip, swf</suffix>\n",
+            "  <location                   /\n",
+            "  <enableBr                   1\n",
+            "  <enableGzip               1\n",
+            "  <gzipCompLevel            5\n",
+            "  <addHeader                \"Access-Control-Allow-Origin: *\"\n",
+            "  <cacheExpire              max\n",
+            "</staticContext>\n\n",
+            "<expires>\n",
+            "  <enableExpires             1\n",
+            "  <expiresByType>\n",
+            "    <type>image/*</type>\n",
+            "    <expireSeconds>31536000</expireSeconds>\n",
+            "  </expiresByType>\n",
+            "  <expiresByType>\n",
+            "    <type>text/css</type>\n",
+            "    <expireSeconds>31536000</expireSeconds>\n",
+            "  </expiresByType>\n",
+            "  <expiresByType>\n",
+            "    <type>application/javascript</type>\n",
+            "    <expireSeconds>31536000</expireSeconds>\n",
+            "  </expiresByType>\n",
+            "  <expiresByType>\n",
+            "    <type>font/*</type>\n",
+            "    <expireSeconds>31536000</expireSeconds>\n",
+            "  </expiresByType>\n",
+            "</expires>\n"
+        )
+    }
+
+    /// Generate an OLS vhost config optimised for WordPress.
+    ///
+    /// Inspired by the CloudPanel nginx WordPress vhost template:
+    /// - Blocks `xmlrpc.php`, `wp-config.php`, dotfiles, and `.git`.
+    /// - WordPress pretty-permalink rewrite (`try_files` equivalent).
+    /// - WordPress Multisite subdirectory support.
+    /// - PHP via lsapi.
+    /// - Far-future cache expiry + CORS for static assets.
+    /// - Dedicated `/.well-known/` context for ACME challenges.
+    fn wordpress_vhost(
+        domain: &str,
+        doc_root: &str,
+        vhost_name: &str,
+        force_https: bool,
+        hsts_header: &str,
+    ) -> String {
+        let mut rules: Vec<&str> = Vec::new();
+        if force_https {
+            rules.push("RewriteCond %{HTTPS} !on");
+            rules.push("RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]");
+        }
+        // Security: block sensitive files
+        rules.extend(&[
+            r"RewriteRule ^xmlrpc\.php$ - [F,L]",
+            r"RewriteRule ^wp-config\.php$ - [F,L]",
+            r"RewriteRule ^\.env - [F,L]",
+            r"RewriteRule ^\.ht - [F,L]",
+            r"RewriteRule ^\.git - [F,L]",
+            // WordPress Multisite subdirectory support
+            r"RewriteRule ^[_0-9a-zA-Z-]+/wp-(.*) wp-$1 [L]",
+            r"RewriteRule ^[_0-9a-zA-Z-]+/(.+\.php)$ $1 [L]",
+            // WordPress pretty permalinks (try_files equivalent)
+            r"RewriteRule ^index\.php$ - [L]",
+            r"RewriteCond %{REQUEST_FILENAME} !-f",
+            r"RewriteCond %{REQUEST_FILENAME} !-d",
+            r"RewriteRule . /index.php [L]",
+        ]);
+        let rewrite_block = Self::build_rewrite_block(&rules);
+        let logs = Self::log_block(domain);
+        let cache = Self::asset_cache_block();
+
+        format!(
+            r#"docRoot                {doc_root}/public
+vhName                 {vhost_name}
+vhDomain               {domain}
+adminEmails            admin@{domain}
+enableScript           1
+restrained             0
+allowSymbolLink        1
+enableWebsocket        1
+
+{logs}{rewrite_block}<context />
+  <location                   />
+  <allowBrowse                0
+  <handlerType>static</handlerType>
+  <indexFiles>index.php, index.html</indexFiles>
+{hsts_header}  <cgi>
+    <handler>
+      <suffix>php</suffix>
+      <handlerType>lsapi</handlerType>
+      <handlerPath>{lsphp_bin}</handlerPath>
+    </handler>
+  </cgi>
+</context>
+
+<context /.well-known/>
+  <location                   .well-known/
+  <allowBrowse                1
+  <handlerType>static</handlerType>
+</context>
+
+{cache}<errorPages>
+  <errorPage404>404.html</errorPage404>
+</errorPages>
+"#,
+            doc_root = doc_root,
+            vhost_name = vhost_name,
+            domain = domain,
+            lsphp_bin = LSPHP_BIN,
+            logs = logs,
+            rewrite_block = rewrite_block,
+            hsts_header = hsts_header,
+            cache = cache,
+        )
+    }
+
+    /// Generate an OLS vhost config for a purely static site.
+    ///
+    /// Inspired by the CloudPanel nginx Static vhost template:
+    /// - Script execution disabled (`enableScript 0`).
+    /// - `index.html` only; no PHP processing.
+    /// - Dotfiles blocked.
+    /// - Far-future cache expiry + CORS for static assets.
+    /// - Dedicated `/.well-known/` context for ACME challenges.
+    fn static_vhost(
+        domain: &str,
+        doc_root: &str,
+        vhost_name: &str,
+        force_https: bool,
+        hsts_header: &str,
+    ) -> String {
+        let mut rules: Vec<&str> = Vec::new();
+        if force_https {
+            rules.push("RewriteCond %{HTTPS} !on");
+            rules.push("RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]");
+        }
+        // Block all dotfiles (hidden files / directories)
+        rules.push(r"RewriteRule ^\. - [F,L]");
+        let rewrite_block = Self::build_rewrite_block(&rules);
+        let logs = Self::log_block(domain);
+        let cache = Self::asset_cache_block();
+
+        format!(
+            r#"docRoot                {doc_root}/public
+vhName                 {vhost_name}
+vhDomain               {domain}
+adminEmails            admin@{domain}
+enableScript           0
+restrained             0
+allowSymbolLink        1
+enableWebsocket        0
+
+{logs}{rewrite_block}<context />
+  <location                   />
+  <allowBrowse                0
+  <handlerType>static</handlerType>
+  <indexFiles>index.html, index.htm</indexFiles>
+{hsts_header}</context>
+
+<context /.well-known/>
+  <location                   .well-known/
+  <allowBrowse                1
+  <handlerType>static</handlerType>
+</context>
+
+{cache}<errorPages>
+  <errorPage404>404.html</errorPage404>
+</errorPages>
+"#,
+            doc_root = doc_root,
+            vhost_name = vhost_name,
+            domain = domain,
+            logs = logs,
+            rewrite_block = rewrite_block,
+            hsts_header = hsts_header,
+            cache = cache,
+        )
+    }
+
+    /// Generate a generic PHP-enabled OLS vhost config (used for `SiteType::Php`,
+    /// `SiteType::ReverseProxy`, `SiteType::NodeJs`, and any future variants).
+    fn php_vhost(
+        domain: &str,
+        doc_root: &str,
+        vhost_name: &str,
+        force_https: bool,
+        hsts_header: &str,
+    ) -> String {
+        let force_https_block = if force_https {
+            concat!(
+                "rewrite {\n",
+                "  enable                  1\n",
+                "  rules                   RewriteCond %{HTTPS} !on\n",
+                "                          RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]\n",
+                "}\n"
+            ).to_string()
+        } else {
+            String::new()
+        };
+
+        format!(
             r#"docRoot                {doc_root}/public
 vhName                 {vhost_name}
 vhDomain               {domain}
@@ -363,7 +581,20 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{
   <allowBrowse                1
   <handlerType>static</handlerType>
 </context>
-{php_handler}
+
+  <context /cgi-bin/>
+    <location                   /var/www/cgi-bin/>
+    <allowBrowse                0
+    <enableScript               1
+    <cgi>
+      <handler>
+        <suffix>php</suffix>
+        <handlerType>lsapi</handlerType>
+        <handlerPath>{lsphp_bin}</handlerPath>
+      </handler>
+    </cgi>
+  </context>
+
 <errorPages>
   <errorPage404>404.html</errorPage404>
 </errorPages>
@@ -374,10 +605,7 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{
             lsphp_bin = LSPHP_BIN,
             force_https_block = force_https_block,
             hsts_header = hsts_header,
-            php_handler = php_handler
-        );
-
-        Ok(config)
+        )
     }
 
     /// Generate an OpenLiteSpeed context block for serving phpMyAdmin at /phpmyadmin/.
@@ -408,13 +636,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_vhost_config() {
+    fn test_generate_vhost_config_php() {
         let svc = OpenLiteSpeedService;
         let config = svc
             .generate_vhost_config(
                 "example.com",
                 "/home/user/sites/example.com",
-                true,
+                SiteType::Php,
                 false,
                 false,
                 31536000,
@@ -435,7 +663,7 @@ mod tests {
             .generate_vhost_config(
                 "example.com",
                 "/home/user/sites/example.com",
-                false,
+                SiteType::Static,
                 true,
                 false,
                 31536000,
@@ -458,7 +686,7 @@ mod tests {
             .generate_vhost_config(
                 "example.com",
                 "/home/user/sites/example.com",
-                false,
+                SiteType::Static,
                 true,
                 true,
                 63072000,
@@ -479,7 +707,7 @@ mod tests {
             .generate_vhost_config(
                 "secure.example.com",
                 "/home/user/sites/secure.example.com",
-                false,
+                SiteType::Static,
                 true,
                 true,
                 31536000,
@@ -491,6 +719,79 @@ mod tests {
         assert!(config.contains("Strict-Transport-Security: max-age=31536000\""));
         assert!(!config.contains("includeSubDomains"));
         assert!(!config.contains("preload"));
+    }
+
+    #[test]
+    fn test_generate_wordpress_vhost() {
+        let svc = OpenLiteSpeedService;
+        let config = svc
+            .generate_vhost_config(
+                "blog.example.com",
+                "/home/user/sites/blog.example.com",
+                SiteType::WordPress,
+                true,
+                false,
+                31536000,
+                false,
+                false,
+            )
+            .expect("Failed to generate WordPress config");
+
+        // PHP handler present
+        assert!(config.contains("lsphp83"));
+        // WordPress permalink rewrite
+        assert!(config.contains("RewriteRule ^index\\.php$ - [L]"));
+        assert!(config.contains("RewriteCond %{REQUEST_FILENAME} !-f"));
+        assert!(config.contains("RewriteCond %{REQUEST_FILENAME} !-d"));
+        assert!(config.contains("RewriteRule . /index.php [L]"));
+        // Security blocks
+        assert!(config.contains("RewriteRule ^xmlrpc\\.php$ - [F,L]"));
+        assert!(config.contains("RewriteRule ^wp-config\\.php$ - [F,L]"));
+        assert!(config.contains("RewriteRule ^\\.env - [F,L]"));
+        assert!(config.contains("RewriteRule ^\\.ht - [F,L]"));
+        // WordPress Multisite subdirectory
+        assert!(config.contains("RewriteRule ^[_0-9a-zA-Z-]+/wp-"));
+        // ACME challenges context
+        assert!(config.contains("/.well-known/"));
+        // Static asset caching with CORS
+        assert!(config.contains("Access-Control-Allow-Origin: *"));
+        assert!(config.contains("cacheExpire"));
+        // Force HTTPS
+        assert!(config.contains("RewriteCond %{HTTPS} !on"));
+        assert!(config.contains("R=301"));
+        // No script execution disabled
+        assert!(!config.contains("enableScript           0"));
+    }
+
+    #[test]
+    fn test_generate_static_vhost() {
+        let svc = OpenLiteSpeedService;
+        let config = svc
+            .generate_vhost_config(
+                "static.example.com",
+                "/home/user/sites/static.example.com",
+                SiteType::Static,
+                false,
+                false,
+                31536000,
+                false,
+                false,
+            )
+            .expect("Failed to generate Static config");
+
+        // No PHP
+        assert!(!config.contains("lsphp83"));
+        assert!(config.contains("enableScript           0"));
+        // Static-only index
+        assert!(config.contains("index.html"));
+        assert!(!config.contains("index.php"));
+        // Dotfile block
+        assert!(config.contains("RewriteRule ^\\. - [F,L]"));
+        // ACME challenges context
+        assert!(config.contains("/.well-known/"));
+        // CORS + cache
+        assert!(config.contains("Access-Control-Allow-Origin: *"));
+        assert!(config.contains("cacheExpire"));
     }
 
     #[test]
