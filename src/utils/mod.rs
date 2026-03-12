@@ -1,4 +1,4 @@
-/// Utility modules for configuration, validation, and helpers.
+//! Utility modules for configuration, validation, and helpers.
 
 #[cfg(feature = "server")]
 pub mod config;
