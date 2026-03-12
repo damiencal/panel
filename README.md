@@ -449,11 +449,8 @@ The AGPL applies to the community code published in this repository. The copyrig
 
 ## Roadmap
 
-- [ ] Backup/restore functionality
-- [ ] Automatic license checking
-- [ ] Email integration for notifications
+- [ ] Email alert notifications
 - [ ] Advanced resource monitoring dashboard
-- [ ] Multi-server management
 - [ ] API for third-party integrations
 - [ ] Mobile app
 - [ ] Database replication support
