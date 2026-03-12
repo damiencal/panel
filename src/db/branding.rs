@@ -27,6 +27,7 @@ pub async fn get_by_domain(
 }
 
 /// Upsert branding for a reseller.
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert(
     pool: &SqlitePool,
     reseller_id: i64,

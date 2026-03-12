@@ -25,6 +25,7 @@ pub async fn server_get_spam_filter_settings() -> Result<SpamFilterSettings, Ser
 
 /// Save spam-filter settings and apply them to the system (admin only).
 /// This will install / configure the selected engine and wire it into Postfix.
+#[allow(clippy::too_many_arguments)]
 #[server]
 pub async fn server_save_spam_filter_settings(
     engine: String,
@@ -45,7 +46,7 @@ pub async fn server_save_spam_filter_settings(
     if !matches!(engine.as_str(), "none" | "spamassassin" | "rspamd") {
         return Err(ServerFnError::new("Invalid engine selection"));
     }
-    if spam_threshold < 0.0 || spam_threshold > 100.0 {
+    if !(0.0..=100.0).contains(&spam_threshold) {
         return Err(ServerFnError::new(
             "Spam threshold must be between 0 and 100",
         ));
@@ -488,7 +489,7 @@ async fn read_mail_logs(limit: usize, search: Option<&str>) -> Result<Vec<EmailL
 
             while let Ok(Some(line)) = lines.next_line().await {
                 if line.contains("postfix") || line.contains("spamd") || line.contains("rspamd") {
-                    if let Some(ref s) = search {
+                    if let Some(s) = search {
                         if line.to_lowercase().contains(&s.to_lowercase()) {
                             all_lines.push(line);
                         }
@@ -596,7 +597,7 @@ async fn debug_domain(domain: &str) -> Result<EmailDebugResult, String> {
     let mut smtp_banner = None;
 
     // MX lookup
-    match lookup_dns_txt(&format!("{domain}"), "MX").await {
+    match lookup_dns_txt(domain, "MX").await {
         Ok(records) => {
             mx_records = records;
             if mx_records.is_empty() {
@@ -609,7 +610,7 @@ async fn debug_domain(domain: &str) -> Result<EmailDebugResult, String> {
     }
 
     // SPF lookup
-    match lookup_dns_txt(&format!("{domain}"), "TXT").await {
+    match lookup_dns_txt(domain, "TXT").await {
         Ok(records) => {
             for r in &records {
                 if r.starts_with("v=spf1") {

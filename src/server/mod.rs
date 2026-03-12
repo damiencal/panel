@@ -19,6 +19,7 @@ pub mod services;
 pub mod sites;
 pub mod ssl;
 pub mod stats;
+pub mod team;
 pub mod tickets;
 pub mod usage;
 pub mod users;
@@ -41,6 +42,7 @@ pub use services::*;
 pub use sites::*;
 pub use ssl::*;
 pub use stats::*;
+pub use team::*;
 pub use tickets::*;
 pub use usage::*;
 pub use users::*;
@@ -255,6 +257,7 @@ pub(crate) mod helpers {
 
     /// Log an audit action with an explicit `impersonation_by` field.
     /// Errors are logged but do not block the calling operation.
+    #[allow(clippy::too_many_arguments)]
     pub async fn audit_log_impersonated(
         user_id: i64,
         action: &str,

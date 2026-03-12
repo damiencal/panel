@@ -157,9 +157,9 @@ impl UfwService {
                 return self.run_ufw(&args).await;
             }
         } else {
-            return Err(ServiceError::CommandFailed(
+            Err(ServiceError::CommandFailed(
                 "Rule must specify either from_ip or to_port".to_string(),
-            ));
+            ))
         }
     }
 
@@ -363,16 +363,26 @@ fn parse_ufw_status(text: &str) -> UfwStatus {
             if parts.len() == 2 {
                 let details = parts[1];
                 if let Some(inc) = details.split("(incoming)").next() {
-                    default_incoming = inc.split(',').last().unwrap_or("deny").trim().to_string();
+                    default_incoming = inc
+                        .split(',')
+                        .next_back()
+                        .unwrap_or("deny")
+                        .trim()
+                        .to_string();
                 }
                 if let Some(out) = details.split("(outgoing)").next() {
-                    default_outgoing = out.split(',').last().unwrap_or("allow").trim().to_string();
+                    default_outgoing = out
+                        .split(',')
+                        .next_back()
+                        .unwrap_or("allow")
+                        .trim()
+                        .to_string();
                 }
             }
         } else if line.starts_with("Logging:") {
             logging = line
-                .splitn(2, ':')
-                .nth(1)
+                .split_once(':')
+                .map(|x| x.1)
                 .unwrap_or("on")
                 .trim()
                 .to_string();

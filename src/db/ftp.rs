@@ -118,6 +118,7 @@ pub async fn delete(pool: &SqlitePool, account_id: i64) -> Result<(), sqlx::Erro
 // ── FTP session statistics ─────────────────────────────────────────────────
 
 /// Insert a single transfer record parsed from the Pure-FTPd xferlog.
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_session_stat(
     pool: &SqlitePool,
     account_id: Option<i64>,

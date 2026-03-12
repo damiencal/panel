@@ -75,11 +75,9 @@ impl ManagedService for PostfixService {
     }
 
     async fn version(&self) -> Result<String, ServiceError> {
-        let output = shell::exec("postfix", &["--version"]).await.or_else(|_| {
-            Err(ServiceError::CommandFailed(
-                "postfix version unavailable".into(),
-            ))
-        })?;
+        let output = shell::exec("postfix", &["--version"])
+            .await
+            .map_err(|_| ServiceError::CommandFailed("postfix version unavailable".into()))?;
         let version = String::from_utf8_lossy(&output.stdout);
         Ok(version.trim().to_string())
     }

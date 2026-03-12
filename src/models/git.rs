@@ -16,6 +16,12 @@ pub struct SiteGitRepo {
     pub last_synced_at: Option<DateTime<Utc>>,
     pub last_commit_hash: Option<String>,
     pub last_commit_msg: Option<String>,
+    /// When true, deploys use the symlink-swap (atomic) strategy.
+    pub atomic_deploy: bool,
+    /// How many release snapshots to keep under `releases/` (0 = keep all).
+    pub retain_releases: i64,
+    /// Optional bash script executed after each atomic deploy (max 4096 bytes).
+    pub deploy_script: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -49,6 +55,9 @@ pub struct SiteGitRepoPublic {
     pub last_synced_at: Option<DateTime<Utc>>,
     pub last_commit_hash: Option<String>,
     pub last_commit_msg: Option<String>,
+    pub atomic_deploy: bool,
+    pub retain_releases: i64,
+    pub deploy_script: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -64,6 +73,9 @@ impl From<SiteGitRepo> for SiteGitRepoPublic {
             last_synced_at: r.last_synced_at,
             last_commit_hash: r.last_commit_hash,
             last_commit_msg: r.last_commit_msg,
+            atomic_deploy: r.atomic_deploy,
+            retain_releases: r.retain_releases,
+            deploy_script: r.deploy_script,
             created_at: r.created_at,
             updated_at: r.updated_at,
         }

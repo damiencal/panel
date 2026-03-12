@@ -3,6 +3,7 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 
 /// Record an action in the audit log.
+#[allow(clippy::too_many_arguments)]
 pub async fn log_action(
     pool: &SqlitePool,
     user_id: i64,

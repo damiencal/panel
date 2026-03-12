@@ -20,6 +20,7 @@ pub async fn get_usage(pool: &SqlitePool, user_id: i64) -> Result<ResourceUsage,
 }
 
 /// Allocate quota to a user.
+#[allow(clippy::too_many_arguments)]
 pub async fn allocate_quota(
     pool: &SqlitePool,
     user_id: i64,

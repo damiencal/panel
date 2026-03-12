@@ -118,6 +118,7 @@ pub async fn list_records(pool: &SqlitePool, zone_id: i64) -> Result<Vec<DnsReco
 }
 
 /// Add a DNS record.
+#[allow(clippy::too_many_arguments)]
 pub async fn add_record(
     pool: &SqlitePool,
     zone_id: i64,

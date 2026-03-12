@@ -105,3 +105,27 @@ pub async fn set_deploy_key(
     .await?;
     Ok(())
 }
+
+/// Update the atomic-deploy settings for a site's git repo.
+pub async fn set_atomic_deploy(
+    pool: &SqlitePool,
+    site_id: i64,
+    atomic_deploy: bool,
+    retain_releases: i64,
+    deploy_script: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    let now = Utc::now();
+    sqlx::query(
+        "UPDATE site_git_repos
+         SET atomic_deploy = ?, retain_releases = ?, deploy_script = ?, updated_at = ?
+         WHERE site_id = ?",
+    )
+    .bind(atomic_deploy)
+    .bind(retain_releases)
+    .bind(deploy_script)
+    .bind(now)
+    .bind(site_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}

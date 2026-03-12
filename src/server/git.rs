@@ -163,6 +163,8 @@ pub async fn server_git_generate_deploy_key(site_id: i64) -> Result<String, Serv
 // ─── Pull ────────────────────────────────────────────────────────────────────
 
 /// Pull the latest commits from `origin/<branch>` into the site's doc_root.
+/// When `atomic_deploy` is enabled on the repo, uses the symlink-swap strategy.
+/// Developers with granted site access can also trigger pulls.
 #[server]
 pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
     use super::helpers::*;
@@ -174,7 +176,8 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
     let site = crate::db::sites::get(pool, site_id)
         .await
         .map_err(|_| ServerFnError::new("Site not found"))?;
-    crate::auth::guards::check_ownership(&claims, site.owner_id, None)
+    crate::auth::guards::check_developer_site_access(pool, &claims, site.owner_id, site_id)
+        .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     let repo = crate::db::git::get_by_site(pool, site_id)
@@ -183,17 +186,30 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
         .ok_or_else(|| ServerFnError::new("No repository attached to this site"))?;
 
     let ssh_key = repo.deploy_key_priv.as_deref();
-    let output = crate::services::git::pull(&site.doc_root, &repo.branch, ssh_key)
-        .await
-        .map_err(ServerFnError::new)?;
 
-    // Restore ownership of files potentially created as root by git.
+    let output = if repo.atomic_deploy {
+        crate::services::git::atomic_pull(
+            &site.doc_root,
+            &repo.branch,
+            ssh_key,
+            repo.retain_releases,
+            repo.deploy_script.as_deref(),
+        )
+        .await
+        .map_err(ServerFnError::new)?
+    } else {
+        crate::services::git::pull(&site.doc_root, &repo.branch, ssh_key)
+            .await
+            .map_err(ServerFnError::new)?
+    };
+
+    // Restore ownership of files potentially written as root by git.
     if let (Some(uid), Some(gid)) = (
-        crate::db::users::get(pool, claims.sub)
+        crate::db::users::get(pool, site.owner_id)
             .await
             .ok()
             .and_then(|u| u.system_uid),
-        crate::db::users::get(pool, claims.sub)
+        crate::db::users::get(pool, site.owner_id)
             .await
             .ok()
             .and_then(|u| u.system_gid),
@@ -203,7 +219,12 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
     }
 
     // Update the cached last-sync info from the most recent commit.
-    if let Ok(commits) = crate::services::git::log(&site.doc_root, 1).await {
+    let log_dir = if repo.atomic_deploy {
+        format!("{}/repo", site.doc_root)
+    } else {
+        site.doc_root.clone()
+    };
+    if let Ok(commits) = crate::services::git::log(&log_dir, 1).await {
         if let Some(c) = commits.first() {
             let _ = crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await;
         }
@@ -499,6 +520,86 @@ pub async fn server_git_checkout(site_id: i64, branch: String) -> Result<(), Ser
         Some("site"),
         Some(site_id),
         Some(&branch),
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(())
+}
+
+// ─── Atomic Deploy Toggle ─────────────────────────────────────────────────────
+
+/// Enable or disable the atomic symlink-swap deployment strategy for a site.
+///
+/// When enabling, the git working tree is moved to `{doc_root}/repo/` and the
+/// first release snapshot is taken.  When disabling, the current release is
+/// restored into `{doc_root}/public` as a plain directory and `repo/` is removed.
+///
+/// The OLS vhost `docRoot` (`{doc_root}/public`) is unchanged throughout.
+#[server]
+pub async fn server_set_atomic_deploy(
+    site_id: i64,
+    enabled: bool,
+    retain_releases: i64,
+    deploy_script: Option<String>,
+) -> Result<(), ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+
+    let site = crate::db::sites::get(pool, site_id)
+        .await
+        .map_err(|_| ServerFnError::new("Site not found"))?;
+    crate::auth::guards::check_ownership(&claims, site.owner_id, None)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Verify a repo is attached.
+    crate::db::git::get_by_site(pool, site_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?
+        .ok_or_else(|| ServerFnError::new("No repository attached to this site"))?;
+
+    if !(0..=365).contains(&retain_releases) {
+        return Err(ServerFnError::new(
+            "retain_releases must be between 0 and 365",
+        ));
+    }
+
+    if let Some(ref script) = deploy_script {
+        crate::services::git::validate_deploy_script(script).map_err(ServerFnError::new)?;
+    }
+
+    // Apply filesystem changes.
+    if enabled {
+        crate::services::git::enable_atomic_deploy(&site.doc_root)
+            .await
+            .map_err(ServerFnError::new)?;
+    } else {
+        crate::services::git::disable_atomic_deploy(&site.doc_root)
+            .await
+            .map_err(ServerFnError::new)?;
+    }
+
+    // Persist the updated configuration.
+    crate::db::git::set_atomic_deploy(
+        pool,
+        site_id,
+        enabled,
+        retain_releases,
+        deploy_script.as_deref(),
+    )
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    audit_log(
+        claims.sub,
+        if enabled { "enable_atomic_deploy" } else { "disable_atomic_deploy" },
+        Some("site"),
+        Some(site_id),
+        Some(&site.domain),
         "Success",
         None,
     )

@@ -145,9 +145,9 @@ impl PureFtpdService {
         crate::utils::validators::validate_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_passwd_field(username, "username")
-            .map_err(|e| ServiceError::CommandFailed(e))?;
+            .map_err(ServiceError::CommandFailed)?;
         crate::utils::validators::validate_passwd_field(password, "password")
-            .map_err(|e| ServiceError::CommandFailed(e))?;
+            .map_err(ServiceError::CommandFailed)?;
         crate::utils::validators::validate_safe_path(home_dir, "/home/")
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
@@ -247,7 +247,7 @@ impl PureFtpdService {
         crate::utils::validators::validate_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_passwd_field(new_password, "password")
-            .map_err(|e| ServiceError::CommandFailed(e))?;
+            .map_err(ServiceError::CommandFailed)?;
 
         // Hash the new password before storage
         let hash_output = super::shell::exec_stdin(
@@ -303,7 +303,7 @@ impl PureFtpdService {
         crate::utils::validators::validate_safe_path(new_home_dir, "/home/")
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_passwd_field(new_home_dir, "home_dir")
-            .map_err(|e| ServiceError::CommandFailed(e))?;
+            .map_err(ServiceError::CommandFailed)?;
 
         let _lock = super::filelock::FileLock::exclusive(PUREFTPD_PASSWD_FILE)?;
 

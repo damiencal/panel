@@ -1,22 +1,17 @@
 use serde::{Deserialize, Serialize};
 
 /// Theme preset options for reseller branding.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "server", derive(sqlx::Type))]
 #[cfg_attr(
     feature = "server",
     sqlx(type_name = "TEXT", rename_all = "PascalCase")
 )]
 pub enum ThemePreset {
+    #[default]
     Default,
     Dark,
     Corporate,
-}
-
-impl Default for ThemePreset {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 impl std::fmt::Display for ThemePreset {

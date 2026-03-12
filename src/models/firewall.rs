@@ -20,16 +20,19 @@ impl std::fmt::Display for UfwAction {
     }
 }
 
-impl UfwAction {
-    pub fn from_str(s: &str) -> Self {
-        match s.to_uppercase().as_str() {
+impl std::str::FromStr for UfwAction {
+    type Err = std::convert::Infallible;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_uppercase().as_str() {
             "DENY" => UfwAction::Deny,
             "REJECT" => UfwAction::Reject,
             "LIMIT" => UfwAction::Limit,
             _ => UfwAction::Allow,
-        }
+        })
     }
+}
 
+impl UfwAction {
     pub fn as_ufw_arg(&self) -> &'static str {
         match self {
             UfwAction::Allow => "allow",

@@ -53,6 +53,31 @@ pub fn check_ownership(
                 Err(AuthError::AccessDenied)
             }
         }
+        Role::Developer => Err(AuthError::AccessDenied),
+    }
+}
+
+/// Check whether a Developer has been granted access to a specific site.
+/// For non-Developer roles this delegates to `check_ownership`.
+///
+/// This is async because it queries the `team_site_access` table.
+#[cfg(feature = "server")]
+pub async fn check_developer_site_access(
+    pool: &sqlx::SqlitePool,
+    claims: &JwtClaims,
+    site_owner_id: i64,
+    site_id: i64,
+) -> Result<(), AuthError> {
+    if claims.role != Role::Developer {
+        return check_ownership(claims, site_owner_id, None);
+    }
+    let has_access = crate::db::team::has_site_access(pool, claims.sub, site_id)
+        .await
+        .map_err(|_| AuthError::AccessDenied)?;
+    if has_access {
+        Ok(())
+    } else {
+        Err(AuthError::AccessDenied)
     }
 }
 

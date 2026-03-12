@@ -12,6 +12,7 @@ pub mod packages;
 pub mod quotas;
 pub mod sites;
 pub mod stats;
+pub mod team;
 pub mod tickets;
 pub mod usage;
 /// Database access layer using SQLx with type-safe queries.

@@ -160,7 +160,7 @@ impl DovecotService {
             ));
         }
         crate::utils::validators::validate_passwd_field(password_hash, "password_hash")
-            .map_err(|e| ServiceError::CommandFailed(e))?;
+            .map_err(ServiceError::CommandFailed)?;
 
         info!("Adding Dovecot user: {}", email);
 

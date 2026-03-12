@@ -14,6 +14,7 @@ pub async fn get_spam_filter_settings(
 }
 
 /// Persist spam-filter settings (upsert on the single config row).
+#[allow(clippy::too_many_arguments)]
 pub async fn save_spam_filter_settings(
     pool: &SqlitePool,
     engine: &str,
@@ -77,6 +78,7 @@ pub async fn set_mailbox_rate_limits(
 // ─── Email statistics ────────────────────────────────────────────────────────
 
 /// Upsert a daily stats row.
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_email_stats(
     pool: &SqlitePool,
     stat_date: &str,

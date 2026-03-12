@@ -34,6 +34,7 @@ pub async fn list_all(pool: &SqlitePool) -> Result<Vec<Package>, sqlx::Error> {
 }
 
 /// Create a new package.
+#[allow(clippy::too_many_arguments)]
 pub async fn create(
     pool: &SqlitePool,
     name: String,

@@ -175,9 +175,8 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
                 .await
                 .map_err(|e| e.to_string())?;
             let raw = String::from_utf8_lossy(&output.stdout);
-            raw.splitn(2, '=')
-                .nth(1)
-                .map(|s| s.trim().to_string())
+            raw.split_once('=')
+                .map(|x| x.1.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .ok_or_else(|| "Could not parse postfix version".to_string())?
         }
@@ -219,11 +218,7 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
             }
             // Strip epoch ("4:") and Debian suffix ("+dfsg-1+deb12u1")
             let stripped = ver.splitn(2, ':').last().unwrap_or(ver);
-            stripped
-                .splitn(2, '+')
-                .next()
-                .unwrap_or(stripped)
-                .to_string()
+            stripped.split('+').next().unwrap_or(stripped).to_string()
         }
         _ => return Err("Version not available".to_string()),
     };
@@ -275,7 +270,6 @@ pub async fn get_system_metrics() -> Result<SystemMetrics, String> {
     for line in meminfo.lines() {
         if let Some(value) = line.strip_prefix("MemTotal:") {
             total_mem = value
-                .trim()
                 .split_whitespace()
                 .next()
                 .and_then(|s| s.parse().ok())
@@ -283,7 +277,6 @@ pub async fn get_system_metrics() -> Result<SystemMetrics, String> {
         }
         if let Some(value) = line.strip_prefix("MemAvailable:") {
             available_mem = value
-                .trim()
                 .split_whitespace()
                 .next()
                 .and_then(|s| s.parse().ok())
@@ -294,7 +287,7 @@ pub async fn get_system_metrics() -> Result<SystemMetrics, String> {
     let loadavg = fs::read_to_string("/proc/loadavg").map_err(|e| e.to_string())?;
     let loads: Vec<&str> = loadavg.split_whitespace().collect();
     let load_1 = loads
-        .get(0)
+        .first()
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(0.0);
     let load_5 = loads
@@ -749,10 +742,8 @@ fn resolve_uid(uid: u32) -> String {
     let passwd = fs::read_to_string("/etc/passwd").unwrap_or_default();
     for line in passwd.lines() {
         let parts: Vec<&str> = line.splitn(4, ':').collect();
-        if parts.len() >= 3 {
-            if parts[2].parse::<u32>().ok() == Some(uid) {
-                return parts[0].to_string();
-            }
+        if parts.len() >= 3 && parts[2].parse::<u32>().ok() == Some(uid) {
+            return parts[0].to_string();
         }
     }
     uid.to_string()

@@ -13,6 +13,9 @@ pub enum Role {
     Client,
     Reseller,
     Admin,
+    /// A developer invited by a Client. Scoped to specific sites only.
+    /// No Linux system account is provisioned for this role.
+    Developer,
 }
 
 impl std::fmt::Display for Role {
@@ -21,6 +24,7 @@ impl std::fmt::Display for Role {
             Role::Admin => write!(f, "Admin"),
             Role::Reseller => write!(f, "Reseller"),
             Role::Client => write!(f, "Client"),
+            Role::Developer => write!(f, "Developer"),
         }
     }
 }

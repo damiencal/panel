@@ -51,7 +51,7 @@ pub async fn server_get_usage_history(
     let claims = verify_auth()?;
     let pool = get_pool()?;
 
-    if days < 1 || days > 365 {
+    if !(1..=365).contains(&days) {
         return Err(ServerFnError::new("days must be between 1 and 365"));
     }
 
@@ -89,7 +89,7 @@ pub async fn server_get_monthly_snapshot(
     let claims = verify_auth()?;
     let pool = get_pool()?;
 
-    if month < 1 || month > 12 {
+    if !(1..=12).contains(&month) {
         return Err(ServerFnError::new("month must be 1–12"));
     }
 

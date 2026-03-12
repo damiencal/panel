@@ -16,6 +16,7 @@ pub mod security;
 pub mod service;
 pub mod site;
 pub mod stats;
+pub mod team;
 pub mod ticket;
 /// Shared data models used across frontend and backend.
 /// These types are serializable and must remain consistent between

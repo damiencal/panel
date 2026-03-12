@@ -173,7 +173,7 @@ pub async fn server_ufw_add_rule(
     let rule = UfwRule {
         id: None,
         number: None,
-        action: UfwAction::from_str(&action),
+        action: action.parse::<UfwAction>().unwrap_or(UfwAction::Allow),
         direction: direction.clone(),
         protocol: protocol.clone(),
         from_ip: from_ip.clone(),

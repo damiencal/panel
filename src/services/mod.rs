@@ -124,7 +124,7 @@ pub mod shell {
     /// are safe since they have no special meaning outside of a shell context.
     fn validate_args(args: &[&str]) -> Result<(), ServiceError> {
         for arg in args {
-            if arg.contains(|c: char| matches!(c, ';' | '|' | '&' | '$' | '`' | '\n' | '\r')) {
+            if arg.contains([';', '|', '&', '$', '`', '\n', '\r']) {
                 return Err(ServiceError::CommandFailed(format!(
                     "Invalid characters in argument: {}",
                     arg
@@ -136,7 +136,7 @@ pub mod shell {
 
     /// Execute a shell command safely (allowlisted binaries only + argument validation).
     pub async fn exec(cmd: &str, args: &[&str]) -> Result<Output, ServiceError> {
-        let binary = cmd.split('/').last().unwrap_or(cmd);
+        let binary = cmd.split('/').next_back().unwrap_or(cmd);
 
         if !ALLOWED_BINARIES.contains(&binary) {
             return Err(ServiceError::PermissionDenied);
@@ -170,7 +170,7 @@ pub mod shell {
     ) -> Result<Output, ServiceError> {
         use tokio::io::AsyncWriteExt;
 
-        let binary = cmd.split('/').last().unwrap_or(cmd);
+        let binary = cmd.split('/').next_back().unwrap_or(cmd);
         if !ALLOWED_BINARIES.contains(&binary) {
             return Err(ServiceError::PermissionDenied);
         }
@@ -234,6 +234,7 @@ pub mod filelock {
         pub fn exclusive(path: impl AsRef<Path>) -> Result<Self, super::ServiceError> {
             let file = std::fs::OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .open(path.as_ref().with_extension("lock"))
                 .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
