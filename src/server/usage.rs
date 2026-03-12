@@ -1,0 +1,209 @@
+#[cfg(feature = "server")]
+use crate::models::billing::MetricType;
+/// Usage analytics server functions.
+use crate::models::billing::{DailyAggregate, MonthlySnapshot, UsageStats};
+use crate::models::quota::QuotaStatus;
+use dioxus::prelude::*;
+
+/// Get the current quota utilisation for the caller (or a specific user for admins).
+#[server]
+pub async fn server_get_quota_status(user_id: Option<i64>) -> Result<QuotaStatus, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+
+    let target_id = match claims.role {
+        crate::models::user::Role::Admin => user_id.unwrap_or(claims.sub),
+        _ => {
+            // Non-admins can only view their own quota
+            if let Some(id) = user_id {
+                if id != claims.sub {
+                    return Err(ServerFnError::new("Access denied"));
+                }
+            }
+            claims.sub
+        }
+    };
+
+    let quota = crate::db::quotas::get_quota(pool, target_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let usage = crate::db::quotas::get_usage(pool, target_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    Ok(QuotaStatus::new(quota, usage))
+}
+
+/// Get daily bandwidth and storage aggregates for the last N days.
+#[server]
+pub async fn server_get_usage_history(
+    days: i64,
+    user_id: Option<i64>,
+) -> Result<Vec<DailyAggregate>, ServerFnError> {
+    use super::helpers::*;
+    use chrono::{Duration, Utc};
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+
+    if days < 1 || days > 365 {
+        return Err(ServerFnError::new("days must be between 1 and 365"));
+    }
+
+    let target_id = match claims.role {
+        crate::models::user::Role::Admin => user_id.unwrap_or(claims.sub),
+        _ => claims.sub,
+    };
+
+    let since = (Utc::now() - Duration::days(days)).date_naive();
+
+    let rows = sqlx::query_as::<_, DailyAggregate>(
+        "SELECT * FROM daily_usage_aggregates
+         WHERE user_id = ? AND date >= ?
+         ORDER BY date ASC",
+    )
+    .bind(target_id)
+    .bind(since)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    Ok(rows)
+}
+
+/// Get the monthly usage snapshot for a given month.
+#[server]
+pub async fn server_get_monthly_snapshot(
+    year: i32,
+    month: i32,
+    user_id: Option<i64>,
+) -> Result<Option<MonthlySnapshot>, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+
+    if month < 1 || month > 12 {
+        return Err(ServerFnError::new("month must be 1–12"));
+    }
+
+    let target_id = match claims.role {
+        crate::models::user::Role::Admin => user_id.unwrap_or(claims.sub),
+        _ => claims.sub,
+    };
+
+    crate::db::usage::get_monthly_snapshot(pool, target_id, year, month)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+/// Aggregate usage stats summary for the current month (reseller: sum of all clients).
+#[server]
+pub async fn server_get_reseller_usage_summary() -> Result<UsageStats, ServerFnError> {
+    use super::helpers::*;
+    use chrono::Utc;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    crate::auth::guards::require_reseller(&claims)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let pool = get_pool()?;
+
+    let now = Utc::now();
+    let _current_month = now.format("%Y-%m").to_string();
+
+    // Sum bandwidth and storage across all direct clients of this reseller
+    let row: (i64, i64) = sqlx::query_as(
+        "SELECT COALESCE(SUM(r.bandwidth_used_mb), 0),
+                COALESCE(SUM(r.storage_used_mb), 0)
+         FROM resource_usage r
+         JOIN users u ON u.id = r.user_id
+         WHERE u.id = ? OR u.parent_id = ?",
+    )
+    .bind(claims.sub)
+    .bind(claims.sub)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Monthly snapshot for the reseller itself
+    let month_snap = crate::db::usage::get_monthly_snapshot(
+        pool,
+        claims.sub,
+        now.format("%Y").to_string().parse::<i32>().unwrap_or(2026),
+        now.format("%m").to_string().parse::<i32>().unwrap_or(1),
+    )
+    .await
+    .unwrap_or(None);
+
+    Ok(UsageStats {
+        current_bandwidth_gb: row.0 as f64 / 1024.0,
+        current_storage_gb: row.1 as f64 / 1024.0,
+        month_bandwidth_gb: month_snap
+            .as_ref()
+            .map(|s| s.bandwidth_used_mb as f64 / 1024.0)
+            .unwrap_or(0.0),
+        month_storage_peak_gb: month_snap
+            .as_ref()
+            .map(|s| s.storage_peak_mb as f64 / 1024.0)
+            .unwrap_or(0.0),
+    })
+}
+
+/// Record a bandwidth usage event (called internally by site access log processing).
+#[server]
+pub async fn server_record_bandwidth_event(
+    user_id: i64,
+    site_id: Option<i64>,
+    value_mb: i64,
+) -> Result<(), ServerFnError> {
+    use super::helpers::*;
+    use chrono::Utc;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    // Only admin or the owning user may record events
+    if claims.role != crate::models::user::Role::Admin && claims.sub != user_id {
+        return Err(ServerFnError::new("Access denied"));
+    }
+    let pool = get_pool()?;
+
+    crate::db::usage::log_usage(pool, user_id, site_id, MetricType::Bandwidth, value_mb)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Update daily aggregate for today
+    let today = Utc::now().date_naive();
+    // Increment existing row or insert new row via upsert
+    sqlx::query(
+        "INSERT INTO daily_usage_aggregates (user_id, date, bandwidth_used_mb, storage_used_mb)
+         VALUES (?, ?, ?, 0)
+         ON CONFLICT(user_id, date) DO UPDATE SET
+            bandwidth_used_mb = bandwidth_used_mb + excluded.bandwidth_used_mb",
+    )
+    .bind(user_id)
+    .bind(today)
+    .bind(value_mb)
+    .execute(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Keep resource_usage.bandwidth_used_mb in sync
+    sqlx::query(
+        "UPDATE resource_usage SET bandwidth_used_mb = bandwidth_used_mb + ?, updated_at = ? WHERE user_id = ?",
+    )
+    .bind(value_mb)
+    .bind(Utc::now())
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    Ok(())
+}

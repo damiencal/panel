@@ -1,0 +1,52 @@
+#!/bin/bash
+# DEPRECATED: This BIND zone file template is no longer used.
+# DNS is now managed via the Cloudflare API.
+# This file is kept for reference only.
+
+$TTL 3600
+$ORIGIN {{ domain }}.
+
+; Zone data for {{ domain }}
+@           IN  SOA     {{ ns1 }}. admin.{{ domain }}. (
+                        {{ serial }}  ; Serial
+                        3600          ; Refresh
+                        1800          ; Retry
+                        604800        ; Expire
+                        3600 )        ; Minimum TTL
+
+; Nameservers
+            IN  NS      {{ ns1 }}.
+            IN  NS      {{ ns2 }}.
+
+; A Records
+@           IN  A       {{ ip_address }}
+www         IN  A       {{ ip_address }}
+
+; AAAA Records (IPv6 - optional)
+{% if ipv6_address %}
+@           IN  AAAA    {{ ipv6_address }}
+www         IN  AAAA    {{ ipv6_address }}
+{% endif %}
+
+; MX Records
+@           IN  MX  10  mail.{{ domain }}.
+
+; Mail servers
+mail        IN  A       {{ mail_ip }}
+
+; SPF Record
+@           IN  TXT     "v=spf1 mx -all"
+
+; DKIM (placeholder - replace with actual key)
+default._domainkey  IN  TXT     "v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY_HERE"
+
+; DMARC Policy
+_dmarc      IN  TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc@{{ domain }}"
+
+; CAA Records (for SSL/TLS)
+@           IN  CAA     0 issue "letsencrypt.org"
+@           IN  CAA     0 issuewild "letsencrypt.org"
+
+; Additional records (CNAME examples)
+; blog      IN  CNAME   {{ domain }}.
+; shop      IN  CNAME   {{ domain }}.

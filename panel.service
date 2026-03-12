@@ -1,0 +1,36 @@
+[Unit]
+Description=Hosting Control Panel - Web-based Hosting Management
+Documentation=https://github.com/yourusername/panel
+After=network-online.target mariadb.service postfix.service dovecot.service pure-ftpd.service lsws.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=panel
+Group=panel
+WorkingDirectory=/opt/panel
+
+Environment="RUST_LOG=warn,panel=warn"
+Environment="DATABASE_URL=sqlite:/var/lib/panel/panel.db"
+
+ExecStart=/opt/panel/panel
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=10s
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/panel /var/log/panel /usr/local/lsws/conf /var/mail/vhosts /etc/postfix /etc/dovecot /etc/pure-ftpd
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Process timeout
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

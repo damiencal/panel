@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@source "./src/**/*.{rs,html,css}";
+@source "./safelist.html";
+
+* {
+  @apply font-sans;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+  font-family: "Inter", system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+code,
+pre {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+/* Desktop scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Selection */
+::selection {
+  background-color: #fecdd3;
+  color: #881337;
+}

@@ -1,0 +1,59 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+*.profraw
+*.profdata
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Panel config (contains secrets — copy panel.toml.example and fill in values)
+panel.toml
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+logs/
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
+._.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.o
+*.a
+*.so
+
+# Dependencies
+node_modules/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Dioxus
+.dioxus/
+dist_dioxus/
+
+# SQLx
+sqlx-data.json
+.sqlx/
