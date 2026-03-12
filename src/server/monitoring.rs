@@ -806,8 +806,18 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
 fn semver_newer(current: &str, candidate: &str) -> bool {
     fn parse(v: &str) -> (u64, u64, u64) {
         let v = v.trim_start_matches('v');
-        let mut parts = v.splitn(3, '.').map(|p| p.split('-').next().unwrap_or("0").parse::<u64>().unwrap_or(0));
-        (parts.next().unwrap_or(0), parts.next().unwrap_or(0), parts.next().unwrap_or(0))
+        let mut parts = v.splitn(3, '.').map(|p| {
+            p.split('-')
+                .next()
+                .unwrap_or("0")
+                .parse::<u64>()
+                .unwrap_or(0)
+        });
+        (
+            parts.next().unwrap_or(0),
+            parts.next().unwrap_or(0),
+            parts.next().unwrap_or(0),
+        )
     }
     parse(candidate) > parse(current)
 }
@@ -941,9 +951,7 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
         .map_err(|e| ServerFnError::new(format!("Failed to parse GitHub API response: {e}")))?;
 
     let tag = &release.tag_name;
-    let base_url = format!(
-        "https://github.com/damiencal/panel/releases/download/{tag}"
-    );
+    let base_url = format!("https://github.com/damiencal/panel/releases/download/{tag}");
 
     // ── Step 3: download archive and checksum ─────────────────────────────
     let tmp_dir = tempfile::Builder::new()
@@ -1086,5 +1094,3 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
         message: format!("Panel updated to {tag}. Restarting…"),
     })
 }
-
-

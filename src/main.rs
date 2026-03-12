@@ -631,8 +631,7 @@ fn ImpersonationBanner() -> Element {
 /// The version check is performed once on mount; any network failure is silent.
 #[component]
 fn PanelUpdateBanner() -> Element {
-    let version_info =
-        use_resource(move || async move { server_check_panel_version().await });
+    let version_info = use_resource(move || async move { server_check_panel_version().await });
 
     // Local dismiss state (session-scoped, not persisted)
     let mut dismissed = use_signal(|| false);
@@ -641,7 +640,11 @@ fn PanelUpdateBanner() -> Element {
     let mut update_result = use_signal(|| None::<Result<String, String>>);
 
     // Resolve the resource — only render when we know an update is available
-    let Some(Ok(ref info)) = version_info.read().as_ref().map(|r| r.as_ref().map(|v| v.clone()).map_err(|e| e.to_string())) else {
+    let Some(Ok(ref info)) = version_info
+        .read()
+        .as_ref()
+        .map(|r| r.as_ref().map(|v| v.clone()).map_err(|e| e.to_string()))
+    else {
         return rsx! {};
     };
 
