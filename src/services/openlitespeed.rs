@@ -362,7 +362,11 @@ impl OpenLiteSpeedService {
 
         // Validate SSL cert/key paths if provided.
         if let (Some(cert), Some(key)) = (ssl_cert_path, ssl_key_path) {
-            if cert.contains('\n') || cert.contains('\r') || key.contains('\n') || key.contains('\r') {
+            if cert.contains('\n')
+                || cert.contains('\r')
+                || key.contains('\n')
+                || key.contains('\r')
+            {
                 return Err(ServiceError::CommandFailed(
                     "SSL cert/key paths must not contain newlines".to_string(),
                 ));

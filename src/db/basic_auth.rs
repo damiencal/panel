@@ -58,12 +58,11 @@ pub async fn user_exists(
     site_id: i64,
     username: &str,
 ) -> Result<bool, sqlx::Error> {
-    let row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM basic_auth_users WHERE site_id = ? AND username = ?",
-    )
-    .bind(site_id)
-    .bind(username)
-    .fetch_one(pool)
-    .await?;
+    let row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM basic_auth_users WHERE site_id = ? AND username = ?")
+            .bind(site_id)
+            .bind(username)
+            .fetch_one(pool)
+            .await?;
     Ok(row.0 > 0)
 }

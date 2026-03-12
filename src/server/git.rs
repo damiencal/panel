@@ -596,7 +596,11 @@ pub async fn server_set_atomic_deploy(
 
     audit_log(
         claims.sub,
-        if enabled { "enable_atomic_deploy" } else { "disable_atomic_deploy" },
+        if enabled {
+            "enable_atomic_deploy"
+        } else {
+            "disable_atomic_deploy"
+        },
         Some("site"),
         Some(site_id),
         Some(&site.domain),

@@ -42,8 +42,12 @@ pub async fn hash_password(password: &str) -> Result<String, ServiceError> {
         ));
     }
 
-    let output =
-        shell::exec_stdin("openssl", &["passwd", "-apr1", "-stdin"], password.as_bytes()).await?;
+    let output = shell::exec_stdin(
+        "openssl",
+        &["passwd", "-apr1", "-stdin"],
+        password.as_bytes(),
+    )
+    .await?;
 
     let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if hash.is_empty() {
@@ -57,13 +61,9 @@ pub async fn hash_password(password: &str) -> Result<String, ServiceError> {
 /// Write (or overwrite) the htpasswd file for a domain with the provided users.
 /// `users` is a slice of `(username, password_hash)` pairs already in htpasswd
 /// format (produced by `hash_password`).
-pub async fn write_htpasswd(
-    domain: &str,
-    users: &[(String, String)],
-) -> Result<(), ServiceError> {
+pub async fn write_htpasswd(domain: &str, users: &[(String, String)]) -> Result<(), ServiceError> {
     // Defense-in-depth: validate domain before constructing file path.
-    validators::validate_domain(domain)
-        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    validators::validate_domain(domain).map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
     fs::create_dir_all(HTPASSWD_DIR)
         .await
@@ -103,8 +103,7 @@ pub async fn write_htpasswd(
 /// Remove the htpasswd file for a domain (called when Basic Auth is disabled
 /// or the site is deleted).
 pub async fn remove_htpasswd(domain: &str) -> Result<(), ServiceError> {
-    validators::validate_domain(domain)
-        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    validators::validate_domain(domain).map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
     let path = htpasswd_path(domain);
     if Path::new(&path).exists() {
@@ -129,8 +128,7 @@ pub async fn write_custom_cert(
     key_pem: &str,
 ) -> Result<(String, String), ServiceError> {
     // Defense-in-depth: validate domain.
-    validators::validate_domain(domain)
-        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    validators::validate_domain(domain).map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
     // Require PEM headers to catch accidental DER-encoded uploads.
     if !cert_pem.contains("-----BEGIN CERTIFICATE-----") {
@@ -195,18 +193,11 @@ pub async fn write_custom_cert(
 /// Returns Ok(()) if they match, Err if they don't.
 pub async fn verify_cert_key_pair(cert_path: &str, key_path: &str) -> Result<(), ServiceError> {
     // Get the public key modulus from the cert.
-    let cert_mod = shell::exec(
-        "openssl",
-        &["x509", "-in", cert_path, "-noout", "-modulus"],
-    )
-    .await?;
+    let cert_mod =
+        shell::exec("openssl", &["x509", "-in", cert_path, "-noout", "-modulus"]).await?;
 
     // Get the public key modulus from the private key.
-    let key_mod = shell::exec(
-        "openssl",
-        &["rsa", "-in", key_path, "-noout", "-modulus"],
-    )
-    .await?;
+    let key_mod = shell::exec("openssl", &["rsa", "-in", key_path, "-noout", "-modulus"]).await?;
 
     if cert_mod.stdout != key_mod.stdout {
         return Err(ServiceError::CommandFailed(
