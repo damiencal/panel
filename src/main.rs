@@ -1099,7 +1099,7 @@ fn Login() -> Element {
                     match resp.role {
                         Role::Admin => nav.push(Route::AdminDashboard {}),
                         Role::Reseller => nav.push(Route::ResellerDashboard {}),
-                        Role::Client => nav.push(Route::ClientDashboard {}),
+                        Role::Client | Role::Developer => nav.push(Route::ClientDashboard {}),
                     };
                 }
                 Err(e) => {
@@ -1275,11 +1275,14 @@ fn AdminServers() -> Element {
     let mut services = use_resource(move || async move { server_get_services_status().await });
     let mut metrics = use_resource(move || async move { server_get_system_metrics().await });
     let mut server_info = use_resource(move || async move { server_get_server_info().await });
+    let mut php_versions = use_resource(move || async move { server_list_php_versions().await });
     let mut action_error = use_signal(|| None::<String>);
     let mut action_loading = use_signal(|| None::<String>);
     let mut update_loading = use_signal(|| false);
     let mut update_result =
         use_signal(|| None::<Result<panel::server::monitoring::OsUpdateResult, String>>);
+    let mut php_installing = use_signal(|| None::<String>);
+    let mut php_install_error = use_signal(|| None::<String>);
 
     let mut handle_action =
         move |svc_type: panel::models::service::ServiceType,
@@ -1586,6 +1589,67 @@ fn AdminServers() -> Element {
                     },
                     Some(Err(e)) => rsx! { p { class: "p-6 text-red-600", "Error: {e}" } },
                     None => rsx! { p { class: "p-6 text-gray-500 animate-pulse", "Loading services..." } },
+                }
+            }
+
+            // PHP Versions — install lsphp packages from the official LiteSpeed repo.
+            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                h3 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4",
+                    "PHP Versions (lsphp)"
+                }
+                if let Some(err) = php_install_error() {
+                    div { class: "mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm", "{err}" }
+                }
+                div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3",
+                    { const VERSIONS: &[&str] = panel::services::openlitespeed::SUPPORTED_PHP_VERSIONS;
+                      let installed: Vec<String> = match &*php_versions.read() {
+                          Some(Ok(v)) => v.clone(),
+                          _ => Vec::new(),
+                      };
+                      rsx! {
+                        for ver in VERSIONS.iter() {
+                            {
+                                let ver_str = ver.to_string();
+                                let is_installed = installed.contains(&ver_str);
+                                let is_busy = php_installing().as_deref() == Some(ver);
+                                rsx! {
+                                    div { class: "flex flex-col items-center gap-2 p-3 border border-gray-200 rounded-xl",
+                                        span { class: "text-sm font-semibold text-gray-800", "PHP {ver_str}" }
+                                        if is_installed {
+                                            span { class: "text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium",
+                                                "Installed"
+                                            }
+                                        } else {
+                                            button {
+                                                class: "text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50",
+                                                disabled: is_busy || php_installing().is_some(),
+                                                onclick: move |_| {
+                                                    let v = ver_str.clone();
+                                                    php_installing.set(Some(v.clone()));
+                                                    php_install_error.set(None);
+                                                    spawn(async move {
+                                                        match server_install_php_version(v).await {
+                                                            Ok(()) => {
+                                                                php_versions.restart();
+                                                            }
+                                                            Err(e) => php_install_error.set(Some(e.to_string())),
+                                                        }
+                                                        php_installing.set(None);
+                                                    });
+                                                },
+                                                if is_busy {
+                                                    "Installing\u{2026}"
+                                                } else {
+                                                    "Install"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                      }
+                    }
                 }
             }
         }
@@ -2388,6 +2452,7 @@ fn AdminClientRow(
                         Role::Admin => "px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800",
                         Role::Reseller => "px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800",
                         Role::Client => "px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700",
+                        Role::Developer => "px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700",
                     },
                     "{user.role}"
                 }
@@ -6565,11 +6630,21 @@ fn SiteRow(
     let hsts_age = site.hsts_max_age;
     let hsts_subdoms = site.hsts_include_subdomains;
     let hsts_pre = site.hsts_preload;
+    let is_php_site = matches!(
+        site.site_type,
+        panel::models::site::SiteType::Php | panel::models::site::SiteType::WordPress
+    );
     let mut sites_resource = sites_resource;
     let mut confirm_delete = use_signal(|| false);
     let mut row_error = use_signal(|| None::<String>);
     let mut busy = use_signal(|| false);
     let mut show_logs = use_signal(|| false);
+    let mut php_ver = use_signal(|| {
+        site.php_version
+            .clone()
+            .unwrap_or_else(|| "8.3".to_string())
+    });
+    let available_php = use_resource(move || async move { server_list_php_versions().await });
 
     let on_toggle_status = move |_| {
         let new_status = match current_status {
@@ -6677,6 +6752,20 @@ fn SiteRow(
         });
     };
 
+    let on_change_php = move |e: dioxus::events::FormEvent| {
+        let ver = e.value();
+        row_error.set(None);
+        spawn(async move {
+            match server_update_site_php_version(site_id, ver.clone()).await {
+                Ok(()) => {
+                    php_ver.set(ver);
+                    sites_resource.restart();
+                }
+                Err(e) => row_error.set(Some(e.to_string())),
+            }
+        });
+    };
+
     let created = site.created_at.format("%Y-%m-%d").to_string();
 
     let status_btn_class = match current_status {
@@ -6741,12 +6830,32 @@ fn SiteRow(
             }
             td { class: "px-6 py-4 text-xs text-gray-500", "{created}" }
             td { class: "px-6 py-4",
-                div { class: "flex items-center gap-2",
+                div { class: "flex items-center gap-2 flex-wrap",
                     button {
                         class: "{status_btn_class}",
                         onclick: on_toggle_status,
                         disabled: busy(),
                         "{status_btn_label}"
+                    }
+                    // PHP version picker — only for PHP/WordPress sites.
+                    if is_php_site {
+                        if let Some(Ok(versions)) = &*available_php.read() {
+                            if !versions.is_empty() {
+                                select {
+                                    class: "text-xs px-1.5 py-1 border border-gray-300 rounded bg-white text-gray-700 focus:ring-1 focus:ring-blue-400",
+                                    title: "PHP version",
+                                    value: "{php_ver}",
+                                    onchange: on_change_php,
+                                    for ver in versions.iter() {
+                                        option {
+                                            value: "{ver}",
+                                            selected: *ver == php_ver(),
+                                            "PHP {ver}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     button {
                         class: if show_logs() {

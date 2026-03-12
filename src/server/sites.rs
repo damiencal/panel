@@ -19,6 +19,19 @@ pub async fn server_list_sites() -> Result<Vec<Site>, ServerFnError> {
         crate::models::user::Role::Client => {
             crate::db::sites::list_for_owner(pool, claims.sub).await
         }
+        // Developers see only the sites they have been granted access to.
+        crate::models::user::Role::Developer => {
+            let site_ids = crate::db::team::get_developer_sites(pool, claims.sub)
+                .await
+                .map_err(|e| ServerFnError::new(e.to_string()))?;
+            let mut acc = Vec::new();
+            for sid in site_ids {
+                if let Ok(s) = crate::db::sites::get(pool, sid).await {
+                    acc.push(s);
+                }
+            }
+            return Ok(acc);
+        }
     };
 
     sites.map_err(|e| ServerFnError::new(e.to_string()))
@@ -189,6 +202,7 @@ pub async fn server_update_site_ssl(
                 hsts_max_age,
                 hsts_include_subdomains,
                 hsts_preload && hsts_include_subdomains && hsts_max_age >= 31536000,
+                site.php_version.as_deref(),
             )
             .await;
     }
@@ -312,4 +326,123 @@ pub async fn server_get_site_logs(site_id: i64, log_type: String) -> Result<Stri
     } else {
         tail
     })
+}
+
+/// Return the list of PHP versions that are currently installed on the server.
+/// Any authenticated user may call this (needed to populate the version picker).
+#[server]
+pub async fn server_list_php_versions() -> Result<Vec<String>, ServerFnError> {
+    use super::helpers::*;
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let _claims = verify_auth()?;
+
+    #[cfg(feature = "server")]
+    {
+        let ols = crate::services::openlitespeed::OpenLiteSpeedService;
+        return ols
+            .list_installed_php_versions()
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()));
+    }
+    #[cfg(not(feature = "server"))]
+    Ok(Vec::new())
+}
+
+/// Install a PHP version from the official LiteSpeed repository.
+/// Admin-only.  Only versions in `SUPPORTED_PHP_VERSIONS` are accepted.
+#[server]
+pub async fn server_install_php_version(version: String) -> Result<(), ServerFnError> {
+    use super::helpers::*;
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+
+    if claims.role != crate::models::user::Role::Admin {
+        return Err(ServerFnError::new("Unauthorized"));
+    }
+
+    // Server-layer defence: only accept known versions.
+    if !crate::services::openlitespeed::SUPPORTED_PHP_VERSIONS.contains(&version.as_str()) {
+        return Err(ServerFnError::new("Unsupported PHP version"));
+    }
+
+    #[cfg(feature = "server")]
+    {
+        let ols = crate::services::openlitespeed::OpenLiteSpeedService;
+        ols.install_php_version(&version)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+    }
+
+    audit_log(
+        claims.sub,
+        "install_php_version",
+        Some("server"),
+        None,
+        Some(&version),
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(())
+}
+
+/// Update the PHP version for a specific site and regenerate its vhost config.
+#[server]
+pub async fn server_update_site_php_version(
+    site_id: i64,
+    php_version: String,
+) -> Result<(), ServerFnError> {
+    use super::helpers::*;
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+
+    // Validate version is in the known-good list.
+    if !crate::services::openlitespeed::SUPPORTED_PHP_VERSIONS.contains(&php_version.as_str()) {
+        return Err(ServerFnError::new("Unsupported PHP version"));
+    }
+
+    let site = crate::db::sites::get(pool, site_id)
+        .await
+        .map_err(|_| ServerFnError::new("Site not found"))?;
+
+    crate::auth::guards::check_ownership(&claims, site.owner_id, None)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    crate::db::sites::update_php_version(pool, site_id, Some(&php_version))
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Regenerate the vhost config so the new binary path is active immediately.
+    #[cfg(feature = "server")]
+    {
+        let ols = crate::services::openlitespeed::OpenLiteSpeedService;
+        let _ = ols
+            .update_vhost_config(
+                &site.domain,
+                &site.doc_root,
+                site.site_type,
+                site.force_https,
+                site.hsts_enabled && site.ssl_enabled && site.force_https,
+                site.hsts_max_age,
+                site.hsts_include_subdomains,
+                site.hsts_preload && site.hsts_include_subdomains && site.hsts_max_age >= 31536000,
+                Some(&php_version),
+            )
+            .await;
+    }
+
+    audit_log(
+        claims.sub,
+        "update_site_php_version",
+        Some("site"),
+        Some(site_id),
+        Some(&format!("{} -> {php_version}", site.domain)),
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(())
 }

@@ -159,3 +159,16 @@ pub async fn delete(pool: &SqlitePool, site_id: i64) -> Result<(), sqlx::Error> 
         .await?;
     Ok(())
 }
+
+pub async fn update_php_version(
+    pool: &SqlitePool,
+    site_id: i64,
+    version: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE sites SET php_version = ? WHERE id = ?")
+        .bind(version)
+        .bind(site_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}

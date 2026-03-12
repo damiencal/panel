@@ -234,8 +234,15 @@ pub async fn server_accept_team_invitation(
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let access_token =
-        crate::auth::jwt::create_token(&user).map_err(|e| ServerFnError::new(e.to_string()))?;
+    let access_token = crate::auth::jwt::create_token(
+        user.id,
+        user.username.clone(),
+        user.email.clone(),
+        user.role,
+        user.parent_id,
+        None,
+    )
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     Ok(crate::models::user::LoginResponse { access_token, user })
 }

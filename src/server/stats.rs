@@ -47,6 +47,8 @@ pub async fn server_list_stats() -> Result<Vec<StatsConfig>, ServerFnError> {
         crate::models::user::Role::Client => {
             crate::db::stats::list_for_owner(pool, claims.sub).await
         }
+        // Developers have no web-stats access.
+        crate::models::user::Role::Developer => Ok(Vec::new()),
     }
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 

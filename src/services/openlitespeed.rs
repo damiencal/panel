@@ -10,7 +10,32 @@ use tracing::info;
 
 const OLS_VHOST_DIR: &str = "/usr/local/lsws/conf/vhosts";
 const OLS_BIN: &str = "/usr/local/lsws/bin/lswsctrl";
+/// Default lsphp binary — used as a fallback when a site has no php_version set.
 const LSPHP_BIN: &str = "/usr/local/lsws/lsphp83/bin/lsphp";
+
+/// PHP versions available from the official LiteSpeed repository for Debian bookworm.
+/// Only these values are accepted when installing or assigning a PHP version.
+pub const SUPPORTED_PHP_VERSIONS: &[&str] = &["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
+
+/// Convert a dot-separated version string (`"8.3"`) to the package/path suffix (`"83"`).
+/// Validates that both parts are purely numeric; returns `None` on any invalid input.
+fn version_to_pkg_suffix(version: &str) -> Option<String> {
+    let (major, minor) = version.split_once('.')?;
+    if major.is_empty()
+        || minor.is_empty()
+        || !major.chars().all(|c| c.is_ascii_digit())
+        || !minor.chars().all(|c| c.is_ascii_digit())
+    {
+        return None;
+    }
+    Some(format!("{}{}", major, minor))
+}
+
+/// Absolute path to the lsphp binary for `version` (e.g. `"8.3"` →
+/// `"/usr/local/lsws/lsphp83/bin/lsphp"`).  Returns `None` for unrecognised formats.
+pub fn lsphp_bin_path(version: &str) -> Option<String> {
+    version_to_pkg_suffix(version).map(|s| format!("/usr/local/lsws/lsphp{}/bin/lsphp", s))
+}
 
 /// OpenLiteSpeed service manager.
 pub struct OpenLiteSpeedService;
@@ -127,6 +152,7 @@ impl OpenLiteSpeedService {
         domain: &str,
         doc_root: &str,
         site_type: SiteType,
+        php_version: Option<&str>,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate inputs at the service layer
         crate::utils::validators::validate_domain(domain)
@@ -144,7 +170,15 @@ impl OpenLiteSpeedService {
         // Generate config without HSTS/force-HTTPS; these are applied later
         // via update_vhost_config once SSL is issued.
         let vhost_config = self.generate_vhost_config(
-            domain, doc_root, site_type, false, false, 31536000, false, false,
+            domain,
+            doc_root,
+            site_type,
+            false,
+            false,
+            31536000,
+            false,
+            false,
+            php_version,
         )?;
         let config_path = format!("{}/vhconf.conf", vhost_dir);
 
@@ -174,6 +208,7 @@ impl OpenLiteSpeedService {
         hsts_max_age: i64,
         hsts_include_subdomains: bool,
         hsts_preload: bool,
+        php_version: Option<&str>,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate at service layer
         crate::utils::validators::validate_domain(domain)
@@ -190,6 +225,7 @@ impl OpenLiteSpeedService {
             hsts_max_age,
             hsts_include_subdomains,
             hsts_preload,
+            php_version,
         )?;
         let config_path = format!("{}/{}/vhconf.conf", OLS_VHOST_DIR, domain);
         fs::write(&config_path, vhost_config)
@@ -199,6 +235,50 @@ impl OpenLiteSpeedService {
             "Updated vhost config for {} (force_https={}, hsts={})",
             domain, force_https, hsts_enabled
         );
+        Ok(())
+    }
+
+    /// Return the list of PHP versions that are currently installed on the system
+    /// by checking for the lsphp binary on disk for each supported version.
+    pub async fn list_installed_php_versions(&self) -> Result<Vec<String>, ServiceError> {
+        let mut installed = Vec::new();
+        for &ver in SUPPORTED_PHP_VERSIONS {
+            if let Some(bin) = lsphp_bin_path(ver) {
+                if Path::new(&bin).exists() {
+                    installed.push(ver.to_string());
+                }
+            }
+        }
+        Ok(installed)
+    }
+
+    /// Install a specific PHP version from the official LiteSpeed repository.
+    /// Only versions listed in `SUPPORTED_PHP_VERSIONS` are accepted.
+    pub async fn install_php_version(&self, version: &str) -> Result<(), ServiceError> {
+        // Defense-in-depth: reject anything not in the known-good list.
+        if !SUPPORTED_PHP_VERSIONS.contains(&version) {
+            return Err(ServiceError::CommandFailed(format!(
+                "Unsupported PHP version: {version}"
+            )));
+        }
+        let s = version_to_pkg_suffix(version).ok_or_else(|| {
+            ServiceError::CommandFailed(format!("Invalid PHP version format: {version}"))
+        })?;
+        info!("Installing PHP {version} (lsphp{s})...");
+        shell::exec(
+            "apt-get",
+            &[
+                "install",
+                "-y",
+                &format!("lsphp{s}"),
+                &format!("lsphp{s}-mysql"),
+                &format!("lsphp{s}-curl"),
+                &format!("lsphp{s}-common"),
+                &format!("lsphp{s}-opcache"),
+            ],
+        )
+        .await?;
+        info!("PHP {version} installed successfully");
         Ok(())
     }
 
@@ -227,6 +307,7 @@ impl OpenLiteSpeedService {
     /// - `hsts_max_age`: `max-age` value in seconds (minimum 31536000 for preload).
     /// - `hsts_include_subdomains`: append `; includeSubDomains` to the header.
     /// - `hsts_preload`: append `; preload` to the header.
+    /// - `php_version`: optional version string (e.g. `"8.3"`). Falls back to `LSPHP_BIN` if `None`.
     #[allow(clippy::too_many_arguments)]
     pub fn generate_vhost_config(
         &self,
@@ -238,6 +319,7 @@ impl OpenLiteSpeedService {
         hsts_max_age: i64,
         hsts_include_subdomains: bool,
         hsts_preload: bool,
+        php_version: Option<&str>,
     ) -> Result<String, ServiceError> {
         // Defense-in-depth: reject values containing newlines that could inject config directives
         if domain.contains('\n')
@@ -256,6 +338,12 @@ impl OpenLiteSpeedService {
 
         let vhost_name = format!("vhost_{}", domain.replace('.', "_"));
 
+        // Resolve the lsphp binary path from the requested version, falling back to
+        // the compile-time default when no version is stored for this site.
+        let lsphp_bin = php_version
+            .and_then(lsphp_bin_path)
+            .unwrap_or_else(|| LSPHP_BIN.to_string());
+
         let hsts_header = if hsts_enabled {
             let mut value = format!("Strict-Transport-Security: max-age={}", hsts_max_age);
             if hsts_include_subdomains {
@@ -270,13 +358,25 @@ impl OpenLiteSpeedService {
         };
 
         let config = match site_type {
-            SiteType::WordPress => {
-                Self::wordpress_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header)
-            }
+            SiteType::WordPress => Self::wordpress_vhost(
+                domain,
+                doc_root,
+                &vhost_name,
+                force_https,
+                &hsts_header,
+                &lsphp_bin,
+            ),
             SiteType::Static => {
                 Self::static_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header)
             }
-            _ => Self::php_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header),
+            _ => Self::php_vhost(
+                domain,
+                doc_root,
+                &vhost_name,
+                force_https,
+                &hsts_header,
+                &lsphp_bin,
+            ),
         };
 
         Ok(config)
@@ -369,6 +469,7 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{\n\
         vhost_name: &str,
         force_https: bool,
         hsts_header: &str,
+        lsphp_bin: &str,
     ) -> String {
         let mut rules: Vec<&str> = Vec::new();
         if force_https {
@@ -432,7 +533,7 @@ enableWebsocket        1
             doc_root = doc_root,
             vhost_name = vhost_name,
             domain = domain,
-            lsphp_bin = LSPHP_BIN,
+            lsphp_bin = lsphp_bin,
             logs = logs,
             rewrite_block = rewrite_block,
             hsts_header = hsts_header,
@@ -511,6 +612,7 @@ enableWebsocket        0
         vhost_name: &str,
         force_https: bool,
         hsts_header: &str,
+        lsphp_bin: &str,
     ) -> String {
         let force_https_block = if force_https {
             concat!(
@@ -602,7 +704,7 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{
             doc_root = doc_root,
             vhost_name = vhost_name,
             domain = domain,
-            lsphp_bin = LSPHP_BIN,
+            lsphp_bin = lsphp_bin,
             force_https_block = force_https_block,
             hsts_header = hsts_header,
         )
