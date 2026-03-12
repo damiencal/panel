@@ -417,7 +417,9 @@ fn username_from_doc_root(doc_root: &str) -> Result<String, String> {
         .chars()
         .any(|c| !c.is_alphanumeric() && !matches!(c, '-' | '_' | '.'))
     {
-        return Err(format!("Unsafe username extracted from doc_root: {username}"));
+        return Err(format!(
+            "Unsafe username extracted from doc_root: {username}"
+        ));
     }
     Ok(username.to_string())
 }
@@ -646,7 +648,6 @@ pub async fn atomic_pull(
             let script_path = format!("/tmp/.pdeploy_{}", Uuid::new_v4().simple());
 
             // Write deploy script with 0700 permissions (owner-executable only).
-            use std::os::unix::fs::OpenOptionsExt;
             let mut f = tokio::fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -661,11 +662,7 @@ pub async fn atomic_pull(
             drop(f);
 
             let run = Command::new("sudo")
-                .args([
-                    "-n", "-u", &username,
-                    "timeout", "60",
-                    "bash", &script_path,
-                ])
+                .args(["-n", "-u", &username, "timeout", "60", "bash", &script_path])
                 .env("RELEASE_DIR", &release_dir)
                 .env("DOC_ROOT", doc_root)
                 .output()

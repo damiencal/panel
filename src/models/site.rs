@@ -75,6 +75,8 @@ pub struct Site {
     pub hsts_max_age: i64,
     pub hsts_include_subdomains: bool,
     pub hsts_preload: bool,
+    pub basic_auth_enabled: bool,
+    pub basic_auth_realm: String,
     pub php_version: Option<String>,
     pub php_handler: Option<String>,
     pub proxy_target: Option<String>,
@@ -119,4 +121,16 @@ pub struct SiteDetail {
     pub ssl_days_until_expiry: Option<i64>,
     pub current_users: i32,
     pub bandwidth_this_month: i64,
+}
+
+/// A user in a site's HTTP Basic Authentication user database.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "server", derive(sqlx::FromRow))]
+pub struct BasicAuthUser {
+    pub id: i64,
+    pub site_id: i64,
+    pub username: String,
+    /// APR1-MD5 or bcrypt hash in Apache htpasswd format. Never plaintext.
+    pub password_hash: String,
+    pub created_at: DateTime<Utc>,
 }

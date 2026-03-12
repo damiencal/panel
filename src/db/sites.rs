@@ -172,3 +172,52 @@ pub async fn update_php_version(
         .await?;
     Ok(())
 }
+
+/// Record the SSL certificate and private key file **paths** (as written to disk)
+/// for a site and mark it as SSL-enabled.  Called after Certbot issuance or
+/// after writing a custom certificate to disk.
+pub async fn update_cert_info(
+    pool: &SqlitePool,
+    site_id: i64,
+    cert_path: &str,
+    key_path: &str,
+    issuer: &str,
+) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+    sqlx::query(
+        "UPDATE sites
+         SET ssl_certificate = ?, ssl_private_key = ?, ssl_issuer = ?,
+             ssl_enabled = TRUE, updated_at = ?
+         WHERE id = ?",
+    )
+    .bind(cert_path)
+    .bind(key_path)
+    .bind(issuer)
+    .bind(now)
+    .bind(site_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Enable or disable HTTP Basic Authentication for a site and set the realm label.
+pub async fn update_basic_auth_settings(
+    pool: &SqlitePool,
+    site_id: i64,
+    enabled: bool,
+    realm: &str,
+) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+    sqlx::query(
+        "UPDATE sites
+         SET basic_auth_enabled = ?, basic_auth_realm = ?, updated_at = ?
+         WHERE id = ?",
+    )
+    .bind(enabled)
+    .bind(realm)
+    .bind(now)
+    .bind(site_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}

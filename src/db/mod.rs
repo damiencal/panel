@@ -1,6 +1,7 @@
 pub mod antispam;
 pub mod audit;
 pub mod backup;
+pub mod basic_auth;
 pub mod branding;
 pub mod cron;
 pub mod databases;

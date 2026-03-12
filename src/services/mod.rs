@@ -2,6 +2,7 @@
 /// Each managed service (OpenLiteSpeed, MariaDB, etc.) implements
 /// the ManagedService trait for consistent lifecycle management.
 pub mod awstats;
+pub mod basic_auth;
 pub mod certbot;
 pub mod clamav_stub;
 #[cfg(feature = "server")]

@@ -179,6 +179,10 @@ impl OpenLiteSpeedService {
             false,
             false,
             php_version,
+            None,
+            None,
+            false,
+            "Restricted",
         )?;
         let config_path = format!("{}/vhconf.conf", vhost_dir);
 
@@ -196,7 +200,7 @@ impl OpenLiteSpeedService {
     }
 
     /// Regenerate the vhost config for an existing domain, applying updated
-    /// force_https and HSTS settings.  Called after SSL settings change.
+    /// SSL, HSTS, and Basic Auth settings.  Called after any of these change.
     #[allow(clippy::too_many_arguments)]
     pub async fn update_vhost_config(
         &self,
@@ -209,6 +213,12 @@ impl OpenLiteSpeedService {
         hsts_include_subdomains: bool,
         hsts_preload: bool,
         php_version: Option<&str>,
+        // Path to the fullchain.pem file (Let's Encrypt or custom cert).
+        ssl_cert_path: Option<&str>,
+        // Path to the privkey.pem file.
+        ssl_key_path: Option<&str>,
+        basic_auth_enabled: bool,
+        basic_auth_realm: &str,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate at service layer
         crate::utils::validators::validate_domain(domain)
@@ -226,14 +236,18 @@ impl OpenLiteSpeedService {
             hsts_include_subdomains,
             hsts_preload,
             php_version,
+            ssl_cert_path,
+            ssl_key_path,
+            basic_auth_enabled,
+            basic_auth_realm,
         )?;
         let config_path = format!("{}/{}/vhconf.conf", OLS_VHOST_DIR, domain);
         fs::write(&config_path, vhost_config)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
         info!(
-            "Updated vhost config for {} (force_https={}, hsts={})",
-            domain, force_https, hsts_enabled
+            "Updated vhost config for {} (force_https={}, hsts={}, basic_auth={})",
+            domain, force_https, hsts_enabled, basic_auth_enabled
         );
         Ok(())
     }
@@ -308,6 +322,12 @@ impl OpenLiteSpeedService {
     /// - `hsts_include_subdomains`: append `; includeSubDomains` to the header.
     /// - `hsts_preload`: append `; preload` to the header.
     /// - `php_version`: optional version string (e.g. `"8.3"`). Falls back to `LSPHP_BIN` if `None`.
+    /// - `ssl_cert_path`: path to the fullchain PEM (Let's Encrypt or custom).
+    ///   When provided together with `ssl_key_path`, an `ssl { }` block is added
+    ///   so OLS can use SNI to serve this domain over HTTPS.
+    /// - `ssl_key_path`: path to the private key PEM.
+    /// - `basic_auth_enabled`: protect the entire site with HTTP Basic Auth.
+    /// - `basic_auth_realm`: realm label shown in the browser auth dialog.
     #[allow(clippy::too_many_arguments)]
     pub fn generate_vhost_config(
         &self,
@@ -320,6 +340,10 @@ impl OpenLiteSpeedService {
         hsts_include_subdomains: bool,
         hsts_preload: bool,
         php_version: Option<&str>,
+        ssl_cert_path: Option<&str>,
+        ssl_key_path: Option<&str>,
+        basic_auth_enabled: bool,
+        basic_auth_realm: &str,
     ) -> Result<String, ServiceError> {
         // Defense-in-depth: reject values containing newlines that could inject config directives
         if domain.contains('\n')
@@ -335,6 +359,34 @@ impl OpenLiteSpeedService {
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_safe_path(doc_root, "/home/")
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+
+        // Validate SSL cert/key paths if provided.
+        if let (Some(cert), Some(key)) = (ssl_cert_path, ssl_key_path) {
+            if cert.contains('\n') || cert.contains('\r') || key.contains('\n') || key.contains('\r') {
+                return Err(ServiceError::CommandFailed(
+                    "SSL cert/key paths must not contain newlines".to_string(),
+                ));
+            }
+            // Reject paths that don't look like absolute paths pointing to known cert dirs.
+            if !cert.starts_with("/etc/letsencrypt/") && !cert.starts_with("/etc/ssl/panel/") {
+                return Err(ServiceError::CommandFailed(format!(
+                    "SSL cert path '{}' is outside permitted directories",
+                    cert
+                )));
+            }
+            if !key.starts_with("/etc/letsencrypt/") && !key.starts_with("/etc/ssl/panel/") {
+                return Err(ServiceError::CommandFailed(format!(
+                    "SSL key path '{}' is outside permitted directories",
+                    key
+                )));
+            }
+        }
+
+        // Validate Basic Auth realm: no newlines or quotes that could escape the config block.
+        let safe_realm: String = basic_auth_realm
+            .chars()
+            .filter(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '_'))
+            .collect();
 
         let vhost_name = format!("vhost_{}", domain.replace('.', "_"));
 
@@ -357,6 +409,38 @@ impl OpenLiteSpeedService {
             String::new()
         };
 
+        // SSL block: added when both cert and key paths are provided.
+        // This configures per-vhost SNI-based SSL in OpenLiteSpeed.
+        let ssl_block = if let (Some(cert), Some(key)) = (ssl_cert_path, ssl_key_path) {
+            format!(
+                "ssl {{\n  keyFile                 {key}\n  certFile                {cert}\n  sslProtocol             24\n}}\n\n",
+                cert = cert,
+                key = key,
+            )
+        } else {
+            String::new()
+        };
+
+        // Basic Auth realm block: protects the root context with htpasswd.
+        let htpasswd_path = crate::services::basic_auth::htpasswd_path(domain);
+        let (basic_auth_realm_block, basic_auth_context_directive) = if basic_auth_enabled {
+            let realm_block = format!(
+                "<realm {realm}>\n\
+                 <userDB>\n\
+                 <location     {htpasswd}>\n\
+                 <maxCacheSize 200>\n\
+                 <cacheTimeout 60>\n\
+                 </userDB>\n\
+                 </realm>\n\n",
+                realm = safe_realm,
+                htpasswd = htpasswd_path,
+            );
+            let ctx_line = format!("  realm                   {}\n", safe_realm);
+            (realm_block, ctx_line)
+        } else {
+            (String::new(), String::new())
+        };
+
         let config = match site_type {
             SiteType::WordPress => Self::wordpress_vhost(
                 domain,
@@ -365,10 +449,20 @@ impl OpenLiteSpeedService {
                 force_https,
                 &hsts_header,
                 &lsphp_bin,
+                &ssl_block,
+                &basic_auth_realm_block,
+                &basic_auth_context_directive,
             ),
-            SiteType::Static => {
-                Self::static_vhost(domain, doc_root, &vhost_name, force_https, &hsts_header)
-            }
+            SiteType::Static => Self::static_vhost(
+                domain,
+                doc_root,
+                &vhost_name,
+                force_https,
+                &hsts_header,
+                &ssl_block,
+                &basic_auth_realm_block,
+                &basic_auth_context_directive,
+            ),
             _ => Self::php_vhost(
                 domain,
                 doc_root,
@@ -376,6 +470,9 @@ impl OpenLiteSpeedService {
                 force_https,
                 &hsts_header,
                 &lsphp_bin,
+                &ssl_block,
+                &basic_auth_realm_block,
+                &basic_auth_context_directive,
             ),
         };
 
@@ -470,6 +567,9 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{\n\
         force_https: bool,
         hsts_header: &str,
         lsphp_bin: &str,
+        ssl_block: &str,
+        basic_auth_realm_block: &str,
+        basic_auth_context_directive: &str,
     ) -> String {
         let mut rules: Vec<&str> = Vec::new();
         if force_https {
@@ -506,12 +606,12 @@ restrained             0
 allowSymbolLink        1
 enableWebsocket        1
 
-{logs}{rewrite_block}<context />
+{ssl_block}{logs}{rewrite_block}{basic_auth_realm_block}<context />
   <location                   />
   <allowBrowse                0
   <handlerType>static</handlerType>
   <indexFiles>index.php, index.html</indexFiles>
-{hsts_header}  <cgi>
+{hsts_header}{basic_auth_context_directive}  <cgi>
     <handler>
       <suffix>php</suffix>
       <handlerType>lsapi</handlerType>
@@ -537,6 +637,9 @@ enableWebsocket        1
             logs = logs,
             rewrite_block = rewrite_block,
             hsts_header = hsts_header,
+            ssl_block = ssl_block,
+            basic_auth_realm_block = basic_auth_realm_block,
+            basic_auth_context_directive = basic_auth_context_directive,
             cache = cache,
         )
     }
@@ -555,6 +658,9 @@ enableWebsocket        1
         vhost_name: &str,
         force_https: bool,
         hsts_header: &str,
+        ssl_block: &str,
+        basic_auth_realm_block: &str,
+        basic_auth_context_directive: &str,
     ) -> String {
         let mut rules: Vec<&str> = Vec::new();
         if force_https {
@@ -577,12 +683,12 @@ restrained             0
 allowSymbolLink        1
 enableWebsocket        0
 
-{logs}{rewrite_block}<context />
+{ssl_block}{logs}{rewrite_block}{basic_auth_realm_block}<context />
   <location                   />
   <allowBrowse                0
   <handlerType>static</handlerType>
   <indexFiles>index.html, index.htm</indexFiles>
-{hsts_header}</context>
+{hsts_header}{basic_auth_context_directive}</context>
 
 <context /.well-known/>
   <location                   .well-known/
@@ -600,6 +706,9 @@ enableWebsocket        0
             logs = logs,
             rewrite_block = rewrite_block,
             hsts_header = hsts_header,
+            ssl_block = ssl_block,
+            basic_auth_realm_block = basic_auth_realm_block,
+            basic_auth_context_directive = basic_auth_context_directive,
             cache = cache,
         )
     }
@@ -613,6 +722,9 @@ enableWebsocket        0
         force_https: bool,
         hsts_header: &str,
         lsphp_bin: &str,
+        ssl_block: &str,
+        basic_auth_realm_block: &str,
+        basic_auth_context_directive: &str,
     ) -> String {
         let force_https_block = if force_https {
             concat!(
@@ -636,7 +748,7 @@ restrained             0
 allowSymbolLink        1
 enableWebsocket        1
 
-accessLog              /usr/local/lsws/logs/{domain}.access.log {{
+{ssl_block}accessLog              /usr/local/lsws/logs/{domain}.access.log {{
   useServer             0
   logFormat             combined
   rollingSize           10M
@@ -651,12 +763,12 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{
 }}
 
 {force_https_block}
-<context />
+{basic_auth_realm_block}<context />
   <location                   />
   <allowBrowse                0
   <handlerType>static</handlerType>
   <indexFiles>index.html, index.php</indexFiles>
-{hsts_header}  <cgi>
+{hsts_header}{basic_auth_context_directive}  <cgi>
     <handler>
       <suffix>php</suffix>
       <handlerType>lsapi</handlerType>
@@ -707,6 +819,9 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{
             lsphp_bin = lsphp_bin,
             force_https_block = force_https_block,
             hsts_header = hsts_header,
+            ssl_block = ssl_block,
+            basic_auth_realm_block = basic_auth_realm_block,
+            basic_auth_context_directive = basic_auth_context_directive,
         )
     }
 
@@ -750,6 +865,11 @@ mod tests {
                 31536000,
                 false,
                 false,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate config");
 
@@ -771,6 +891,11 @@ mod tests {
                 31536000,
                 false,
                 false,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate config");
 
@@ -794,6 +919,11 @@ mod tests {
                 63072000,
                 true,
                 true,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate config");
 
@@ -815,6 +945,11 @@ mod tests {
                 31536000,
                 false,
                 false,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate config");
 
@@ -836,6 +971,11 @@ mod tests {
                 31536000,
                 false,
                 false,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate WordPress config");
 
@@ -878,6 +1018,11 @@ mod tests {
                 31536000,
                 false,
                 false,
+                None,
+                None,
+                None,
+                false,
+                "Restricted",
             )
             .expect("Failed to generate Static config");
 
@@ -894,6 +1039,59 @@ mod tests {
         // CORS + cache
         assert!(config.contains("Access-Control-Allow-Origin: *"));
         assert!(config.contains("cacheExpire"));
+    }
+
+    #[test]
+    fn test_generate_vhost_ssl_block() {
+        let svc = OpenLiteSpeedService;
+        let config = svc
+            .generate_vhost_config(
+                "secure.example.com",
+                "/home/user/sites/secure.example.com",
+                SiteType::Php,
+                true,
+                false,
+                31536000,
+                false,
+                false,
+                None,
+                Some("/etc/letsencrypt/live/secure.example.com/fullchain.pem"),
+                Some("/etc/letsencrypt/live/secure.example.com/privkey.pem"),
+                false,
+                "Restricted",
+            )
+            .expect("Failed to generate config with SSL");
+
+        assert!(config.contains("keyFile"));
+        assert!(config.contains("certFile"));
+        assert!(config.contains("/etc/letsencrypt/live/secure.example.com/privkey.pem"));
+        assert!(config.contains("sslProtocol             24"));
+    }
+
+    #[test]
+    fn test_generate_vhost_basic_auth() {
+        let svc = OpenLiteSpeedService;
+        let config = svc
+            .generate_vhost_config(
+                "private.example.com",
+                "/home/user/sites/private.example.com",
+                SiteType::Static,
+                false,
+                false,
+                31536000,
+                false,
+                false,
+                None,
+                None,
+                None,
+                true,
+                "Private Area",
+            )
+            .expect("Failed to generate config with Basic Auth");
+
+        assert!(config.contains("Private Area"));
+        assert!(config.contains("private.example.com.htpasswd"));
+        assert!(config.contains("realm"));
     }
 
     #[test]

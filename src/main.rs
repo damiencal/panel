@@ -3146,11 +3146,31 @@ fn AdminSiteRow(
     let hsts_subdoms = site.hsts_include_subdomains;
     let hsts_pre = site.hsts_preload;
     let owner_id = site.owner_id;
+    let basic_auth_on = site.basic_auth_enabled;
     let mut sites_resource = sites_resource;
     let mut confirm_delete = use_signal(|| false);
     let mut row_error = use_signal(|| None::<String>);
     let mut busy = use_signal(|| false);
     let mut show_logs = use_signal(|| false);
+    let mut show_cert = use_signal(|| false);
+    let mut show_auth = use_signal(|| false);
+    // SSL cert form state
+    let mut cert_email = use_signal(String::new);
+    let mut cert_include_www = use_signal(|| false);
+    let mut custom_cert_pem = use_signal(String::new);
+    let mut custom_key_pem = use_signal(String::new);
+    let mut show_custom_cert = use_signal(|| false);
+    // Basic auth form state
+    let mut ba_realm = use_signal(|| site.basic_auth_realm.clone());
+    let mut ba_username = use_signal(String::new);
+    let mut ba_password = use_signal(String::new);
+    let ba_users = use_resource(move || async move {
+        if show_auth() {
+            server_list_basic_auth_users(site_id).await.ok()
+        } else {
+            None
+        }
+    });
 
     let on_toggle_status = move |_| {
         let new_status = match current_status {
@@ -3331,6 +3351,26 @@ fn AdminSiteRow(
                         "{status_btn_label}"
                     }
                     button {
+                        class: if show_cert() {
+                            "text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300"
+                        } else {
+                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        },
+                        onclick: move |_| { show_cert.toggle(); show_auth.set(false); },
+                        title: "SSL Certificate management",
+                        "Cert"
+                    }
+                    button {
+                        class: if basic_auth_on || show_auth() {
+                            "text-xs px-2 py-1 rounded bg-orange-200 text-orange-800 hover:bg-orange-300"
+                        } else {
+                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        },
+                        onclick: move |_| { show_auth.toggle(); show_cert.set(false); },
+                        title: "HTTP Basic Authentication",
+                        if basic_auth_on { "Auth🔐" } else { "Auth" }
+                    }
+                    button {
                         class: if show_logs() {
                             "text-xs px-2 py-1 rounded bg-indigo-200 text-indigo-800 hover:bg-indigo-300"
                         } else {
@@ -3365,6 +3405,217 @@ fn AdminSiteRow(
         }
         if show_logs() {
             SiteLogViewer { site_id, col_span: 10 }
+        }
+        // ── SSL Certificate Management Panel ────────────────────────────────
+        if show_cert() {
+            tr {
+                td { colspan: "10", class: "px-6 pt-0 pb-4 bg-blue-50/40",
+                    div { class: "rounded-lg border border-blue-200 bg-white p-4 space-y-4",
+                        h4 { class: "text-sm font-semibold text-blue-900", "SSL Certificate — {site_domain}" }
+                        // Let's Encrypt section
+                        div { class: "space-y-2",
+                            p { class: "text-xs font-medium text-gray-700", "Let's Encrypt (Certbot)" }
+                            div { class: "flex flex-wrap gap-2 items-end",
+                                input {
+                                    r#type: "email",
+                                    placeholder: "admin@example.com",
+                                    class: "text-xs px-2 py-1 border border-gray-300 rounded w-56 focus:ring-1 focus:ring-blue-400",
+                                    value: "{cert_email}",
+                                    oninput: move |e| cert_email.set(e.value()),
+                                }
+                                label { class: "flex items-center gap-1 text-xs text-gray-600",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: cert_include_www(),
+                                        onchange: move |e| cert_include_www.set(e.checked()),
+                                    }
+                                    "include www"
+                                }
+                                button {
+                                    class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                    disabled: busy() || cert_email().is_empty(),
+                                    onclick: move |_| {
+                                        let email = cert_email();
+                                        let www = cert_include_www();
+                                        busy.set(true);
+                                        row_error.set(None);
+                                        spawn(async move {
+                                            match server_issue_site_certificate(site_id, email, www).await {
+                                                Ok(()) => {
+                                                    sites_resource.restart();
+                                                    show_cert.set(false);
+                                                }
+                                                Err(e) => row_error.set(Some(e.to_string())),
+                                            }
+                                            busy.set(false);
+                                        });
+                                    },
+                                    "Issue Certificate"
+                                }
+                            }
+                        }
+                        // Custom certificate section
+                        div { class: "space-y-2",
+                            button {
+                                class: "text-xs text-blue-700 underline",
+                                onclick: move |_| show_custom_cert.toggle(),
+                                if show_custom_cert() { "▲ hide custom cert" } else { "▼ upload custom cert" }
+                            }
+                            if show_custom_cert() {
+                                div { class: "space-y-2",
+                                    textarea {
+                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                        placeholder: "-----BEGIN CERTIFICATE-----\n...",
+                                        value: "{custom_cert_pem}",
+                                        oninput: move |e| custom_cert_pem.set(e.value()),
+                                    }
+                                    textarea {
+                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                        placeholder: "-----BEGIN PRIVATE KEY-----\n...",
+                                        value: "{custom_key_pem}",
+                                        oninput: move |e| custom_key_pem.set(e.value()),
+                                    }
+                                    button {
+                                        class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                        disabled: busy() || custom_cert_pem().is_empty() || custom_key_pem().is_empty(),
+                                        onclick: move |_| {
+                                            let cert = custom_cert_pem();
+                                            let key = custom_key_pem();
+                                            busy.set(true);
+                                            row_error.set(None);
+                                            spawn(async move {
+                                                match server_set_custom_cert(site_id, cert, key).await {
+                                                    Ok(()) => {
+                                                        sites_resource.restart();
+                                                        show_cert.set(false);
+                                                    }
+                                                    Err(e) => row_error.set(Some(e.to_string())),
+                                                }
+                                                busy.set(false);
+                                            });
+                                        },
+                                        "Save Custom Certificate"
+                                    }
+                                }
+                            }
+                        }
+                        if ssl_on {
+                            p { class: "text-xs text-green-700 font-medium", "✓ SSL is currently enabled for this site" }
+                        }
+                    }
+                }
+            }
+        }
+        // ── HTTP Basic Authentication Panel ────────────────────────────────
+        if show_auth() {
+            tr {
+                td { colspan: "10", class: "px-6 pt-0 pb-4 bg-orange-50/40",
+                    div { class: "rounded-lg border border-orange-200 bg-white p-4 space-y-4",
+                        h4 { class: "text-sm font-semibold text-orange-900", "HTTP Basic Auth — {site_domain}" }
+                        // Enable/disable toggle + realm
+                        div { class: "flex flex-wrap gap-2 items-center",
+                            label { class: "text-xs font-medium text-gray-700", "Realm:" }
+                            input {
+                                r#type: "text",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-40 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_realm}",
+                                oninput: move |e| ba_realm.set(e.value()),
+                            }
+                            button {
+                                class: if basic_auth_on {
+                                    "text-xs px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                                } else {
+                                    "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                                },
+                                disabled: busy(),
+                                onclick: move |_| {
+                                    let realm = ba_realm();
+                                    let new_val = !basic_auth_on;
+                                    busy.set(true);
+                                    row_error.set(None);
+                                    spawn(async move {
+                                        match server_toggle_basic_auth(site_id, new_val, realm).await {
+                                            Ok(()) => sites_resource.restart(),
+                                            Err(e) => row_error.set(Some(e.to_string())),
+                                        }
+                                        busy.set(false);
+                                    });
+                                },
+                                if basic_auth_on { "Disable Auth" } else { "Enable Auth" }
+                            }
+                        }
+                        // User list
+                        if let Some(Some(users)) = ba_users.read().as_ref() {
+                            if !users.is_empty() {
+                                div { class: "space-y-1",
+                                    p { class: "text-xs font-medium text-gray-700", "Users:" }
+                                    for user in users.clone().into_iter() {
+                                        {
+                                            let uname = user.username.clone();
+                                            rsx! {
+                                                div { class: "flex items-center gap-2",
+                                                    span { class: "text-xs text-gray-800 font-mono", "{user.username}" }
+                                                    button {
+                                                        class: "text-xs text-red-500 hover:text-red-700",
+                                                        onclick: move |_| {
+                                                            let un = uname.clone();
+                                                            busy.set(true);
+                                                            spawn(async move {
+                                                                let _ = server_remove_basic_auth_user(site_id, un).await;
+                                                                busy.set(false);
+                                                            });
+                                                        },
+                                                        "remove"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Add user form
+                        div { class: "flex flex-wrap gap-2 items-end",
+                            input {
+                                r#type: "text",
+                                placeholder: "username",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_username}",
+                                oninput: move |e| ba_username.set(e.value()),
+                            }
+                            input {
+                                r#type: "password",
+                                placeholder: "password",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_password}",
+                                oninput: move |e| ba_password.set(e.value()),
+                            }
+                            button {
+                                class: "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50",
+                                disabled: busy() || ba_username().is_empty() || ba_password().is_empty(),
+                                onclick: move |_| {
+                                    let uname = ba_username();
+                                    let pass = ba_password();
+                                    busy.set(true);
+                                    row_error.set(None);
+                                    spawn(async move {
+                                        match server_add_basic_auth_user(site_id, uname, pass).await {
+                                            Ok(()) => {
+                                                ba_username.set(String::new());
+                                                ba_password.set(String::new());
+                                                sites_resource.restart();
+                                            }
+                                            Err(e) => row_error.set(Some(e.to_string())),
+                                        }
+                                        busy.set(false);
+                                    });
+                                },
+                                "Add User"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -6634,11 +6885,29 @@ fn SiteRow(
         site.site_type,
         panel::models::site::SiteType::Php | panel::models::site::SiteType::WordPress
     );
+    let basic_auth_on = site.basic_auth_enabled;
     let mut sites_resource = sites_resource;
     let mut confirm_delete = use_signal(|| false);
     let mut row_error = use_signal(|| None::<String>);
     let mut busy = use_signal(|| false);
     let mut show_logs = use_signal(|| false);
+    let mut show_cert = use_signal(|| false);
+    let mut show_auth = use_signal(|| false);
+    let mut cert_email = use_signal(String::new);
+    let mut cert_include_www = use_signal(|| false);
+    let mut custom_cert_pem = use_signal(String::new);
+    let mut custom_key_pem = use_signal(String::new);
+    let mut show_custom_cert = use_signal(|| false);
+    let mut ba_realm = use_signal(|| site.basic_auth_realm.clone());
+    let mut ba_username = use_signal(String::new);
+    let mut ba_password = use_signal(String::new);
+    let ba_users = use_resource(move || async move {
+        if show_auth() {
+            server_list_basic_auth_users(site_id).await.ok()
+        } else {
+            None
+        }
+    });
     let mut php_ver = use_signal(|| {
         site.php_version
             .clone()
@@ -6866,6 +7135,26 @@ fn SiteRow(
                         onclick: move |_| show_logs.toggle(),
                         "Logs"
                     }
+                    button {
+                        class: if show_cert() {
+                            "text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300"
+                        } else {
+                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        },
+                        onclick: move |_| { show_cert.toggle(); show_auth.set(false); },
+                        title: "SSL Certificate management",
+                        "Cert"
+                    }
+                    button {
+                        class: if basic_auth_on || show_auth() {
+                            "text-xs px-2 py-1 rounded bg-orange-200 text-orange-800 hover:bg-orange-300"
+                        } else {
+                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        },
+                        onclick: move |_| { show_auth.toggle(); show_cert.set(false); },
+                        title: "HTTP Basic Authentication",
+                        if basic_auth_on { "Auth🔐" } else { "Auth" }
+                    }
                     if confirm_delete() {
                         span { class: "text-xs text-red-600 font-medium", "Sure?" }
                         button {
@@ -6892,6 +7181,212 @@ fn SiteRow(
         }
         if show_logs() {
             SiteLogViewer { site_id, col_span: 8 }
+        }
+        // ── SSL Certificate Management Panel ────────────────────────────────
+        if show_cert() {
+            tr {
+                td { colspan: "8", class: "px-6 pt-0 pb-4 bg-blue-50/40",
+                    div { class: "rounded-lg border border-blue-200 bg-white p-4 space-y-4",
+                        h4 { class: "text-sm font-semibold text-blue-900", "SSL Certificate — {site_domain}" }
+                        div { class: "space-y-2",
+                            p { class: "text-xs font-medium text-gray-700", "Let's Encrypt (Certbot)" }
+                            div { class: "flex flex-wrap gap-2 items-end",
+                                input {
+                                    r#type: "email",
+                                    placeholder: "admin@example.com",
+                                    class: "text-xs px-2 py-1 border border-gray-300 rounded w-56 focus:ring-1 focus:ring-blue-400",
+                                    value: "{cert_email}",
+                                    oninput: move |e| cert_email.set(e.value()),
+                                }
+                                label { class: "flex items-center gap-1 text-xs text-gray-600",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: cert_include_www(),
+                                        onchange: move |e| cert_include_www.set(e.checked()),
+                                    }
+                                    "include www"
+                                }
+                                button {
+                                    class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                    disabled: busy() || cert_email().is_empty(),
+                                    onclick: move |_| {
+                                        let email = cert_email();
+                                        let www = cert_include_www();
+                                        busy.set(true);
+                                        row_error.set(None);
+                                        spawn(async move {
+                                            match server_issue_site_certificate(site_id, email, www).await {
+                                                Ok(()) => {
+                                                    sites_resource.restart();
+                                                    show_cert.set(false);
+                                                }
+                                                Err(e) => row_error.set(Some(e.to_string())),
+                                            }
+                                            busy.set(false);
+                                        });
+                                    },
+                                    "Issue Certificate"
+                                }
+                            }
+                        }
+                        div { class: "space-y-2",
+                            button {
+                                class: "text-xs text-blue-700 underline",
+                                onclick: move |_| show_custom_cert.toggle(),
+                                if show_custom_cert() { "▲ hide custom cert" } else { "▼ upload custom cert" }
+                            }
+                            if show_custom_cert() {
+                                div { class: "space-y-2",
+                                    textarea {
+                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                        placeholder: "-----BEGIN CERTIFICATE-----\n...",
+                                        value: "{custom_cert_pem}",
+                                        oninput: move |e| custom_cert_pem.set(e.value()),
+                                    }
+                                    textarea {
+                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                        placeholder: "-----BEGIN PRIVATE KEY-----\n...",
+                                        value: "{custom_key_pem}",
+                                        oninput: move |e| custom_key_pem.set(e.value()),
+                                    }
+                                    button {
+                                        class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                        disabled: busy() || custom_cert_pem().is_empty() || custom_key_pem().is_empty(),
+                                        onclick: move |_| {
+                                            let cert = custom_cert_pem();
+                                            let key = custom_key_pem();
+                                            busy.set(true);
+                                            row_error.set(None);
+                                            spawn(async move {
+                                                match server_set_custom_cert(site_id, cert, key).await {
+                                                    Ok(()) => {
+                                                        sites_resource.restart();
+                                                        show_cert.set(false);
+                                                    }
+                                                    Err(e) => row_error.set(Some(e.to_string())),
+                                                }
+                                                busy.set(false);
+                                            });
+                                        },
+                                        "Save Custom Certificate"
+                                    }
+                                }
+                            }
+                        }
+                        if ssl_on {
+                            p { class: "text-xs text-green-700 font-medium", "✓ SSL is currently enabled for this site" }
+                        }
+                    }
+                }
+            }
+        }
+        // ── HTTP Basic Authentication Panel ────────────────────────────────
+        if show_auth() {
+            tr {
+                td { colspan: "8", class: "px-6 pt-0 pb-4 bg-orange-50/40",
+                    div { class: "rounded-lg border border-orange-200 bg-white p-4 space-y-4",
+                        h4 { class: "text-sm font-semibold text-orange-900", "HTTP Basic Auth — {site_domain}" }
+                        div { class: "flex flex-wrap gap-2 items-center",
+                            label { class: "text-xs font-medium text-gray-700", "Realm:" }
+                            input {
+                                r#type: "text",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-40 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_realm}",
+                                oninput: move |e| ba_realm.set(e.value()),
+                            }
+                            button {
+                                class: if basic_auth_on {
+                                    "text-xs px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                                } else {
+                                    "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                                },
+                                disabled: busy(),
+                                onclick: move |_| {
+                                    let realm = ba_realm();
+                                    let new_val = !basic_auth_on;
+                                    busy.set(true);
+                                    row_error.set(None);
+                                    spawn(async move {
+                                        match server_toggle_basic_auth(site_id, new_val, realm).await {
+                                            Ok(()) => sites_resource.restart(),
+                                            Err(e) => row_error.set(Some(e.to_string())),
+                                        }
+                                        busy.set(false);
+                                    });
+                                },
+                                if basic_auth_on { "Disable Auth" } else { "Enable Auth" }
+                            }
+                        }
+                        if let Some(Some(users)) = ba_users.read().as_ref() {
+                            if !users.is_empty() {
+                                div { class: "space-y-1",
+                                    p { class: "text-xs font-medium text-gray-700", "Users:" }
+                                    for user in users.clone().into_iter() {
+                                        {
+                                            let uname = user.username.clone();
+                                            rsx! {
+                                                div { class: "flex items-center gap-2",
+                                                    span { class: "text-xs text-gray-800 font-mono", "{user.username}" }
+                                                    button {
+                                                        class: "text-xs text-red-500 hover:text-red-700",
+                                                        onclick: move |_| {
+                                                            let un = uname.clone();
+                                                            busy.set(true);
+                                                            spawn(async move {
+                                                                let _ = server_remove_basic_auth_user(site_id, un).await;
+                                                                busy.set(false);
+                                                            });
+                                                        },
+                                                        "remove"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        div { class: "flex flex-wrap gap-2 items-end",
+                            input {
+                                r#type: "text",
+                                placeholder: "username",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_username}",
+                                oninput: move |e| ba_username.set(e.value()),
+                            }
+                            input {
+                                r#type: "password",
+                                placeholder: "password",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                                value: "{ba_password}",
+                                oninput: move |e| ba_password.set(e.value()),
+                            }
+                            button {
+                                class: "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50",
+                                disabled: busy() || ba_username().is_empty() || ba_password().is_empty(),
+                                onclick: move |_| {
+                                    let uname = ba_username();
+                                    let pass = ba_password();
+                                    busy.set(true);
+                                    row_error.set(None);
+                                    spawn(async move {
+                                        match server_add_basic_auth_user(site_id, uname, pass).await {
+                                            Ok(()) => {
+                                                ba_username.set(String::new());
+                                                ba_password.set(String::new());
+                                                sites_resource.restart();
+                                            }
+                                            Err(e) => row_error.set(Some(e.to_string())),
+                                        }
+                                        busy.set(false);
+                                    });
+                                },
+                                "Add User"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
