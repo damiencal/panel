@@ -54,6 +54,10 @@ pub async fn server_create_database(
 
     crate::utils::validators::validate_db_name(&name).map_err(ServerFnError::new)?;
 
+    crate::db::quotas::check_can_create_database(pool, claims.sub)
+        .await
+        .map_err(ServerFnError::new)?;
+
     let db_id = crate::db::databases::create(pool, claims.sub, name.clone(), database_type)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;

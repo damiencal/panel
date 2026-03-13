@@ -48,6 +48,10 @@ pub async fn server_create_site(domain: String, site_type: SiteType) -> Result<i
 
     crate::utils::validators::validate_domain(&domain).map_err(ServerFnError::new)?;
 
+    crate::db::quotas::check_can_create_site(pool, claims.sub)
+        .await
+        .map_err(ServerFnError::new)?;
+
     let doc_root = format!("/home/{}/sites/{}", claims.username, domain);
 
     let site_id = crate::db::sites::create(pool, claims.sub, domain.clone(), doc_root, site_type)

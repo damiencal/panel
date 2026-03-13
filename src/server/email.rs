@@ -175,6 +175,10 @@ pub async fn server_create_mailbox(
     crate::auth::guards::check_ownership(&claims, domain.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    crate::db::quotas::check_can_create_email_account(pool, claims.sub)
+        .await
+        .map_err(ServerFnError::new)?;
+
     let salt = SaltString::generate(&mut OsRng);
     let password_hash = Argon2::default()
         .hash_password(password.as_bytes(), &salt)
@@ -184,6 +188,8 @@ pub async fn server_create_mailbox(
     let id = crate::db::email::create_mailbox(pool, domain_id, local_part, password_hash)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, 1).await;
 
     audit_log(
         claims.sub,
@@ -218,6 +224,8 @@ pub async fn server_delete_mailbox(domain_id: i64, mailbox_id: i64) -> Result<()
     crate::db::email::delete_mailbox(pool, mailbox_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, -1).await;
 
     audit_log(
         claims.sub,

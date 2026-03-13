@@ -51,6 +51,70 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+################################################################################
+# Service management helpers — work with and without systemd
+################################################################################
+
+is_systemd_active() {
+    # Returns 0 (true) only when systemd is PID 1 and responsive
+    [[ -d /run/systemd/system ]] && systemctl is-system-running &>/dev/null
+}
+
+svc_enable() {
+    local svc="$1"
+    if is_systemd_active; then
+        systemctl enable "$svc" 2>/dev/null || true
+    else
+        # SysV / openrc / no init — just note it; package postinst already
+        # created the symlink so it will start on next real boot.
+        print_info "systemd not active; $svc will start on real boot (init link already created)"
+    fi
+}
+
+svc_start() {
+    local svc="$1"
+    if is_systemd_active; then
+        if systemctl start "$svc" 2>/dev/null; then
+            print_success "$svc started"
+        else
+            print_warning "$svc failed to start"
+        fi
+    else
+        if service "$svc" start 2>/dev/null; then
+            print_success "$svc started"
+        else
+            print_warning "$svc failed to start (or already running)"
+        fi
+    fi
+}
+
+svc_restart() {
+    local svc="$1"
+    if is_systemd_active; then
+        systemctl restart "$svc" 2>/dev/null || true
+    else
+        service "$svc" restart 2>/dev/null || true
+    fi
+}
+
+svc_reload() {
+    local svc="$1"
+    if is_systemd_active; then
+        systemctl reload "$svc" 2>/dev/null || true
+    else
+        service "$svc" reload 2>/dev/null || true
+    fi
+}
+
+svc_is_active() {
+    local svc="$1"
+    if is_systemd_active; then
+        systemctl is-active --quiet "$svc" 2>/dev/null
+    else
+        service "$svc" status 2>/dev/null | grep -qiE "running|start"
+    fi
+}
+
 # Configuration
 INSTALL_DIR="/opt/panel"
 DATA_DIR="/var/lib/panel"
@@ -232,7 +296,7 @@ install_openlitespeed() {
     mkdir -p /usr/local/lsws/conf/vhosts
     
     # Enable OpenLiteSpeed systemd service
-    systemctl enable lsws
+    svc_enable lsws
     
     print_success "OpenLiteSpeed + LSPHP 8.3 installed"
 }
@@ -240,15 +304,34 @@ install_openlitespeed() {
 install_auxiliary_services() {
     print_header "Installing auxiliary hosting services"
 
+    # Tell dbconfig-common NOT to create the Roundcube database during apt
+    # install — MariaDB may not be listening yet (especially in containers).
+    # The panel will run the Roundcube SQL schema on first start.
+    debconf-set-selections <<< "roundcube-core roundcube/dbconfig-install boolean false"
+    debconf-set-selections <<< "roundcube-core roundcube/dbconfig-reinstall boolean false"
+
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         roundcube-core \
         memcached \
         redis-server \
         watchdog
 
-    systemctl enable memcached
-    systemctl enable redis-server
-    systemctl enable watchdog
+    # roundcube-core depends on a web server and pulls Apache2 as its default.
+    # We use OpenLiteSpeed, so disable and stop Apache2 to free port 80/443.
+    if dpkg -l apache2 2>/dev/null | grep -q '^ii'; then
+        if is_systemd_active; then
+            systemctl disable apache2 2>/dev/null || true
+            systemctl stop    apache2 2>/dev/null || true
+        else
+            update-rc.d apache2 disable 2>/dev/null || true
+            service apache2 stop 2>/dev/null || true
+        fi
+        print_info "Apache2 disabled (OLS is the active web server)"
+    fi
+
+    svc_enable memcached
+    svc_enable redis-server
+    svc_enable watchdog
 
     print_success "Roundcube, Memcached, Redis, and Watchdog installed"
 }
@@ -282,8 +365,8 @@ install_mariadb() {
         mariadb-server \
         mariadb-client
     
-    systemctl enable mariadb
-    systemctl start mariadb
+    svc_enable mariadb
+    svc_start mariadb
     
     print_success "MariaDB installed"
 }
@@ -315,7 +398,7 @@ collation-server = utf8mb4_unicode_ci
 EOF
     fi
     
-    systemctl restart mariadb
+    svc_restart mariadb
     
     print_info "Applied non-interactive MariaDB hardening equivalent to mysql_secure_installation"
     print_success "MariaDB secured"
@@ -335,7 +418,7 @@ install_postfix() {
         postfix \
         postfix-mysql
     
-    systemctl enable postfix
+    svc_enable postfix
     
     print_success "Postfix installed"
 }
@@ -436,7 +519,7 @@ EOF
     postmap /etc/postfix/virtual_mailboxes
     postmap /etc/postfix/virtual_aliases
     
-    systemctl restart postfix
+    svc_restart postfix
     
     print_success "Postfix configured for virtual domain hosting"
 }
@@ -454,7 +537,7 @@ install_dovecot() {
         dovecot-lmtpd \
         dovecot-sieve
     
-    systemctl enable dovecot
+    svc_enable dovecot
     
     print_success "Dovecot installed"
 }
@@ -587,7 +670,7 @@ service auth-worker {
 }
 EOF
     
-    systemctl restart dovecot
+    svc_restart dovecot
     
     print_success "Dovecot configured for virtual mailbox hosting"
 }
@@ -600,7 +683,7 @@ install_ftp_service() {
     
     apt-get install -y -qq pure-ftpd pure-ftpd-common
     
-    systemctl enable pure-ftpd
+    svc_enable pure-ftpd
     
     print_success "Pure-FTPd installed"
 }
@@ -649,7 +732,7 @@ configure_ftp_service() {
         chmod 600 /etc/ssl/private/pure-ftpd.pem
     fi
     
-    systemctl restart pure-ftpd
+    svc_restart pure-ftpd
     
     print_success "Pure-FTPd configured with virtual users and TLS"
 }
@@ -662,20 +745,33 @@ install_certbot() {
     
     apt-get install -y -qq certbot
     
-    # Enable auto-renewal timer
-    systemctl enable certbot.timer
-    systemctl start certbot.timer
-    
     # Create renewal hook to reload services after certificate renewal
     mkdir -p /etc/letsencrypt/renewal-hooks/deploy
     cat > /etc/letsencrypt/renewal-hooks/deploy/reload-services.sh <<'EOF'
 #!/bin/bash
 # Reload services after certificate renewal
-systemctl reload lsws 2>/dev/null || true
-systemctl reload postfix 2>/dev/null || true
-systemctl reload dovecot 2>/dev/null || true
+if [[ -d /run/systemd/system ]] && systemctl is-system-running &>/dev/null; then
+    systemctl reload lsws    2>/dev/null || true
+    systemctl reload postfix 2>/dev/null || true
+    systemctl reload dovecot 2>/dev/null || true
+else
+    service lsws    reload 2>/dev/null || true
+    service postfix reload 2>/dev/null || true
+    service dovecot reload 2>/dev/null || true
+fi
 EOF
     chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-services.sh
+
+    # Enable certbot auto-renewal
+    if is_systemd_active; then
+        systemctl enable certbot.timer 2>/dev/null || true
+        systemctl start  certbot.timer 2>/dev/null || true
+    else
+        # Fall back to a daily cron job
+        echo '0 3 * * * root certbot renew --quiet' > /etc/cron.d/certbot
+        chmod 644 /etc/cron.d/certbot
+        print_info "Certbot renewal configured via cron (systemd timer unavailable)"
+    fi
     
     print_success "Certbot installed with auto-renewal"
 }
@@ -705,6 +801,11 @@ install_dns_service() {
 install_phpmyadmin() {
     print_header "Installing phpMyAdmin"
     
+    # Prevent dbconfig-common from attempting a MySQL connection during apt
+    # install — MariaDB may not be reachable yet in a container environment.
+    debconf-set-selections <<< "phpmyadmin phpmyadmin/dbconfig-install boolean false"
+    debconf-set-selections <<< "phpmyadmin phpmyadmin/dbconfig-reinstall boolean false"
+
     if [[ -f "/usr/share/phpmyadmin/index.php" ]]; then
         print_success "phpMyAdmin already installed"
     else
@@ -846,10 +947,13 @@ download_panel_binary() {
         # Resolve latest release tag via GitHub API
         API_URL="https://api.github.com/repos/$GITHUB_REPO/releases/latest"
         RELEASE_TAG=$(curl -fsSL \
+            --connect-timeout 15 --max-time 30 \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "$API_URL" 2>/dev/null \
-            | grep -oP '"tag_name":\s*"\K[^"]+' || true)
+            | grep -m1 '"tag_name"' \
+            | grep -oP ':\s*"\K[^"]+' \
+            || true)
         if [[ -z "$RELEASE_TAG" ]]; then
             print_error "Could not resolve the latest release tag from GitHub."
             print_info "Specify a version with --version=vX.Y.Z, or use --from-source to build locally."
@@ -995,10 +1099,15 @@ TimeoutStopSec=30
 WantedBy=multi-user.target
 EOF
     
-    systemctl daemon-reload
-    systemctl enable panel
+    if is_systemd_active; then
+        systemctl daemon-reload
+        systemctl enable panel
+    else
+        print_info "systemd not active; to start the panel manually: service panel start"
+        print_info "  or add '$INSTALL_DIR/panel' to /etc/rc.local for auto-start on boot"
+    fi
     
-    print_success "Systemd service installed"
+    print_success "Panel service unit installed"
 }
 
 create_config() {
@@ -1073,14 +1182,14 @@ initialize_database() {
 start_services() {
     print_header "Starting all services"
     
-    systemctl start lsws && print_success "OpenLiteSpeed started" || print_warning "OpenLiteSpeed failed to start"
-    systemctl start mariadb && print_success "MariaDB started" || print_warning "MariaDB failed to start"
-    systemctl start postfix && print_success "Postfix started" || print_warning "Postfix failed to start"
-    systemctl start dovecot && print_success "Dovecot started" || print_warning "Dovecot failed to start"
-    systemctl start pure-ftpd && print_success "Pure-FTPd started" || print_warning "Pure-FTPd failed to start"
-    systemctl start memcached && print_success "Memcached started" || print_warning "Memcached failed to start"
-    systemctl start redis-server && print_success "Redis started" || print_warning "Redis failed to start"
-    systemctl start watchdog && print_success "Watchdog started" || print_warning "Watchdog failed to start"
+    svc_start lsws
+    svc_start mariadb
+    svc_start postfix
+    svc_start dovecot
+    svc_start pure-ftpd
+    svc_start memcached
+    svc_start redis-server
+    svc_start watchdog
     
     print_success "All services started"
 }
@@ -1089,18 +1198,26 @@ verify_services() {
     print_header "Verifying service status"
     
     for svc in lsws mariadb postfix dovecot pure-ftpd memcached redis-server watchdog; do
-        if systemctl is-active --quiet "$svc"; then
+        if svc_is_active "$svc"; then
             print_success "$svc is running"
         else
             print_warning "$svc is NOT running"
         fi
     done
     
-    # Check Certbot timer
-    if systemctl is-active --quiet certbot.timer; then
-        print_success "Certbot auto-renewal timer is active"
+    # Check Certbot auto-renewal (timer or cron)
+    if is_systemd_active; then
+        if systemctl is-active --quiet certbot.timer; then
+            print_success "Certbot auto-renewal timer is active"
+        else
+            print_warning "Certbot auto-renewal timer is NOT active"
+        fi
     else
-        print_warning "Certbot auto-renewal timer is NOT active"
+        if [[ -f /etc/cron.d/certbot ]]; then
+            print_success "Certbot renewal cron job is installed"
+        else
+            print_warning "Certbot renewal not configured"
+        fi
     fi
     
     # Check listening ports
@@ -1130,19 +1247,19 @@ print_summary() {
     echo "  ┌──────────────────┬───────────┬──────────────────────────────┐"
     echo "  │ Service          │ Port(s)   │ Status                       │"
     echo "  ├──────────────────┼───────────┼──────────────────────────────┤"
-    echo "  │ OpenLiteSpeed    │ 80, 443   │ $(systemctl is-active lsws 2>/dev/null || echo 'unknown')                     │"
+    echo "  │ OpenLiteSpeed    │ 80, 443   │ $(svc_is_active lsws && echo 'active' || echo 'inactive')                  │"
     echo "  │ OLS WebAdmin     │ 7080      │ (via OLS)                    │"
-    echo "  │ MariaDB          │ 3306      │ $(systemctl is-active mariadb 2>/dev/null || echo 'unknown')                     │"
-    echo "  │ Postfix (SMTP)   │ 25,465,587│ $(systemctl is-active postfix 2>/dev/null || echo 'unknown')                     │"
-    echo "  │ Dovecot (IMAP)   │ 143,993   │ $(systemctl is-active dovecot 2>/dev/null || echo 'unknown')                     │"
+    echo "  │ MariaDB          │ 3306      │ $(svc_is_active mariadb && echo 'active' || echo 'inactive')                  │"
+    echo "  │ Postfix (SMTP)   │ 25,465,587│ $(svc_is_active postfix && echo 'active' || echo 'inactive')                  │"
+    echo "  │ Dovecot (IMAP)   │ 143,993   │ $(svc_is_active dovecot && echo 'active' || echo 'inactive')                  │"
     echo "  │ Dovecot (POP3)   │ 110,995   │ (via Dovecot)                │"
-    echo "  │ Pure-FTPd        │ 21        │ $(systemctl is-active pure-ftpd 2>/dev/null || echo 'unknown')                     │"
-    echo "  │ Memcached        │ 11211     │ $(systemctl is-active memcached 2>/dev/null || echo 'unknown')                     │"
-    echo "  │ Redis            │ 6379      │ $(systemctl is-active redis-server 2>/dev/null || echo 'unknown')                     │"
-    echo "  │ Watchdog         │ (system)  │ $(systemctl is-active watchdog 2>/dev/null || echo 'unknown')                     │"
+    echo "  │ Pure-FTPd        │ 21        │ $(svc_is_active pure-ftpd && echo 'active' || echo 'inactive')                  │"
+    echo "  │ Memcached        │ 11211     │ $(svc_is_active memcached && echo 'active' || echo 'inactive')                  │"
+    echo "  │ Redis            │ 6379      │ $(svc_is_active redis-server && echo 'active' || echo 'inactive')                  │"
+    echo "  │ Watchdog         │ (system)  │ $(svc_is_active watchdog && echo 'active' || echo 'inactive')                  │"
     echo "  │ Roundcube        │ (web app) │ installed                     │"
     echo "  │ phpMyAdmin       │ /phpmyadmin│ (via OLS)                   │"
-    echo "  │ Certbot          │ (timer)   │ $(systemctl is-active certbot.timer 2>/dev/null || echo 'unknown')                     │"
+    echo "  │ Certbot          │ (renewal) │ configured                    │"
     echo "  │ Panel            │ 3030      │ (not yet started)            │"
     echo "  └──────────────────┴───────────┴──────────────────────────────┘"
     echo ""
@@ -1156,7 +1273,11 @@ print_summary() {
     echo "     api_token = \"your_token_here\""
     echo ""
     echo "  3. Start the panel service:"
-    echo "     sudo systemctl start panel"
+    if is_systemd_active; then
+        echo "     sudo systemctl start panel"
+    else
+        echo "     sudo service panel start"
+    fi
     echo ""
     echo "  4. Access the panel:"
     echo "     http://$SERVER_IP:3030"
@@ -1206,6 +1327,8 @@ main() {
     # Database
     install_mariadb
     secure_mariadb
+    # Ensure MariaDB is up before packages that connect to it (roundcube, phpmyadmin)
+    svc_start mariadb
     
     # Mail
     install_postfix
