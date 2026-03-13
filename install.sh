@@ -856,31 +856,42 @@ install_firewall() {
         iptables \
         nftables
 
-    # Default policies
-    ufw default deny incoming
-    ufw default allow outgoing
+    # Detect whether iptables is functional (requires CAP_NET_ADMIN).
+    # In unprivileged containers iptables always fails; we still write rules
+    # to disk so they are enforced automatically on bare-metal / VM boot.
+    local iptables_ok=false
+    if iptables -L &>/dev/null 2>&1; then
+        iptables_ok=true
+    fi
+
+    # Default policies — tolerate errors; ufw writes rules regardless
+    ufw --force default deny incoming  2>/dev/null || true
+    ufw --force default allow outgoing 2>/dev/null || true
 
     # Allow necessary ports
-    ufw allow ssh/tcp
-    ufw allow http/tcp
-    ufw allow https/tcp
-    ufw allow 21/tcp  comment 'FTP Control'
-    ufw allow 25/tcp  comment 'SMTP'
-    ufw allow 143/tcp comment 'IMAP'
-    ufw allow 465/tcp comment 'SMTPS'
-    ufw allow 587/tcp comment 'Submission'
-    ufw allow 993/tcp comment 'IMAPS'
-    ufw allow 995/tcp comment 'POP3S'
-    ufw allow 8080/tcp comment 'Panel Web UI'
+    ufw allow ssh/tcp                          2>/dev/null || true
+    ufw allow http/tcp                         2>/dev/null || true
+    ufw allow https/tcp                        2>/dev/null || true
+    ufw allow 21/tcp   comment 'FTP Control'   2>/dev/null || true
+    ufw allow 25/tcp   comment 'SMTP'          2>/dev/null || true
+    ufw allow 143/tcp  comment 'IMAP'          2>/dev/null || true
+    ufw allow 465/tcp  comment 'SMTPS'         2>/dev/null || true
+    ufw allow 587/tcp  comment 'Submission'    2>/dev/null || true
+    ufw allow 993/tcp  comment 'IMAPS'         2>/dev/null || true
+    ufw allow 995/tcp  comment 'POP3S'         2>/dev/null || true
+    ufw allow 8080/tcp comment 'Panel Web UI'  2>/dev/null || true
 
-    # Enable UFW — may fail inside containers/VMs without CAP_NET_ADMIN.
-    # Rules are written to disk regardless and will be enforced on boot.
-    if ufw --force enable 2>/dev/null; then
-        print_success "UFW firewall enabled and rules applied"
+    if $iptables_ok; then
+        if ufw --force enable 2>/dev/null; then
+            print_success "UFW firewall enabled and rules applied"
+        else
+            print_warning "UFW rules written but could not be activated now"
+            sed -i 's/^ENABLED=no/ENABLED=yes/' /etc/ufw/ufw.conf 2>/dev/null || true
+        fi
     else
-        print_warning "UFW rules written but could not be activated now (missing kernel capabilities)"
-        print_info  "UFW will enforce rules automatically on next boot / when iptables becomes available"
-        # Mark as enabled in the config so it activates on boot
+        print_warning "iptables unavailable (container without CAP_NET_ADMIN) — rules written to disk"
+        print_info    "UFW will enforce rules on next boot / when running on bare metal or a VM"
+        # Mark enabled so rules activate on next real boot
         sed -i 's/^ENABLED=no/ENABLED=yes/' /etc/ufw/ufw.conf 2>/dev/null || true
     fi
 
