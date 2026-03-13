@@ -181,10 +181,15 @@ context /phpmyadmin/ {{
 /// Generate a random 32-character blowfish secret for phpMyAdmin cookie encryption.
 fn generate_blowfish_secret() -> String {
     use std::fmt::Write;
+    use std::io::Read;
     let mut secret = String::with_capacity(64);
-    // Use /dev/urandom for secure random bytes
-    if let Ok(bytes) = std::fs::read("/dev/urandom") {
-        for &b in bytes.iter().take(32) {
+    // Use /dev/urandom for secure random bytes (read exactly 32 bytes)
+    let mut buf = [0u8; 32];
+    if std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut buf))
+        .is_ok()
+    {
+        for &b in buf.iter() {
             let _ = write!(secret, "{:02x}", b);
         }
     } else {

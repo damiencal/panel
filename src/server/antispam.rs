@@ -1,4 +1,5 @@
-/// Anti-spam, mail queue, email statistics, and email debugger server functions.
+//! Anti-spam, mail queue, email statistics, and email debugger server functions.
+#![allow(clippy::too_many_arguments)]
 use crate::models::email::{
     EmailDebugResult, EmailLogEntry, EmailStats, MailQueueEntry, SpamFilterSettings,
 };
@@ -26,7 +27,6 @@ pub async fn server_get_spam_filter_settings() -> Result<SpamFilterSettings, Ser
 /// Save spam-filter settings and apply them to the system (admin only).
 /// This will install / configure the selected engine and wire it into Postfix.
 #[server]
-#[allow(clippy::too_many_arguments)]
 pub async fn server_save_spam_filter_settings(
     engine: String,
     spam_threshold: f64,

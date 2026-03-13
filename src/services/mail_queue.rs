@@ -67,7 +67,7 @@ pub async fn release_message(queue_id: &str) -> Result<(), ServiceError> {
 /// Parse `postqueue -p` output into structured entries.
 ///
 /// Example format:
-/// ```
+/// ```text
 /// -Queue ID-  --Size-- ----Arrival Time---- -Sender/Recipient-------
 /// 3C2E71E0123     1234 Mon Mar  9 14:00:00  sender@example.com
 ///                                           (delivery reason)

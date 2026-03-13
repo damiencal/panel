@@ -18,6 +18,7 @@ fn jwt_create_and_verify_roundtrip() {
         "admin@example.com".into(),
         Role::Admin,
         None,
+        None,
     )
     .expect("Failed to create token");
     let claims = verify_token(&token).expect("Failed to verify token");
@@ -37,6 +38,7 @@ fn jwt_preserves_reseller_role_and_parent() {
         "res@example.com".into(),
         Role::Reseller,
         None,
+        None,
     )
     .expect("Failed to create token");
     let claims = verify_token(&token).expect("Failed to verify");
@@ -53,6 +55,7 @@ fn jwt_preserves_client_with_parent_id() {
         "client@example.com".into(),
         Role::Client,
         Some(42),
+        None,
     )
     .expect("Failed to create token");
     let claims = verify_token(&token).expect("Failed to verify");
@@ -75,6 +78,7 @@ fn jwt_tampered_token_fails() {
         "admin".into(),
         "admin@example.com".into(),
         Role::Admin,
+        None,
         None,
     )
     .expect("Failed to create token");
