@@ -77,7 +77,7 @@ pub fn AdminAntiSpam() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8 max-w-4xl",
             div { class: "mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Anti-Spam & Email Security" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Anti-Spam & Email Security" }
                 p { class: "text-sm text-gray-500 mt-1",
                     "Configure SpamAssassin, Rspamd, ClamAV virus scanning, and MailScanner. "
                     "Changes are applied immediately to Postfix."
@@ -116,15 +116,15 @@ pub fn AdminAntiSpam() -> Element {
             }
 
             if save_ok() {
-                div { class: "bg-green-50 text-green-700 p-3 rounded-lg mb-4 text-sm",
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-4 text-sm",
                     "Settings saved and applied to Postfix."
                 }
             }
             if let Some(err) = save_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6",
+            div { class: "glass-card rounded-2xl p-6 space-y-6",
 
                 // Engine selection
                 div {
@@ -138,7 +138,7 @@ pub fn AdminAntiSpam() -> Element {
                             {
                                 let is_sel = engine() == val;
                                 let card_class = if is_sel {
-                                    "border-2 border-rose-500 bg-rose-50"
+                                    "border-2 border-rose-500 bg-black/[0.04]"
                                 } else {
                                     "border border-gray-200 hover:border-gray-300 bg-white"
                                 };
@@ -161,7 +161,7 @@ pub fn AdminAntiSpam() -> Element {
                 // Threshold settings
                 div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                     div {
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Spam Score Threshold" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Spam Score Threshold" }
                         input {
                             r#type: "number",
                             step: "0.5",
@@ -174,7 +174,7 @@ pub fn AdminAntiSpam() -> Element {
                         p { class: "text-xs text-gray-400 mt-1", "Messages scoring above this are tagged as spam (default: 5.0)" }
                     }
                     div {
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Reject Score (0 = disabled)" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Reject Score (0 = disabled)" }
                         input {
                             r#type: "number",
                             step: "0.5",
@@ -242,7 +242,7 @@ pub fn AdminAntiSpam() -> Element {
 
                 div { class: "pt-2",
                     button {
-                        class: "px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50",
+                        class: "px-5 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50",
                         disabled: saving(),
                         onclick: save,
                         if saving() { "Applying..." } else { "Save & Apply" }
@@ -303,7 +303,7 @@ pub fn AdminMailQueue() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Mail Queue Manager" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Mail Queue Manager" }
                     p { class: "text-sm text-gray-500 mt-1",
                         "View, flush, hold, and delete messages from the Postfix mail queue."
                     }
@@ -328,41 +328,41 @@ pub fn AdminMailQueue() -> Element {
             }
 
             if let Some(ok) = action_ok() {
-                div { class: "bg-green-50 text-green-700 p-3 rounded-lg mb-4 text-sm", "{ok}" }
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-4 text-sm", "{ok}" }
             }
             if let Some(err) = action_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*queue.read() {
                     Some(Ok(entries)) if !entries.is_empty() => rsx! {
                         div { class: "overflow-x-auto",
                             table { class: "w-full text-sm",
-                                thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Queue ID" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Type" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Size" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Arrived" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Sender" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Recipient" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Reason" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Queue ID" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Type" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Size" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Arrived" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Sender" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Recipient" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Reason" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                     }
                                 }
-                                tbody { class: "divide-y divide-gray-100",
+                                tbody { class: "divide-y divide-black/[0.04]",
                                     for entry in entries.iter() {
                                         {
                                             let qid = entry.queue_id.clone();
                                             let queue_type_class = match entry.queue_type.as_str() {
-                                                "active" => "bg-green-100 text-green-700",
+                                                "active" => "bg-emerald-500/[0.08] text-green-700",
                                                 "hold" => "bg-yellow-100 text-yellow-700",
-                                                _ => "bg-gray-100 text-gray-600",
+                                                _ => "bg-black/[0.04] text-gray-600",
                                             };
                                             let queue2 = queue;
                                             rsx! {
-                                                tr { class: "hover:bg-gray-50/50",
+                                                tr { class: "hover:bg-black/[0.02]",
                                                     td { class: "px-4 py-3 font-mono text-xs text-gray-700", "{entry.queue_id}" }
                                                     td { class: "px-4 py-3",
                                                         span { class: "px-2 py-0.5 rounded-full text-xs font-medium {queue_type_class}",
@@ -441,7 +441,7 @@ pub fn AdminEmailStats() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Email Statistics & Logs" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Email Statistics & Logs" }
                     p { class: "text-sm text-gray-500 mt-1",
                         "Aggregated delivery statistics and recent mail log entries."
                     }
@@ -478,32 +478,32 @@ pub fn AdminEmailStats() -> Element {
             }
 
             if let Some(msg) = ingest_msg() {
-                div { class: "bg-blue-50 text-blue-700 p-3 rounded-lg mb-4 text-sm", "{msg}" }
+                div { class: "bg-blue-500/[0.08] text-blue-700 p-3 rounded-lg mb-4 text-sm", "{msg}" }
             }
 
             // Stats table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6",
-                div { class: "px-6 py-4 border-b border-gray-100",
+            div { class: "glass-card rounded-2xl overflow-hidden mb-6",
+                div { class: "px-6 py-4 border-b border-black/[0.05]",
                     h3 { class: "font-semibold text-gray-900", "Delivery Statistics" }
                 }
                 match &*stats.read() {
                     Some(Ok(rows)) if !rows.is_empty() => rsx! {
                         div { class: "overflow-x-auto",
                             table { class: "w-full text-sm",
-                                thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Date" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Domain" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Sent" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Received" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Rejected" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Spam" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Bounced" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Date" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Sent" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Received" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Rejected" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Spam" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Bounced" }
                                     }
                                 }
-                                tbody { class: "divide-y divide-gray-100",
+                                tbody { class: "divide-y divide-black/[0.04]",
                                     for row in rows.iter() {
-                                        tr { class: "hover:bg-gray-50/50",
+                                        tr { class: "hover:bg-black/[0.02]",
                                             td { class: "px-4 py-3 text-gray-700", "{row.stat_date}" }
                                             td { class: "px-4 py-3 text-gray-500", "{row.domain.as_deref().unwrap_or(\"—\")}" }
                                             td { class: "px-4 py-3 text-right text-green-600 font-medium", "{row.sent_count}" }
@@ -528,8 +528,8 @@ pub fn AdminEmailStats() -> Element {
             }
 
             // Log viewer
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
-                div { class: "px-6 py-4 border-b border-gray-100 flex items-center gap-4",
+            div { class: "glass-card rounded-2xl overflow-hidden",
+                div { class: "px-6 py-4 border-b border-black/[0.05] flex items-center gap-4",
                     h3 { class: "font-semibold text-gray-900 shrink-0", "Mail Log" }
                     input {
                         r#type: "text",
@@ -552,7 +552,7 @@ pub fn AdminEmailStats() -> Element {
                         Some(Ok(entries)) if !entries.is_empty() => rsx! {
                             div { class: "overflow-x-auto max-h-96 overflow-y-auto",
                                 table { class: "w-full text-xs font-mono",
-                                    thead { class: "bg-gray-50 border-b border-gray-200/60 sticky top-0",
+                                    thead { class: "border-b border-black/[0.05] sticky top-0",
                                         tr {
                                             th { class: "px-4 py-2 text-left text-gray-500", "Time" }
                                             th { class: "px-4 py-2 text-left text-gray-500", "Process" }
@@ -560,7 +560,7 @@ pub fn AdminEmailStats() -> Element {
                                             th { class: "px-4 py-2 text-left text-gray-500", "Message" }
                                         }
                                     }
-                                    tbody { class: "divide-y divide-gray-100",
+                                    tbody { class: "divide-y divide-black/[0.04]",
                                         for entry in entries.iter() {
                                             tr { class: "hover:bg-gray-50/30",
                                                 td { class: "px-4 py-1.5 text-gray-400 whitespace-nowrap", "{entry.timestamp}" }
@@ -616,7 +616,7 @@ pub fn AdminEmailDebug() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8 max-w-3xl",
             div { class: "mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Email Debugger" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Email Debugger" }
                 p { class: "text-sm text-gray-500 mt-1",
                     "Check MX, SPF, DKIM, and DMARC records for a domain. "
                     "Also probes the primary MX host for SMTP reachability."
@@ -637,7 +637,7 @@ pub fn AdminEmailDebug() -> Element {
                     },
                 }
                 button {
-                    class: "px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50",
+                    class: "px-5 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50",
                     disabled: running() || target_domain().is_empty(),
                     onclick: move |_| do_debug(),
                     if running() {
@@ -652,13 +652,13 @@ pub fn AdminEmailDebug() -> Element {
             }
 
             if let Some(err) = debug_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-xl mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-xl mb-4 text-sm", "{err}" }
             }
 
             if let Some(res) = result() {
                 div { class: "space-y-4",
                     // Overview
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                    div { class: "glass-card rounded-2xl p-6",
                         h3 { class: "font-semibold text-gray-900 mb-4 flex items-center gap-2",
                             Icon { name: "search", class: "w-4 h-4 text-gray-400".to_string() }
                             "Results for {res.target}"
@@ -689,7 +689,7 @@ pub fn AdminEmailDebug() -> Element {
 
                     // MX Records
                     if !res.mx_records.is_empty() {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             h4 { class: "font-medium text-gray-800 mb-3 text-sm uppercase tracking-wide", "MX Records" }
                             div { class: "space-y-1",
                                 for mx in res.mx_records.iter() {
@@ -703,7 +703,7 @@ pub fn AdminEmailDebug() -> Element {
                     }
 
                     // DNS records
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4",
+                    div { class: "glass-card rounded-2xl p-5 space-y-4",
                         h4 { class: "font-medium text-gray-800 text-sm uppercase tracking-wide", "DNS Records" }
                         for (label, val) in [
                             ("SPF", res.spf_record.as_deref()),

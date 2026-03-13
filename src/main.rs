@@ -771,10 +771,10 @@ fn AdminShell() -> Element {
         return rsx! {};
     }
     rsx! {
-        div { class: "flex h-screen bg-gray-50/50 overflow-hidden font-sans",
+        div { class: "flex h-screen overflow-hidden font-sans",
             if sidebar_open() {
                 div {
-                    class: "fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity",
+                    class: "fixed inset-0 bg-black/20 backdrop-blur-[4px] z-40 md:hidden transition-opacity",
                     onclick: move |_| sidebar_open.set(false)
                 }
             }
@@ -808,10 +808,10 @@ fn ResellerShell() -> Element {
         return rsx! {};
     }
     rsx! {
-        div { class: "flex h-screen bg-gray-50/50 overflow-hidden font-sans",
+        div { class: "flex h-screen overflow-hidden font-sans",
             if sidebar_open() {
                 div {
-                    class: "fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity",
+                    class: "fixed inset-0 bg-black/20 backdrop-blur-[4px] z-40 md:hidden transition-opacity",
                     onclick: move |_| sidebar_open.set(false)
                 }
             }
@@ -844,10 +844,10 @@ fn ClientShell() -> Element {
         return rsx! {};
     }
     rsx! {
-        div { class: "flex h-screen bg-gray-50/50 overflow-hidden font-sans",
+        div { class: "flex h-screen overflow-hidden font-sans",
             if sidebar_open() {
                 div {
-                    class: "fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity",
+                    class: "fixed inset-0 bg-black/20 backdrop-blur-[4px] z-40 md:hidden transition-opacity",
                     onclick: move |_| sidebar_open.set(false)
                 }
             }
@@ -881,13 +881,13 @@ fn ImpersonationBanner() -> Element {
     let username = state.username.clone();
 
     rsx! {
-        div { class: "bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between text-sm",
-            div { class: "flex items-center gap-2 text-amber-800 font-medium",
+        div { class: "bg-amber-500/[0.08] border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between text-sm",
+            div { class: "flex items-center gap-2 text-amber-700 font-medium",
                 span { "⚠ Impersonating " }
                 strong { "{username}" }
             }
             button {
-                class: "px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors",
+                class: "px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl transition-all duration-200 active:scale-[0.98]",
                 onclick: move |_| {
                     spawn(async move {
                         match server_end_impersonation().await {
@@ -949,10 +949,10 @@ fn PanelUpdateBanner() -> Element {
     let release_url = info.release_url.clone();
 
     rsx! {
-        div { class: "bg-blue-50 border-b border-blue-200 px-6 py-2.5 text-sm",
+        div { class: "bg-blue-500/[0.08] border-b border-blue-500/15 px-6 py-2.5 text-sm",
             // Main banner row
             div { class: "flex items-center justify-between gap-4",
-                div { class: "flex items-center gap-2 text-blue-800 font-medium",
+                div { class: "flex items-center gap-2 text-blue-700 font-medium",
                     Icon { name: "arrow-up-circle", class: "w-4 h-4 shrink-0".to_string() }
                     span {
                         "Panel update available: "
@@ -966,11 +966,11 @@ fn PanelUpdateBanner() -> Element {
                         href: "{release_url}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "px-3 py-1 text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium",
+                        class: "px-3 py-1 text-blue-700 hover:text-blue-900 hover:bg-blue-500/[0.08] rounded-xl transition-all duration-200 text-xs font-medium",
                         "Release notes"
                     }
                     button {
-                        class: "px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors",
+                        class: "px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all duration-200 active:scale-[0.98]",
                         onclick: move |_| show_instructions.set(!show_instructions()),
                         if show_instructions() { "Hide instructions" } else { "Update Panel" }
                     }
@@ -985,12 +985,12 @@ fn PanelUpdateBanner() -> Element {
 
             // Expandable instructions section
             if show_instructions() {
-                div { class: "mt-3 border-t border-blue-200 pt-3 space-y-3",
+                div { class: "mt-3 border-t border-blue-500/15 pt-3 space-y-3",
 
                     // Manual SSH update instructions
                     div {
                         p { class: "text-blue-700 font-semibold mb-1", "Manual update (SSH):" }
-                        pre { class: "bg-blue-900 text-blue-100 text-xs rounded-lg px-4 py-3 overflow-x-auto select-all",
+                        pre { class: "bg-gray-900 text-gray-100 text-xs rounded-xl px-4 py-3 overflow-x-auto select-all",
                             "sudo bash -c \"$(curl -fsSL https://raw.githubusercontent.com/damiencal/panel/main/install.sh)\""
                         }
                         p { class: "text-blue-600 text-xs mt-1",
@@ -1001,7 +1001,7 @@ fn PanelUpdateBanner() -> Element {
                     // One-click update
                     div { class: "flex items-center gap-3",
                         button {
-                            class: "px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-2",
+                            class: "px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center gap-2",
                             disabled: updating(),
                             onclick: move |_| {
                                 if updating() { return; }
@@ -1042,11 +1042,11 @@ fn PanelUpdateBanner() -> Element {
                     if let Some(ref result) = update_result() {
                         match result {
                             Ok(msg) => rsx! {
-                                div { class: "flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg",
-                                    Icon { name: "check-circle", class: "w-4 h-4 text-green-600 mt-0.5 shrink-0".to_string() }
+                                div { class: "flex items-start gap-2 p-3 bg-emerald-500/[0.08] border border-emerald-500/20 rounded-xl",
+                                    Icon { name: "check-circle", class: "w-4 h-4 text-emerald-600 mt-0.5 shrink-0".to_string() }
                                     div {
-                                        p { class: "text-green-800 font-medium text-xs", "{msg}" }
-                                        p { class: "text-green-600 text-xs mt-0.5",
+                                        p { class: "text-emerald-700 font-medium text-xs", "{msg}" }
+                                        p { class: "text-emerald-600 text-xs mt-0.5",
                                             "The panel service is restarting. This page will refresh automatically in a few seconds."
                                         }
                                     }
@@ -1055,10 +1055,10 @@ fn PanelUpdateBanner() -> Element {
                                 script { dangerous_inner_html: "setTimeout(()=>window.location.reload(),8000)" }
                             },
                             Err(err) => rsx! {
-                                div { class: "flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg",
+                                div { class: "flex items-start gap-2 p-3 bg-red-500/[0.08] border border-red-500/20 rounded-xl",
                                     Icon { name: "alert-triangle", class: "w-4 h-4 text-red-600 mt-0.5 shrink-0".to_string() }
                                     div {
-                                        p { class: "text-red-800 font-medium text-xs", "Update failed" }
+                                        p { class: "text-red-700 font-medium text-xs", "Update failed" }
                                         p { class: "text-red-600 text-xs mt-0.5", "{err}" }
                                     }
                                 }
@@ -1076,15 +1076,15 @@ fn PanelUpdateBanner() -> Element {
 #[component]
 fn AdminSidebar() -> Element {
     rsx! {
-        aside { class: "w-64 bg-white border-r border-gray-200/80 flex flex-col h-full",
-            div { class: "px-5 h-16 flex items-center border-b border-gray-100 shrink-0",
+        aside { class: "sidebar-panel flex flex-col h-full",
+            div { class: "px-5 h-16 flex items-center border-b border-black/[0.06] shrink-0",
                 div { class: "flex items-center gap-3",
-                    div { class: "w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-sm",
+                    div { class: "w-8 h-8 rounded-xl bg-gray-900 flex items-center justify-center shadow-soft",
                         Icon { name: "layers", class: "w-4 h-4 text-white".to_string() }
                     }
                     div {
-                        p { class: "text-sm font-bold text-gray-900 leading-none", "Control Panel" }
-                        p { class: "text-[0.625rem] text-gray-400 mt-0.5", "Administrator" }
+                        p { class: "text-[13px] font-semibold text-gray-900 leading-none tracking-tight", "Control Panel" }
+                        p { class: "text-[11px] text-gray-400 mt-0.5 font-medium uppercase tracking-wider", "Administrator" }
                     }
                 }
             }
@@ -1123,15 +1123,15 @@ fn AdminSidebar() -> Element {
 #[component]
 fn ResellerSidebar() -> Element {
     rsx! {
-        aside { class: "w-64 bg-white border-r border-gray-200/80 flex flex-col h-full",
-            div { class: "px-5 h-16 flex items-center border-b border-gray-100 shrink-0",
+        aside { class: "sidebar-panel flex flex-col h-full",
+            div { class: "px-5 h-16 flex items-center border-b border-black/[0.06] shrink-0",
                 div { class: "flex items-center gap-3",
-                    div { class: "w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm",
+                    div { class: "w-8 h-8 rounded-xl bg-gray-900 flex items-center justify-center shadow-soft",
                         Icon { name: "briefcase", class: "w-4 h-4 text-white".to_string() }
                     }
                     div {
-                        p { class: "text-sm font-bold text-gray-900 leading-none", "Control Panel" }
-                        p { class: "text-[0.625rem] text-gray-400 mt-0.5", "Reseller" }
+                        p { class: "text-[13px] font-semibold text-gray-900 leading-none tracking-tight", "Control Panel" }
+                        p { class: "text-[11px] text-gray-400 mt-0.5 font-medium uppercase tracking-wider", "Reseller" }
                     }
                 }
             }
@@ -1152,15 +1152,15 @@ fn ResellerSidebar() -> Element {
 #[component]
 fn ClientSidebar() -> Element {
     rsx! {
-        aside { class: "w-64 bg-white border-r border-gray-200/80 flex flex-col h-full",
-            div { class: "px-5 h-16 flex items-center border-b border-gray-100 shrink-0",
+        aside { class: "sidebar-panel flex flex-col h-full",
+            div { class: "px-5 h-16 flex items-center border-b border-black/[0.06] shrink-0",
                 div { class: "flex items-center gap-3",
-                    div { class: "w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm",
+                    div { class: "w-8 h-8 rounded-xl bg-gray-900 flex items-center justify-center shadow-soft",
                         Icon { name: "globe", class: "w-4 h-4 text-white".to_string() }
                     }
                     div {
-                        p { class: "text-sm font-bold text-gray-900 leading-none", "Control Panel" }
-                        p { class: "text-[0.625rem] text-gray-400 mt-0.5", "Client" }
+                        p { class: "text-[13px] font-semibold text-gray-900 leading-none tracking-tight", "Control Panel" }
+                        p { class: "text-[11px] text-gray-400 mt-0.5 font-medium uppercase tracking-wider", "Client" }
                     }
                 }
             }
@@ -1191,7 +1191,7 @@ fn ClientSidebar() -> Element {
 fn SidebarSection(label: &'static str) -> Element {
     rsx! {
         div { class: "pt-5 pb-1 px-3",
-            p { class: "text-[0.625rem] font-semibold uppercase tracking-wider text-gray-400 select-none", "{label}" }
+            p { class: "text-[11px] font-semibold uppercase tracking-wider text-gray-400 select-none", "{label}" }
         }
     }
 }
@@ -1201,8 +1201,8 @@ fn SidebarLink(to: Route, label: &'static str, icon: &'static str) -> Element {
     rsx! {
         Link {
             to,
-            class: "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150 text-[0.8125rem] font-medium",
-            active_class: "!bg-rose-50 !text-rose-600 !font-semibold".to_string(),
+            class: "sidebar-link",
+            active_class: "active".to_string(),
             Icon { name: icon, class: "w-[1.125rem] h-[1.125rem] shrink-0".to_string() }
             span { "{label}" }
         }
@@ -1221,29 +1221,29 @@ fn AdminHeader(props: HeaderProps) -> Element {
     let mut auth = use_context::<Signal<Option<AuthState>>>();
     let nav = use_navigator();
     rsx! {
-        header { class: "sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 px-4 md:px-6 h-16 flex items-center justify-between",
+        header { class: "sticky top-0 z-40 glass-strong border-b border-white/50 px-4 md:px-6 h-16 flex items-center justify-between",
             div { class: "flex items-center gap-3",
                 button {
-                    class: "md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors",
+                    class: "md:hidden p-2 text-gray-500 hover:bg-black/[0.04] rounded-xl transition-all duration-200",
                     onclick: move |e| props.on_menu_toggle.call(e),
                     Icon { name: "menu", class: "w-5 h-5".to_string() }
                 }
-                h1 { class: "text-base font-semibold text-gray-800 hidden md:block", "Administration" }
+                h1 { class: "text-[15px] font-semibold text-gray-900 tracking-tight hidden md:block", "Administration" }
             }
             div { class: "flex items-center gap-2",
                 if let Some(ref user) = auth() {
-                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50/80 rounded-lg mr-1",
-                        div { class: "w-7 h-7 rounded-full bg-gradient-to-br from-rose-400 to-rose-500 flex items-center justify-center shadow-sm",
+                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 glass-subtle rounded-xl mr-1",
+                        div { class: "w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center shadow-soft",
                             Icon { name: "user", class: "w-3.5 h-3.5 text-white".to_string() }
                         }
                         div {
-                            p { class: "text-sm font-medium text-gray-700 leading-none", "{user.username}" }
-                            p { class: "text-[0.625rem] text-gray-400 mt-0.5", "{user.email}" }
+                            p { class: "text-[13px] font-medium text-gray-700 leading-none", "{user.username}" }
+                            p { class: "text-[11px] text-gray-400 mt-0.5", "{user.email}" }
                         }
                     }
                 }
                 button {
-                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
+                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-black/[0.04] hover:text-gray-900 rounded-xl transition-all duration-200",
                     onclick: move |_| {
                         spawn(async move {
                             let _ = server_logout().await;
@@ -1265,29 +1265,29 @@ fn ResellerHeader(props: HeaderProps) -> Element {
     let mut auth = use_context::<Signal<Option<AuthState>>>();
     let nav = use_navigator();
     rsx! {
-        header { class: "sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 px-4 md:px-6 h-16 flex items-center justify-between",
+        header { class: "sticky top-0 z-40 glass-strong border-b border-white/50 px-4 md:px-6 h-16 flex items-center justify-between",
             div { class: "flex items-center gap-3",
                 button {
-                    class: "md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors",
+                    class: "md:hidden p-2 text-gray-500 hover:bg-black/[0.04] rounded-xl transition-all duration-200",
                     onclick: move |e| props.on_menu_toggle.call(e),
                     Icon { name: "menu", class: "w-5 h-5".to_string() }
                 }
-                h1 { class: "text-base font-semibold text-gray-800 hidden md:block", "Reseller Portal" }
+                h1 { class: "text-[15px] font-semibold text-gray-900 tracking-tight hidden md:block", "Reseller Portal" }
             }
             div { class: "flex items-center gap-2",
                 if let Some(ref user) = auth() {
-                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50/80 rounded-lg mr-1",
-                        div { class: "w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-sm",
+                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 glass-subtle rounded-xl mr-1",
+                        div { class: "w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center shadow-soft",
                             Icon { name: "user", class: "w-3.5 h-3.5 text-white".to_string() }
                         }
                         div {
-                            p { class: "text-sm font-medium text-gray-700 leading-none", "{user.username}" }
-                            p { class: "text-[0.625rem] text-gray-400 mt-0.5", "{user.email}" }
+                            p { class: "text-[13px] font-medium text-gray-700 leading-none", "{user.username}" }
+                            p { class: "text-[11px] text-gray-400 mt-0.5", "{user.email}" }
                         }
                     }
                 }
                 button {
-                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
+                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-black/[0.04] hover:text-gray-900 rounded-xl transition-all duration-200",
                     onclick: move |_| {
                         spawn(async move {
                             let _ = server_logout().await;
@@ -1309,29 +1309,29 @@ fn ClientHeader(props: HeaderProps) -> Element {
     let mut auth = use_context::<Signal<Option<AuthState>>>();
     let nav = use_navigator();
     rsx! {
-        header { class: "sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 px-4 md:px-6 h-16 flex items-center justify-between",
+        header { class: "sticky top-0 z-40 glass-strong border-b border-white/50 px-4 md:px-6 h-16 flex items-center justify-between",
             div { class: "flex items-center gap-3",
                 button {
-                    class: "md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors",
+                    class: "md:hidden p-2 text-gray-500 hover:bg-black/[0.04] rounded-xl transition-all duration-200",
                     onclick: move |e| props.on_menu_toggle.call(e),
                     Icon { name: "menu", class: "w-5 h-5".to_string() }
                 }
-                h1 { class: "text-base font-semibold text-gray-800 hidden md:block", "My Hosting" }
+                h1 { class: "text-[15px] font-semibold text-gray-900 tracking-tight hidden md:block", "My Hosting" }
             }
             div { class: "flex items-center gap-2",
                 if let Some(ref user) = auth() {
-                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50/80 rounded-lg mr-1",
-                        div { class: "w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-sm",
+                    div { class: "hidden md:flex items-center gap-2.5 px-3 py-1.5 glass-subtle rounded-xl mr-1",
+                        div { class: "w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center shadow-soft",
                             Icon { name: "user", class: "w-3.5 h-3.5 text-white".to_string() }
                         }
                         div {
-                            p { class: "text-sm font-medium text-gray-700 leading-none", "{user.username}" }
-                            p { class: "text-[0.625rem] text-gray-400 mt-0.5", "{user.email}" }
+                            p { class: "text-[13px] font-medium text-gray-700 leading-none", "{user.username}" }
+                            p { class: "text-[11px] text-gray-400 mt-0.5", "{user.email}" }
                         }
                     }
                 }
                 button {
-                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
+                    class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-black/[0.04] hover:text-gray-900 rounded-xl transition-all duration-200",
                     onclick: move |_| {
                         spawn(async move {
                             let _ = server_logout().await;
@@ -1408,25 +1408,25 @@ fn Login() -> Element {
     };
 
     rsx! {
-        div { class: "flex items-center justify-center h-screen bg-gray-50 relative overflow-hidden",
-            // Background effect
-            div { class: "absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/50 rounded-full blur-3xl" }
-            div { class: "absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-rose-200/50 rounded-full blur-3xl" }
+        div { class: "flex items-center justify-center h-screen relative overflow-hidden",
+            // Background gradient blobs
+            div { class: "absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gray-200/60 rounded-full blur-3xl" }
+            div { class: "absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gray-200/60 rounded-full blur-3xl" }
 
-            div { class: "w-full max-w-md bg-white/70 backdrop-blur-xl border border-white rounded-3xl shadow-xl p-8 lg:p-10 relative z-10 transition-all duration-300",
-                h1 { class: "text-3xl lg:text-4xl font-extrabold text-gray-900 mb-2 tracking-tight", "Welcome" }
-                p { class: "text-gray-500 mb-6", "Login to your hosting panel" }
+            div { class: "w-full max-w-md glass-strong rounded-2xl shadow-float p-8 lg:p-10 relative z-10 animate-scale-in",
+                h1 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-1", "Welcome back" }
+                p { class: "text-[13px] text-gray-400 mb-6", "Sign in to your hosting panel" }
 
                 if let Some(err) = error() {
-                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-xl mb-4 text-sm", "{err}" }
                 }
 
                 form { onsubmit,
                     div { class: "mb-4",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Username" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Username" }
                         input {
                             r#type: "text",
-                            class: "w-full px-5 py-3 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                            class: "w-full h-10 px-4 bg-white/50 backdrop-blur border border-black/[0.08] rounded-xl text-sm placeholder:text-gray-400/60 focus:outline-none focus:ring-2 focus:ring-black/[0.08] focus:border-black/[0.15] focus:bg-white/70 transition-all duration-200",
                             placeholder: "Enter your username",
                             value: "{username}",
                             oninput: move |e| username.set(e.value()),
@@ -1434,10 +1434,10 @@ fn Login() -> Element {
                         }
                     }
                     div { class: "mb-4",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Password" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
                         input {
                             r#type: "password",
-                            class: "w-full px-5 py-3 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                            class: "w-full h-10 px-4 bg-white/50 backdrop-blur border border-black/[0.08] rounded-xl text-sm placeholder:text-gray-400/60 focus:outline-none focus:ring-2 focus:ring-black/[0.08] focus:border-black/[0.15] focus:bg-white/70 transition-all duration-200",
                             placeholder: "Enter your password",
                             value: "{password}",
                             oninput: move |e| password.set(e.value()),
@@ -1447,21 +1447,21 @@ fn Login() -> Element {
 
                     if show_totp() {
                         div { class: "mb-4",
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "2FA Code" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "2FA Code" }
                             input {
                                 r#type: "text",
-                                class: "w-full px-5 py-3 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                class: "w-full h-10 px-4 bg-white/50 backdrop-blur border border-black/[0.08] rounded-xl text-sm placeholder:text-gray-400/60 focus:outline-none focus:ring-2 focus:ring-black/[0.08] focus:border-black/[0.15] focus:bg-white/70 transition-all duration-200",
                                 placeholder: "Enter your 6-digit code",
                                 value: "{totp_code}",
                                 oninput: move |e| totp_code.set(e.value()),
                                 maxlength: "6",
                             }
-        }
-    }
+                        }
+                    }
 
                     button {
                         r#type: "submit",
-                        class: "w-full py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-xl shadow-sm hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm",
+                        class: "w-full h-10 px-4 bg-gray-900 hover:bg-gray-900/90 text-white text-sm font-medium rounded-xl shadow-soft active:scale-[0.98] transition-all duration-200 disabled:opacity-40",
                         disabled: loading(),
                         if loading() { "Signing in..." } else { "Sign In" }
                     }
@@ -1479,31 +1479,31 @@ fn AdminDashboard() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-8",
-                h2 { class: "text-2xl font-bold text-gray-900",
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900",
                     if let Some(ref user) = auth() {
                         "Welcome back, {user.username}"
                     } else {
                         "Admin Dashboard"
                     }
                 }
-                p { class: "text-gray-500 mt-1 text-sm", "Overview of your hosting infrastructure." }
+                p { class: "text-[13px] text-gray-400 mt-1", "Overview of your hosting infrastructure." }
             }
             match &*stats.read() {
                 Some(Ok(s)) => rsx! {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5",
-                        StatCard { label: "Total Users", value: "{s.total_users}", icon: "users", color: "blue" }
-                        StatCard { label: "Resellers", value: "{s.total_resellers}", icon: "briefcase", color: "purple" }
-                        StatCard { label: "Clients", value: "{s.total_clients}", icon: "users", color: "emerald" }
-                        StatCard { label: "Sites", value: "{s.total_sites}", icon: "globe", color: "amber" }
+                        StatCard { label: "Total Users", value: "{s.total_users}", icon: "users" }
+                        StatCard { label: "Resellers", value: "{s.total_resellers}", icon: "briefcase" }
+                        StatCard { label: "Clients", value: "{s.total_clients}", icon: "users" }
+                        StatCard { label: "Sites", value: "{s.total_sites}", icon: "globe" }
                     }
                 },
                 Some(Err(e)) => rsx! { div { class: "text-red-600", "Error: {e}" } },
                 None => rsx! {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5",
                         for _ in 0..4 {
-                            div { class: "bg-white rounded-2xl border border-gray-100 p-6 animate-pulse",
-                                div { class: "h-3 bg-gray-200 rounded w-20 mb-4" }
-                                div { class: "h-8 bg-gray-100 rounded w-12" }
+                            div { class: "glass-card rounded-2xl p-6 animate-pulse",
+                                div { class: "h-3 bg-black/[0.06] rounded-sm w-20 mb-4" }
+                                div { class: "h-8 bg-black/[0.06] rounded-sm w-12" }
                             }
                         }
                     }
@@ -1522,22 +1522,15 @@ fn StatCard(
     icon: &'static str,
     color: Option<&'static str>,
 ) -> Element {
-    let color = color.unwrap_or("rose");
-    let (bg, text) = match color {
-        "blue" => ("bg-blue-50", "text-blue-500"),
-        "emerald" | "green" => ("bg-emerald-50", "text-emerald-500"),
-        "amber" | "yellow" => ("bg-amber-50", "text-amber-500"),
-        "purple" => ("bg-purple-50", "text-purple-500"),
-        _ => ("bg-rose-50", "text-rose-500"),
-    };
+    let _color = color.unwrap_or("default");
     rsx! {
-        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-200 group",
+        div { class: "glass-card rounded-2xl p-6 hover:shadow-glass transition-all duration-200",
             div { class: "flex items-center justify-between",
                 div {
-                    p { class: "text-xs font-medium text-gray-500 uppercase tracking-wider", "{label}" }
-                    p { class: "text-3xl font-bold text-gray-900 mt-2", "{value}" }
+                    p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "{label}" }
+                    p { class: "text-3xl font-semibold text-gray-900 mt-2 tracking-tight", "{value}" }
                 }
-                div { class: "p-3 {bg} rounded-xl {text} transition-colors duration-200",
+                div { class: "p-3 bg-black/[0.04] rounded-xl text-gray-500",
                     Icon { name: icon, class: "w-6 h-6".to_string() }
                 }
             }
@@ -1548,14 +1541,18 @@ fn StatCard(
 #[component]
 pub fn StatusBadge(status: String) -> Element {
     let color = match status.as_str() {
-        "Active" | "Running" | "Success" | "Open" => "bg-green-100 text-green-800",
-        "Suspended" | "Stopped" | "Error" => "bg-red-100 text-red-800",
-        "Pending" | "Unknown" => "bg-yellow-100 text-yellow-800",
-        "Closed" | "Inactive" => "bg-gray-100 text-gray-600",
-        _ => "bg-blue-100 text-blue-800",
+        "Active" | "Running" | "Success" | "Open" =>
+            "bg-emerald-500/[0.08] text-emerald-700",
+        "Suspended" | "Stopped" | "Error" =>
+            "bg-red-500/[0.08] text-red-600",
+        "Pending" | "Unknown" =>
+            "bg-amber-500/[0.08] text-amber-700",
+        "Closed" | "Inactive" =>
+            "bg-black/[0.03] text-gray-500",
+        _ => "bg-blue-500/[0.08] text-blue-700",
     };
     rsx! {
-        span { class: "px-2 py-1 text-xs font-medium rounded-full {color}", "{status}" }
+        span { class: "inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wide {color}", "{status}" }
     }
 }
 
@@ -1611,9 +1608,9 @@ fn AdminServers() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8 space-y-6",
             div { class: "flex items-center justify-between",
-                h2 { class: "text-2xl font-bold text-gray-900", "Server" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Server" }
                 button {
-                    class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors",
+                    class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-black/[0.08] rounded-xl hover:bg-black/[0.04] transition-all duration-200",
                     onclick: move |_| { services.restart(); metrics.restart(); server_info.restart(); },
                     Icon { name: "refresh-cw", class: "w-4 h-4".to_string() }
                     span { "Refresh" }
@@ -1639,7 +1636,7 @@ fn AdminServers() -> Element {
                     let has_security = info.security_updates > 0;
                     let has_last_check = info.last_update_check.is_some();
                     rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             h3 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4", "Server Information" }
                             div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3",
                                 div { class: "flex items-center gap-3",
@@ -1680,8 +1677,8 @@ fn AdminServers() -> Element {
                                     }
                                 }
                                 div { class: "flex items-center gap-3",
-                                    div { class: "p-2 bg-rose-50 rounded-lg",
-                                        Icon { name: "hard-drive", class: "w-4 h-4 text-rose-500".to_string() }
+                                    div { class: "p-2 bg-black/[0.04] rounded-lg",
+                                        Icon { name: "hard-drive", class: "w-4 h-4 text-gray-700".to_string() }
                                     }
                                     div {
                                         p { class: "text-xs text-gray-400 uppercase", "Memory / Swap" }
@@ -1699,7 +1696,7 @@ fn AdminServers() -> Element {
                                 }
                             }
                         }
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             div { class: "flex items-start justify-between gap-4",
                                 div { class: "flex items-center gap-3",
                                     div { class: "{update_class}",
@@ -1716,7 +1713,7 @@ fn AdminServers() -> Element {
                                     }
                                 }
                                 button {
-                                    class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap",
+                                    class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap",
                                     disabled: update_loading(),
                                     onclick: move |_| {
                                         update_loading.set(true);
@@ -1739,7 +1736,7 @@ fn AdminServers() -> Element {
                             }
                             match &*update_result.read() {
                                 Some(Ok(res)) => rsx! {
-                                    div { class: "mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100",
+                                    div { class: "mt-4 p-3 bg-emerald-500/[0.08] rounded-xl border border-emerald-500/20",
                                         p { class: "text-xs font-semibold text-emerald-700 mb-1",
                                             "Update complete \u{2014} {res.packages_upgraded} upgraded, {res.packages_installed} installed, {res.packages_removed} removed"
                                         }
@@ -1751,7 +1748,7 @@ fn AdminServers() -> Element {
                                     }
                                 },
                                 Some(Err(e)) => rsx! {
-                                    div { class: "mt-4 p-3 bg-red-50 rounded-xl border border-red-100",
+                                    div { class: "mt-4 p-3 bg-red-500/[0.08] rounded-xl border border-red-500/20",
                                         p { class: "text-xs font-semibold text-red-700", "Update failed: {e}" }
                                     }
                                 },
@@ -1762,11 +1759,11 @@ fn AdminServers() -> Element {
                 },
                 Some(Err(_)) => rsx! {},
                 None => rsx! {
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse",
+                    div { class: "glass-card rounded-2xl p-6 animate-pulse",
                         div { class: "h-4 bg-gray-200 rounded w-40 mb-4" }
                         div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
                             for _ in 0..6 {
-                                div { class: "h-12 bg-gray-100 rounded-lg" }
+                                div { class: "h-12 bg-black/[0.04] rounded-xl" }
                             }
                         }
                     }
@@ -1791,9 +1788,9 @@ fn AdminServers() -> Element {
                 None => rsx! {
                     div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
                         for _ in 0..4 {
-                            div { class: "bg-white rounded-2xl border border-gray-100 p-6 animate-pulse",
-                                div { class: "h-4 bg-gray-200 rounded w-24 mb-3" }
-                                div { class: "h-8 bg-gray-200 rounded w-32" }
+                            div { class: "glass-card rounded-2xl p-6 animate-pulse",
+                                div { class: "h-4 bg-black/[0.06] rounded-sm w-24 mb-3" }
+                                div { class: "h-8 bg-black/[0.06] rounded-sm w-32" }
                             }
                         }
                     }
@@ -1801,24 +1798,24 @@ fn AdminServers() -> Element {
             }
 
             if let Some(err) = action_error() {
-                div { class: "bg-red-50 text-red-700 p-4 rounded-xl text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-4 rounded-xl text-sm", "{err}" }
             }
 
             // Services table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*services.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Service" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Port" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Version" }
-                                    th { class: "px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Service" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Port" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Version" }
+                                    th { class: "px-6 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for svc in list.iter() {
                                     {
                                         let svc_type = svc.service_type;
@@ -1829,10 +1826,10 @@ fn AdminServers() -> Element {
                                         let is_loading_stop = action_loading().as_deref() == Some(&format!("{}:stop", svc_type));
                                         let is_loading_restart = action_loading().as_deref() == Some(&format!("{}:restart", svc_type));
                                         rsx! {
-                                            tr { class: "hover:bg-gray-50/50 transition-colors",
+                                            tr { class: "hover:bg-black/[0.02] transition-colors",
                                                 td { class: "px-6 py-4",
                                                     div { class: "flex items-center gap-3",
-                                                        div { class: "p-2 bg-gray-50 rounded-lg",
+                                                        div { class: "p-2 bg-black/[0.04] rounded-xl",
                                                             Icon { name: "server", class: "w-5 h-5 text-gray-600".to_string() }
                                                         }
                                                         span { class: "text-sm font-medium text-gray-900", "{svc_type}" }
@@ -1844,21 +1841,21 @@ fn AdminServers() -> Element {
                                                 td { class: "px-6 py-4",
                                                     div { class: "flex items-center justify-end gap-1",
                                                         button {
-                                                            class: "p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-40",
+                                                            class: "p-1.5 text-emerald-600 hover:bg-emerald-500/[0.08] rounded-xl transition-all duration-200 disabled:opacity-40",
                                                             title: "Start",
                                                             disabled: is_loading_start,
                                                             onclick: move |_| handle_action(svc_type, panel::models::service::ServiceCommand::Start),
                                                             Icon { name: "play", class: "w-4 h-4".to_string() }
                                                         }
                                                         button {
-                                                            class: "p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40",
+                                                            class: "p-1.5 text-red-600 hover:bg-red-500/[0.08] rounded-xl transition-all duration-200 disabled:opacity-40",
                                                             title: "Stop",
                                                             disabled: is_loading_stop,
                                                             onclick: move |_| handle_action(svc_type, panel::models::service::ServiceCommand::Stop),
                                                             Icon { name: "stop-circle", class: "w-4 h-4".to_string() }
                                                         }
                                                         button {
-                                                            class: "p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40",
+                                                            class: "p-1.5 text-blue-600 hover:bg-blue-500/[0.08] rounded-xl transition-all duration-200 disabled:opacity-40",
                                                             title: "Restart",
                                                             disabled: is_loading_restart,
                                                             onclick: move |_| handle_action(svc_type, panel::models::service::ServiceCommand::Restart),
@@ -1873,21 +1870,21 @@ fn AdminServers() -> Element {
                             }
                         }
                         if list.is_empty() {
-                            p { class: "p-6 text-gray-500 text-center", "No services detected." }
+                            p { class: "p-6 text-gray-400 text-center text-sm", "No services detected." }
                         }
                     },
-                    Some(Err(e)) => rsx! { p { class: "p-6 text-red-600", "Error: {e}" } },
-                    None => rsx! { p { class: "p-6 text-gray-500 animate-pulse", "Loading services..." } },
+                    Some(Err(e)) => rsx! { p { class: "p-6 text-red-600 text-sm", "Error: {e}" } },
+                    None => rsx! { p { class: "p-6 text-gray-400 text-sm animate-pulse", "Loading services..." } },
                 }
             }
 
             // PHP Versions — install lsphp packages from the official LiteSpeed repo.
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
-                h3 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4",
+            div { class: "glass-card rounded-2xl p-6",
+                h3 { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-4",
                     "PHP Versions (lsphp)"
                 }
                 if let Some(err) = php_install_error() {
-                    div { class: "mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm", "{err}" }
+                    div { class: "mb-4 p-3 bg-red-500/[0.08] text-red-600 rounded-xl text-sm", "{err}" }
                 }
                 div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3",
                     { const VERSIONS: &[&str] = panel::models::site::SUPPORTED_PHP_VERSIONS;
@@ -1902,15 +1899,15 @@ fn AdminServers() -> Element {
                                 let is_installed = installed.contains(&ver_str);
                                 let is_busy = php_installing().as_deref() == Some(ver);
                                 rsx! {
-                                    div { class: "flex flex-col items-center gap-2 p-3 border border-gray-200 rounded-xl",
+                                    div { class: "flex flex-col items-center gap-2 p-3 border border-black/[0.08] rounded-xl",
                                         span { class: "text-sm font-semibold text-gray-800", "PHP {ver_str}" }
                                         if is_installed {
-                                            span { class: "text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium",
+                                            span { class: "text-xs px-2 py-0.5 bg-emerald-500/[0.08] text-emerald-700 rounded-full font-medium",
                                                 "Installed"
                                             }
                                         } else {
                                             button {
-                                                class: "text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50",
+                                                class: "text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                                 disabled: is_busy || php_installing().is_some(),
                                                 onclick: move |_| {
                                                     let v = ver_str.clone();
@@ -1987,16 +1984,16 @@ fn AdminResellers() -> Element {
         div { class: "p-6 lg:p-8 space-y-6",
             // Header
             div { class: "flex items-center justify-between",
-                h2 { class: "text-2xl font-bold text-gray-900", "Resellers" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Resellers" }
                 div { class: "flex gap-3",
                     button {
-                        class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors",
+                        class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-black/[0.08] rounded-xl hover:bg-black/[0.04] transition-all duration-200",
                         onclick: move |_| resellers.restart(),
                         Icon { name: "refresh-cw", class: "w-4 h-4".to_string() }
                         span { "Refresh" }
                     }
                     button {
-                        class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors shadow-sm hover:shadow-md",
+                        class: "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-900/90 rounded-xl transition-all duration-200 active:scale-[0.98] shadow-soft hover:shadow-soft-md",
                         onclick: move |_| { show_create.set(true); form_error.set(None); },
                         Icon { name: "plus", class: "w-4 h-4".to_string() }
                         span { "Add Reseller" }
@@ -2023,7 +2020,7 @@ fn AdminResellers() -> Element {
                 _ => rsx! {
                     div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
                         for _ in 0..4 {
-                            div { class: "bg-white rounded-2xl border border-gray-100 p-6 animate-pulse",
+                            div { class: "glass-card rounded-2xl p-6 animate-pulse",
                                 div { class: "h-4 bg-gray-200 rounded w-24 mb-3" }
                                 div { class: "h-8 bg-gray-200 rounded w-32" }
                             }
@@ -2033,7 +2030,7 @@ fn AdminResellers() -> Element {
             }
 
             if let Some(err) = action_error() {
-                div { class: "bg-red-50 text-red-700 p-4 rounded-xl text-sm flex items-center justify-between",
+                div { class: "bg-red-500/[0.08] text-red-600 p-4 rounded-xl text-sm flex items-center justify-between",
                     span { "{err}" }
                     button {
                         class: "text-red-500 hover:text-red-700",
@@ -2045,7 +2042,7 @@ fn AdminResellers() -> Element {
 
             // Create Reseller Form (slide-down panel)
             if show_create() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                div { class: "glass-card rounded-2xl p-6",
                     div { class: "flex items-center justify-between mb-4",
                         h3 { class: "text-lg font-semibold text-gray-900", "Create New Reseller" }
                         button {
@@ -2056,16 +2053,16 @@ fn AdminResellers() -> Element {
                     }
 
                     if let Some(err) = form_error() {
-                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                     }
 
                     form { onsubmit: on_create_submit,
                         div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Username" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Username" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     placeholder: "reseller_username",
                                     value: "{create_username}",
                                     oninput: move |e| create_username.set(e.value()),
@@ -2073,10 +2070,10 @@ fn AdminResellers() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Email" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Email" }
                                 input {
                                     r#type: "email",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     placeholder: "reseller@example.com",
                                     value: "{create_email}",
                                     oninput: move |e| create_email.set(e.value()),
@@ -2084,11 +2081,11 @@ fn AdminResellers() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Password" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
                                 div { class: "flex gap-2",
                                     input {
                                         r#type: "text",
-                                        class: "flex-1 px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm font-mono",
+                                        class: "flex-1 px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm font-mono",
                                         placeholder: "Strong password",
                                         value: "{create_password}",
                                         oninput: move |e| create_password.set(e.value()),
@@ -2096,7 +2093,7 @@ fn AdminResellers() -> Element {
                                     }
                                     button {
                                         r#type: "button",
-                                        class: "px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
+                                        class: "px-3 py-2.5 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-xl transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
                                         title: "Generate password & copy to clipboard",
                                         onclick: move |_| {
                                             #[cfg(target_arch = "wasm32")]
@@ -2142,13 +2139,13 @@ fn AdminResellers() -> Element {
                         div { class: "flex justify-end gap-3",
                             button {
                                 r#type: "button",
-                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                                 onclick: move |_| show_create.set(false),
                                 "Cancel"
                             }
                             button {
                                 r#type: "submit",
-                                class: "px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                                class: "px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-900/90 rounded-xl transition-all duration-200 active:scale-[0.98] shadow-soft disabled:opacity-40 disabled:cursor-not-allowed",
                                 disabled: form_loading(),
                                 if form_loading() { "Creating..." } else { "Create Reseller" }
                             }
@@ -2174,7 +2171,7 @@ fn AdminResellers() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                                 onclick: move |_| confirm_delete.set(None),
                                 "Cancel"
                             }
@@ -2201,21 +2198,21 @@ fn AdminResellers() -> Element {
             }
 
             // Resellers table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*resellers.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Clients" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Created" }
-                                    th { class: "px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Clients" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for info in list.iter() {
                                     {
                                         let uid = info.user.id;
@@ -2228,10 +2225,10 @@ fn AdminResellers() -> Element {
                                         let client_count = info.client_count;
                                         let status_str = info.user.status.to_string();
                                         rsx! {
-                                            tr { class: "hover:bg-gray-50/50 transition-colors",
+                                            tr { class: "hover:bg-black/[0.02] transition-colors",
                                                 td { class: "px-6 py-4",
                                                     div { class: "flex items-center gap-3",
-                                                        div { class: "w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 font-semibold text-sm",
+                                                        div { class: "w-8 h-8 bg-black/[0.04] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm",
                                                             "{avatar_letter}"
                                                         }
                                                         span { class: "text-sm font-medium text-gray-900", "{username}" }
@@ -2331,7 +2328,7 @@ fn AdminResellers() -> Element {
                         }
                         if list.is_empty() {
                             div { class: "p-12 text-center",
-                                Icon { name: "users", class: "w-12 h-12 text-gray-300 mx-auto mb-3".to_string() }
+                                Icon { name: "users", class: "w-12 h-12 text-gray-400 mx-auto mb-3".to_string() }
                                 p { class: "text-gray-500 font-medium", "No resellers yet" }
                                 p { class: "text-gray-400 text-sm mt-1", "Click \"Add Reseller\" to create the first one." }
                             }
@@ -2341,7 +2338,7 @@ fn AdminResellers() -> Element {
                     None => rsx! {
                         div { class: "p-6 space-y-3",
                             for _ in 0..3 {
-                                div { class: "h-12 bg-gray-100 rounded-lg animate-pulse" }
+                                div { class: "h-12 bg-black/[0.04] rounded-xl animate-pulse" }
                             }
                         }
                     },
@@ -2425,16 +2422,16 @@ fn AdminClients() -> Element {
         div { class: "p-6 lg:p-8",
             // Header with Add button
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Clients" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Clients" }
                 button {
-                    class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2",
+                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-lg transition-colors flex items-center gap-2",
                     onclick: move |_| show_form.set(!show_form()),
                     if show_form() { "✕ Cancel" } else { "+ Add Client" }
                 }
             }
 
             if let Some(err) = action_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
             // Stats cards (exclude Admin users)
@@ -2457,18 +2454,18 @@ fn AdminClients() -> Element {
 
             // Create form
             if show_form() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+                div { class: "glass-card rounded-2xl p-6 mb-6",
                     h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Add New Client" }
                     if let Some(err) = create_error() {
-                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                     }
                     form { onsubmit: on_create, class: "space-y-4",
                         div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Username" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Username" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "johndoe",
                                     value: "{new_username}",
                                     oninput: move |e| new_username.set(e.value()),
@@ -2476,10 +2473,10 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Email" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Email" }
                                 input {
                                     r#type: "email",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "john@example.com",
                                     value: "{new_email}",
                                     oninput: move |e| new_email.set(e.value()),
@@ -2487,11 +2484,11 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Password" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
                                 div { class: "flex gap-2",
                                     input {
                                         r#type: "text",
-                                        class: "flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono",
+                                        class: "flex-1 px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent font-mono",
                                         placeholder: "••••••••",
                                         value: "{new_password}",
                                         oninput: move |e| new_password.set(e.value()),
@@ -2499,7 +2496,7 @@ fn AdminClients() -> Element {
                                     }
                                     button {
                                         r#type: "button",
-                                        class: "px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
+                                        class: "px-3 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
                                         title: "Generate password & copy to clipboard",
                                         onclick: move |_| {
                                             #[cfg(target_arch = "wasm32")]
@@ -2541,9 +2538,9 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Role" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Role" }
                                 select {
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                     value: "{new_role}",
                                     onchange: move |e| new_role.set(e.value()),
                                     option { value: "Client", "Client" }
@@ -2554,9 +2551,9 @@ fn AdminClients() -> Element {
                         // Package selector (only for Client role)
                         if new_role() == "Client" {
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Package" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Package" }
                                 select {
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                     onchange: move |e| {
                                         let val = e.value();
                                         new_package.set(val.parse::<i64>().ok());
@@ -2573,30 +2570,30 @@ fn AdminClients() -> Element {
                         // Optional contact details
                         div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Company (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company (optional)" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "Acme Inc.",
                                     value: "{new_company}",
                                     oninput: move |e| new_company.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Phone (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone (optional)" }
                                 input {
                                     r#type: "tel",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "+1 555 000 0000",
                                     value: "{new_phone}",
                                     oninput: move |e| new_phone.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Address (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address (optional)" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "123 Main St, City",
                                     value: "{new_address}",
                                     oninput: move |e| new_address.set(e.value()),
@@ -2606,7 +2603,7 @@ fn AdminClients() -> Element {
                         div { class: "flex justify-end",
                             button {
                                 r#type: "submit",
-                                class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                                class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                 disabled: creating(),
                                 if creating() { "Creating..." } else { "Create Client" }
                             }
@@ -2616,22 +2613,22 @@ fn AdminClients() -> Element {
             }
 
             // Users table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*users.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Company" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Role" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Company" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Role" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for user in list.iter().filter(|u| u.role != Role::Admin) {
                                     AdminClientRow { user: user.clone(), users_resource: users, action_error: action_error }
                                 }
@@ -2725,7 +2722,7 @@ fn AdminClientRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4 text-sm font-medium text-gray-900", "{user.username}" }
             td { class: "px-6 py-4 text-sm text-gray-500", "{user.email}" }
             td { class: "px-6 py-4 text-sm text-gray-500",
@@ -2738,10 +2735,10 @@ fn AdminClientRow(
             td { class: "px-6 py-4",
                 span {
                     class: match user.role {
-                        Role::Admin => "px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800",
-                        Role::Reseller => "px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800",
-                        Role::Client => "px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700",
-                        Role::Developer => "px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700",
+                        Role::Admin => "px-2 py-1 text-xs font-medium rounded-full bg-purple-500/[0.08] text-purple-700",
+                        Role::Reseller => "px-2 py-1 text-xs font-medium rounded-full bg-blue-500/[0.08] text-blue-700",
+                        Role::Client => "px-2 py-1 text-xs font-medium rounded-full bg-black/[0.04] text-gray-600",
+                        Role::Developer => "px-2 py-1 text-xs font-medium rounded-full bg-emerald-500/[0.08] text-emerald-700",
                     },
                     "{user.role}"
                 }
@@ -2770,7 +2767,7 @@ fn AdminClientRow(
                             class: if is_active {
                                 "px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             } else {
-                                "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                "px-3 py-1 text-xs bg-emerald-500/[0.08] hover:bg-green-200 text-emerald-700 rounded-lg font-medium transition-colors disabled:opacity-50"
                             },
                             disabled: loading(),
                             onclick: toggle_status,
@@ -2904,9 +2901,9 @@ fn PackagesPage() -> Element {
         div { class: "p-6 lg:p-8",
             // Header
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Packages" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Packages" }
                 button {
-                    class: "px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors shadow-sm flex items-center gap-2",
+                    class: "px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-900/90 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center gap-2",
                     onclick: move |_| show_create.set(!show_create()),
                     {
                         let icon_name = if show_create() { "x" } else { "plus" };
@@ -2918,7 +2915,7 @@ fn PackagesPage() -> Element {
 
             // Create Package Form (slide-down panel)
             if show_create() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+                div { class: "glass-card rounded-2xl p-6 mb-6",
                     div { class: "flex items-center justify-between mb-4",
                         h3 { class: "text-lg font-semibold text-gray-900", "Create New Package" }
                         button {
@@ -2929,17 +2926,17 @@ fn PackagesPage() -> Element {
                     }
 
                     if let Some(err) = form_error() {
-                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                     }
 
                     form { onsubmit: on_create_submit,
                         // Name + Description
                         div { class: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Package Name" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Package Name" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     placeholder: "e.g. Starter, Business, Enterprise",
                                     value: "{pkg_name}",
                                     oninput: move |e| pkg_name.set(e.value()),
@@ -2947,10 +2944,10 @@ fn PackagesPage() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Description" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Description" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     placeholder: "Optional description",
                                     value: "{pkg_description}",
                                     oninput: move |e| pkg_description.set(e.value()),
@@ -2962,73 +2959,73 @@ fn PackagesPage() -> Element {
                         h4 { class: "text-sm font-semibold text-gray-600 uppercase tracking-wider mb-3", "Resource Limits" }
                         div { class: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max Sites" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max Sites" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_sites}",
                                     oninput: move |e| pkg_max_sites.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max Databases" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max Databases" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_databases}",
                                     oninput: move |e| pkg_max_databases.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max Email Accounts" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max Email Accounts" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_email}",
                                     oninput: move |e| pkg_max_email.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max FTP Accounts" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max FTP Accounts" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_ftp}",
                                     oninput: move |e| pkg_max_ftp.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Disk Limit (MB)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Disk Limit (MB)" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_disk}",
                                     oninput: move |e| pkg_disk.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Bandwidth (MB)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Bandwidth (MB)" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_bandwidth}",
                                     oninput: move |e| pkg_bandwidth.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max Subdomains" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max Subdomains" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_subdomains}",
                                     oninput: move |e| pkg_max_subdomains.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Max Addon Domains" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Max Addon Domains" }
                                 input {
                                     r#type: "number", min: "0",
-                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
+                                    class: "w-full px-4 py-2.5 bg-white/50 border border-gray-200/50 rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent transition-all duration-200 shadow-sm backdrop-blur-sm",
                                     value: "{pkg_max_addons}",
                                     oninput: move |e| pkg_max_addons.set(e.value()),
                                 }
@@ -3041,7 +3038,7 @@ fn PackagesPage() -> Element {
                             label { class: "flex items-center gap-2 cursor-pointer",
                                 input {
                                     r#type: "checkbox",
-                                    class: "w-4 h-4 text-rose-500 rounded focus:ring-rose-500",
+                                    class: "w-4 h-4 text-gray-700 rounded focus:ring-black/[0.15]",
                                     checked: pkg_php(),
                                     onchange: move |e| pkg_php.set(e.checked()),
                                 }
@@ -3050,7 +3047,7 @@ fn PackagesPage() -> Element {
                             label { class: "flex items-center gap-2 cursor-pointer",
                                 input {
                                     r#type: "checkbox",
-                                    class: "w-4 h-4 text-rose-500 rounded focus:ring-rose-500",
+                                    class: "w-4 h-4 text-gray-700 rounded focus:ring-black/[0.15]",
                                     checked: pkg_ssl(),
                                     onchange: move |e| pkg_ssl.set(e.checked()),
                                 }
@@ -3059,7 +3056,7 @@ fn PackagesPage() -> Element {
                             label { class: "flex items-center gap-2 cursor-pointer",
                                 input {
                                     r#type: "checkbox",
-                                    class: "w-4 h-4 text-rose-500 rounded focus:ring-rose-500",
+                                    class: "w-4 h-4 text-gray-700 rounded focus:ring-black/[0.15]",
                                     checked: pkg_shell(),
                                     onchange: move |e| pkg_shell.set(e.checked()),
                                 }
@@ -3068,7 +3065,7 @@ fn PackagesPage() -> Element {
                             label { class: "flex items-center gap-2 cursor-pointer",
                                 input {
                                     r#type: "checkbox",
-                                    class: "w-4 h-4 text-rose-500 rounded focus:ring-rose-500",
+                                    class: "w-4 h-4 text-gray-700 rounded focus:ring-black/[0.15]",
                                     checked: pkg_backup(),
                                     onchange: move |e| pkg_backup.set(e.checked()),
                                 }
@@ -3080,13 +3077,13 @@ fn PackagesPage() -> Element {
                         div { class: "flex justify-end gap-3",
                             button {
                                 r#type: "button",
-                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                                 onclick: move |_| show_create.set(false),
                                 "Cancel"
                             }
                             button {
                                 r#type: "submit",
-                                class: "px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                                class: "px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-900/90 rounded-xl transition-all duration-200 active:scale-[0.98] shadow-soft disabled:opacity-40 disabled:cursor-not-allowed",
                                 disabled: form_loading(),
                                 if form_loading() { "Creating..." } else { "Create Package" }
                             }
@@ -3112,12 +3109,12 @@ fn PackagesPage() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                                 onclick: move |_| confirm_delete.set(None),
                                 "Cancel"
                             }
                             button {
-                                class: "px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200 active:scale-[0.98]",
                                 onclick: on_confirm_delete,
                                 "Delete"
                             }
@@ -3127,24 +3124,24 @@ fn PackagesPage() -> Element {
             }
 
             // Packages table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*packages.read() {
                     Some(Ok(list)) => rsx! {
                         div { class: "overflow-x-auto",
                             table { class: "w-full",
-                                thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Name" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Sites" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "DBs" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Email" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Disk (MB)" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "BW (MB)" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Features" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Sites" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "DBs" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Disk (MB)" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "BW (MB)" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Features" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                     }
                                 }
-                                tbody { class: "divide-y divide-gray-100",
+                                tbody { class: "divide-y divide-black/[0.04]",
                                     for pkg in list.iter() {
                                         PackageRow { pkg: pkg.clone(), packages_resource: packages, confirm_delete: confirm_delete }
                                     }
@@ -3153,7 +3150,7 @@ fn PackagesPage() -> Element {
                         }
                         if list.is_empty() {
                             div { class: "p-12 text-center",
-                                Icon { name: "package", class: "w-12 h-12 text-gray-300 mx-auto mb-4".to_string() }
+                                Icon { name: "package", class: "w-12 h-12 text-gray-400 mx-auto mb-4".to_string() }
                                 p { class: "text-gray-500 font-medium", "No packages defined yet." }
                                 p { class: "text-gray-400 text-sm mt-1", "Create a package to get started." }
                             }
@@ -3186,7 +3183,7 @@ fn PackageRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4",
                 div {
                     span { class: "text-sm font-medium text-gray-900", "{pkg.name}" }
@@ -3208,7 +3205,7 @@ fn PackageRow(
                         span { class: "px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded", "PHP" }
                     }
                     if pkg.ssl_enabled {
-                        span { class: "px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded", "SSL" }
+                        span { class: "px-1.5 py-0.5 text-xs bg-emerald-500/[0.08] text-emerald-700 rounded", "SSL" }
                     }
                     if pkg.shell_access {
                         span { class: "px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded", "Shell" }
@@ -3274,20 +3271,20 @@ fn AdminAllSites() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "All Sites" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "All Sites" }
 
             // Create site form (admin)
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Add Website" }
                 if let Some(err) = create_error() {
-                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                 }
                 form { onsubmit: on_create, class: "flex gap-4 items-end flex-wrap",
                     div { class: "flex-1 min-w-[200px]",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Domain" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Domain" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "example.com",
                             value: "{new_domain}",
                             oninput: move |e| new_domain.set(e.value()),
@@ -3295,9 +3292,9 @@ fn AdminAllSites() -> Element {
                         }
                     }
                     div { class: "w-48",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Site Type" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Site Type" }
                         select {
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                             value: "{new_site_type}",
                             onchange: move |e| new_site_type.set(e.value()),
                             option { value: "PHP", "PHP" }
@@ -3308,31 +3305,31 @@ fn AdminAllSites() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                        class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                         disabled: creating(),
                         if creating() { "Adding..." } else { "Add Site" }
                     }
                 }
             }
 
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*sites.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Owner" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "SSL" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "HTTPS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "HSTS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Owner" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "SSL" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HTTPS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HSTS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for site in list.iter() {
                                     AdminSiteRow { site: site.clone(), sites_resource: sites }
                                 }
@@ -3377,7 +3374,7 @@ fn SiteLogViewer(site_id: i64, col_span: u32) -> Element {
                             class: if log_type() == "access" {
                                 "text-xs px-3 py-1 rounded bg-indigo-600 text-white font-medium"
                             } else {
-                                "text-xs px-3 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                "text-xs px-3 py-1 rounded bg-gray-700 text-gray-400 hover:bg-gray-600"
                             },
                             onclick: move |_| log_type.set("access".to_string()),
                             "Access Log"
@@ -3386,13 +3383,13 @@ fn SiteLogViewer(site_id: i64, col_span: u32) -> Element {
                             class: if log_type() == "error" {
                                 "text-xs px-3 py-1 rounded bg-indigo-600 text-white font-medium"
                             } else {
-                                "text-xs px-3 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                "text-xs px-3 py-1 rounded bg-gray-700 text-gray-400 hover:bg-gray-600"
                             },
                             onclick: move |_| log_type.set("error".to_string()),
                             "Error Log"
                         }
                         button {
-                            class: "text-xs px-3 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 ml-auto",
+                            class: "text-xs px-3 py-1 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 ml-auto",
                             onclick: move |_| log_resource.restart(),
                             "↻ Refresh"
                         }
@@ -3569,10 +3566,10 @@ fn AdminSiteRow(
 
     let status_btn_class = match current_status {
         panel::models::site::SiteStatus::Active => {
-            "text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors disabled:opacity-50"
+            "text-xs px-2 py-1 rounded bg-amber-500/[0.08] text-amber-700 hover:bg-yellow-200 transition-colors disabled:opacity-50"
         }
         _ => {
-            "text-xs px-2 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 transition-colors disabled:opacity-50"
+            "text-xs px-2 py-1 rounded bg-emerald-500/[0.08] text-emerald-700 hover:bg-green-200 transition-colors disabled:opacity-50"
         }
     };
 
@@ -3582,7 +3579,7 @@ fn AdminSiteRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4",
                 div { class: "text-sm font-medium text-gray-900", "{site_domain}" }
                 if let Some(err) = row_error() {
@@ -3605,7 +3602,7 @@ fn AdminSiteRow(
                 if ssl_on {
                     button {
                         class: "text-xs px-2 py-1 rounded transition-colors disabled:opacity-50",
-                        class: if https_on { "bg-green-100 text-green-800 hover:bg-green-200" } else { "bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if https_on { "bg-emerald-500/[0.08] text-emerald-700 hover:bg-green-200" } else { "bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: on_toggle_https,
                         disabled: busy(),
                         if https_on { "Forced" } else { "Off" }
@@ -3618,7 +3615,7 @@ fn AdminSiteRow(
                 if ssl_on && https_on {
                     button {
                         class: "text-xs px-2 py-1 rounded transition-colors disabled:opacity-50",
-                        class: if hsts_on { "bg-purple-100 text-purple-800 hover:bg-purple-200" } else { "bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if hsts_on { "bg-purple-500/[0.08] text-purple-700 hover:bg-purple-200" } else { "bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: on_toggle_hsts,
                         disabled: busy(),
                         title: if hsts_on { "HSTS active — click to disable" } else { "Click to enable HSTS" },
@@ -3641,7 +3638,7 @@ fn AdminSiteRow(
                         class: if show_cert() {
                             "text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| { show_cert.toggle(); show_auth.set(false); },
                         title: "SSL Certificate management",
@@ -3651,7 +3648,7 @@ fn AdminSiteRow(
                         class: if basic_auth_on || show_auth() {
                             "text-xs px-2 py-1 rounded bg-orange-200 text-orange-800 hover:bg-orange-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| { show_auth.toggle(); show_cert.set(false); },
                         title: "HTTP Basic Authentication",
@@ -3661,7 +3658,7 @@ fn AdminSiteRow(
                         class: if show_logs() {
                             "text-xs px-2 py-1 rounded bg-indigo-200 text-indigo-800 hover:bg-indigo-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| show_logs.toggle(),
                         "Logs"
@@ -3675,7 +3672,7 @@ fn AdminSiteRow(
                             "Yes"
                         }
                         button {
-                            class: "text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300",
+                            class: "text-xs px-2 py-1 rounded bg-black/[0.06] text-gray-600 hover:bg-gray-300",
                             onclick: move |_| confirm_delete.set(false),
                             "No"
                         }
@@ -3787,7 +3784,7 @@ fn AdminSiteRow(
                             }
                         }
                         if ssl_on {
-                            p { class: "text-xs text-green-700 font-medium", "✓ SSL is currently enabled for this site" }
+                            p { class: "text-xs text-emerald-700 font-medium", "✓ SSL is currently enabled for this site" }
                         }
                     }
                 }
@@ -3949,7 +3946,7 @@ fn AdminDatabases() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Database Management" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Database Management" }
                 div { class: "flex gap-3",
                     button {
                         class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center gap-2 text-sm",
@@ -3970,19 +3967,19 @@ fn AdminDatabases() -> Element {
             if let Some(msg) = restart_msg() {
                 div {
                     class: if msg.starts_with("Restart failed") {
-                        "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm"
+                        "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm"
                     } else {
-                        "bg-green-50 text-green-700 p-3 rounded-lg mb-4 text-sm"
+                        "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-4 text-sm"
                     },
                     "{msg}"
                 }
             }
             if let Some(err) = pma_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
             // ── MySQL Server Status ──
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2",
                     Icon { name: "server", class: "w-5 h-5 text-blue-500".to_string() }
                     "MySQL Server Status"
@@ -3990,11 +3987,11 @@ fn AdminDatabases() -> Element {
                 match &*status.read() {
                     Some(Ok(s)) => rsx! {
                         div { class: "grid grid-cols-2 md:grid-cols-4 gap-4",
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "Version" }
                                 p { class: "font-semibold text-gray-900 text-sm", "{s.version}" }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "Uptime" }
                                 p { class: "font-semibold text-gray-900 text-sm",
                                     {
@@ -4004,30 +4001,30 @@ fn AdminDatabases() -> Element {
                                     }
                                 }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "Connections" }
                                 p { class: "font-semibold text-gray-900 text-sm",
                                     "{s.threads_connected} / {s.max_connections}"
                                 }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "Total Queries" }
                                 p { class: "font-semibold text-gray-900 text-sm", "{s.questions}" }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "Slow Queries" }
                                 p { class: "font-semibold text-sm",
                                     class: if s.slow_queries > 0 { "text-amber-600" } else { "text-gray-900" },
                                     "{s.slow_queries}"
                                 }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4",
+                            div { class: "bg-black/[0.03] rounded-xl p-4",
                                 p { class: "text-xs text-gray-500 mb-1", "InnoDB Buffer" }
                                 p { class: "font-semibold text-gray-900 text-sm",
                                     "{s.innodb_buffer_pool_size_mb} MB"
                                 }
                             }
-                            div { class: "bg-gray-50 rounded-xl p-4 col-span-2",
+                            div { class: "bg-black/[0.03] rounded-xl p-4 col-span-2",
                                 p { class: "text-xs text-gray-500 mb-1", "Data Directory" }
                                 p { class: "font-semibold text-gray-900 text-sm font-mono truncate",
                                     "{s.data_dir}"
@@ -4045,7 +4042,7 @@ fn AdminDatabases() -> Element {
             }
 
             // ── Performance Recommendations ──
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 div { class: "flex items-center justify-between mb-4",
                     h3 { class: "text-lg font-semibold text-gray-800 flex items-center gap-2",
                         Icon { name: "lightning-bolt", class: "w-5 h-5 text-amber-500".to_string() }
@@ -4064,9 +4061,9 @@ fn AdminDatabases() -> Element {
                                 for rec in recs.iter() {
                                     div {
                                         class: match rec.severity.as_str() {
-                                            "warning" => "flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg",
-                                            "info"    => "flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg",
-                                            _         => "flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg",
+                                            "warning" => "flex items-start gap-3 p-3 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg",
+                                            "info"    => "flex items-start gap-3 p-3 bg-blue-500/[0.08] border border-blue-500/20 rounded-lg",
+                                            _         => "flex items-start gap-3 p-3 bg-emerald-500/[0.08] border border-emerald-500/20 rounded-lg",
                                         },
                                         div { class: "shrink-0 mt-0.5",
                                             span {
@@ -4103,7 +4100,7 @@ fn AdminDatabases() -> Element {
             }
 
             // ── phpMyAdmin info ──
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+            div { class: "glass-card rounded-2xl p-6",
                 div { class: "flex items-start gap-4",
                     div { class: "p-3 bg-blue-50 rounded-xl shrink-0",
                         Icon { name: "database", class: "w-6 h-6 text-blue-500".to_string() }
@@ -4162,7 +4159,7 @@ fn AdminEmail() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Email Send Limits" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Email Send Limits" }
                     p { class: "text-sm text-gray-500 mt-1",
                         "Configure per-domain hourly and daily outbound send limits. "
                         "Limits are enforced by the Postfix policy daemon on port 10031. "
@@ -4172,28 +4169,28 @@ fn AdminEmail() -> Element {
             }
 
             if save_ok() {
-                div { class: "bg-green-50 text-green-700 p-3 rounded-lg mb-4 text-sm",
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-4 text-sm",
                     "Send limits saved successfully."
                 }
             }
             if let Some(err) = save_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*domains.read() {
                     Some(Ok(list)) if !list.is_empty() => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Owner ID" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Hourly Limit" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Daily Limit" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Owner ID" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Hourly Limit" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Daily Limit" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for domain in list.iter() {
                                     {
                                         let dom_id = domain.id;
@@ -4201,7 +4198,7 @@ fn AdminEmail() -> Element {
                                         let hourly_str = domain.send_limit_per_hour.to_string();
                                         let daily_str = domain.send_limit_per_day.to_string();
                                         rsx! {
-                                            tr { class: "hover:bg-gray-50/50 transition-colors",
+                                            tr { class: "hover:bg-black/[0.02] transition-colors",
                                                 td { class: "px-6 py-4 text-sm font-medium text-gray-900", "{domain.domain}" }
                                                 td { class: "px-6 py-4 text-sm text-gray-500", "{domain.owner_id}" }
                                                 td { class: "px-6 py-4 text-sm text-gray-700",
@@ -4242,19 +4239,19 @@ fn AdminEmail() -> Element {
                                                     if is_editing {
                                                         div { class: "flex gap-2",
                                                             button {
-                                                                class: "px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-lg transition-colors",
+                                                                class: "px-3 py-1 bg-gray-900 hover:bg-gray-900/90 text-white text-xs rounded-lg transition-colors",
                                                                 onclick: save_limits,
                                                                 "Save"
                                                             }
                                                             button {
-                                                                class: "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition-colors",
+                                                                class: "px-3 py-1 bg-gray-100 hover:bg-black/[0.06] text-gray-600 text-xs rounded-lg transition-colors",
                                                                 onclick: move |_| editing.set(None),
                                                                 "Cancel"
                                                             }
                                                         }
                                                     } else {
                                                         button {
-                                                            class: "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition-colors",
+                                                            class: "px-3 py-1 bg-gray-100 hover:bg-black/[0.06] text-gray-600 text-xs rounded-lg transition-colors",
                                                             onclick: move |_| {
                                                                 edit_hourly.set(hourly_str.clone());
                                                                 edit_daily.set(daily_str.clone());
@@ -4309,22 +4306,22 @@ fn AdminAuditLog() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Audit Log" }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Audit Log" }
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*logs.read() {
                     Some(Ok(entries)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
-                                tr { class: "hover:bg-gray-50/50 transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Action" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Target" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Time" }
+                            thead { class: "border-b border-black/[0.05]",
+                                tr { class: "hover:bg-black/[0.02] transition-colors",
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Action" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Target" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Time" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for entry in entries.iter() {
-                                    tr { class: "hover:bg-gray-50/50 transition-colors",
+                                    tr { class: "hover:bg-black/[0.02] transition-colors",
                                         td { class: "px-6 py-4 text-sm text-gray-900", "{entry.action}" }
                                         td { class: "px-6 py-4 text-sm text-gray-500",
                                             {entry.target_name.as_deref().unwrap_or("-")}
@@ -4353,8 +4350,8 @@ fn AdminAuditLog() -> Element {
 fn AdminSettings() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Settings" }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Settings" }
+            div { class: "glass-card rounded-2xl p-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Panel Configuration" }
                 p { class: "text-gray-500", "Server settings are configured via panel.toml and environment variables." }
                 p { class: "text-gray-500 mt-2", "Key settings: PANEL_SECRET_KEY, DATABASE_URL, server port." }
@@ -4371,14 +4368,14 @@ fn ResellerDashboard() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-8",
-                h2 { class: "text-2xl font-bold text-gray-900",
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900",
                     if let Some(ref user) = auth() {
                         "Welcome back, {user.username}"
                     } else {
                         "Reseller Dashboard"
                     }
                 }
-                p { class: "text-gray-500 mt-1 text-sm", "Manage your hosting clients and packages." }
+                p { class: "text-[13px] text-gray-400 mt-1", "Manage your hosting clients and packages." }
             }
             div { class: "grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8",
                 match &*clients.read() {
@@ -4389,7 +4386,7 @@ fn ResellerDashboard() -> Element {
                     },
                     _ => rsx! {
                         for _ in 0..3 {
-                            div { class: "bg-white rounded-2xl border border-gray-100 p-6 animate-pulse",
+                            div { class: "glass-card rounded-2xl p-6 animate-pulse",
                                 div { class: "h-3 bg-gray-200 rounded w-20 mb-4" }
                                 div { class: "h-8 bg-gray-100 rounded w-12" }
                             }
@@ -4469,16 +4466,16 @@ fn ResellerClients() -> Element {
         div { class: "p-6 lg:p-8",
             // Header with Add button
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "My Clients" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "My Clients" }
                 button {
-                    class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2",
+                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-lg transition-colors flex items-center gap-2",
                     onclick: move |_| show_form.set(!show_form()),
                     if show_form() { "✕ Cancel" } else { "+ Add Client" }
                 }
             }
 
             if let Some(err) = action_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
             // Stats cards
@@ -4492,18 +4489,18 @@ fn ResellerClients() -> Element {
 
             // Create form
             if show_form() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+                div { class: "glass-card rounded-2xl p-6 mb-6",
                     h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Add New Client" }
                     if let Some(err) = create_error() {
-                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                     }
                     form { onsubmit: on_create, class: "space-y-4",
                         div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Username" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Username" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "johndoe",
                                     value: "{new_username}",
                                     oninput: move |e| new_username.set(e.value()),
@@ -4511,10 +4508,10 @@ fn ResellerClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Email" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Email" }
                                 input {
                                     r#type: "email",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "john@example.com",
                                     value: "{new_email}",
                                     oninput: move |e| new_email.set(e.value()),
@@ -4522,11 +4519,11 @@ fn ResellerClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Password" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
                                 div { class: "flex gap-2",
                                     input {
                                         r#type: "text",
-                                        class: "flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono",
+                                        class: "flex-1 px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent font-mono",
                                         placeholder: "••••••••",
                                         value: "{new_password}",
                                         oninput: move |e| new_password.set(e.value()),
@@ -4534,7 +4531,7 @@ fn ResellerClients() -> Element {
                                     }
                                     button {
                                         r#type: "button",
-                                        class: "px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
+                                        class: "px-3 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors text-sm whitespace-nowrap flex items-center gap-1.5",
                                         title: "Generate password & copy to clipboard",
                                         onclick: move |_| {
                                             #[cfg(target_arch = "wasm32")]
@@ -4576,9 +4573,9 @@ fn ResellerClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Package" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Package" }
                                 select {
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                     onchange: move |e| {
                                         let val = e.value();
                                         new_package.set(val.parse::<i64>().ok());
@@ -4595,30 +4592,30 @@ fn ResellerClients() -> Element {
                         // Optional contact details
                         div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Company (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company (optional)" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "Acme Inc.",
                                     value: "{new_company}",
                                     oninput: move |e| new_company.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Phone (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone (optional)" }
                                 input {
                                     r#type: "tel",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "+1 555 000 0000",
                                     value: "{new_phone}",
                                     oninput: move |e| new_phone.set(e.value()),
                                 }
                             }
                             div {
-                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Address (optional)" }
+                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address (optional)" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "123 Main St, City",
                                     value: "{new_address}",
                                     oninput: move |e| new_address.set(e.value()),
@@ -4628,7 +4625,7 @@ fn ResellerClients() -> Element {
                         div { class: "flex justify-end",
                             button {
                                 r#type: "submit",
-                                class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                                class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                 disabled: creating(),
                                 if creating() { "Creating..." } else { "Create Client" }
                             }
@@ -4638,20 +4635,20 @@ fn ResellerClients() -> Element {
             }
 
             // Clients table
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*clients.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for user in list.iter() {
                                     ResellerClientRow { user: user.clone(), clients_resource: clients, action_error: action_error }
                                 }
@@ -4715,7 +4712,7 @@ fn ResellerClientRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4 text-sm font-medium text-gray-900", "{user.username}" }
             td { class: "px-6 py-4 text-sm text-gray-500", "{user.email}" }
             td { class: "px-6 py-4 text-sm text-gray-500",
@@ -4749,7 +4746,7 @@ fn ResellerClientRow(
                             class: if is_active {
                                 "px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             } else {
-                                "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                "px-3 py-1 text-xs bg-emerald-500/[0.08] hover:bg-green-200 text-emerald-700 rounded-lg font-medium transition-colors disabled:opacity-50"
                             },
                             disabled: loading(),
                             onclick: toggle_status,
@@ -4791,7 +4788,7 @@ fn ResellerBranding() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Branding" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Branding" }
             match &*branding.read() {
                 Some(Ok(existing)) => {
                     // Initialize form fields from loaded data (once)
@@ -4810,32 +4807,32 @@ fn ResellerBranding() -> Element {
                     rsx! {
                         div { class: "space-y-6",
                             if let Some(ref _err) = save_error() {
-                                div { class: "bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm",
+                                div { class: "bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-xl p-4 text-sm",
                                     "{_err}"
                                 }
                             }
                             if save_success() {
-                                div { class: "bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm",
+                                div { class: "bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-700 rounded-xl p-4 text-sm",
                                     "Branding saved successfully."
                                 }
                             }
-                            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                            div { class: "glass-card rounded-2xl p-6",
                                 h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Panel Identity" }
                                 div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Panel Name" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Panel Name" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "My Hosting",
                                             value: "{panel_name}",
                                             oninput: move |e| panel_name.set(e.value()),
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Theme" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Theme" }
                                         select {
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                             value: "{theme_preset}",
                                             onchange: move |e| theme_preset.set(e.value()),
                                             option { value: "Default", "Default" }
@@ -4844,7 +4841,7 @@ fn ResellerBranding() -> Element {
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Accent Color" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Accent Color" }
                                         div { class: "flex gap-2 items-center",
                                             input {
                                                 r#type: "color",
@@ -4854,7 +4851,7 @@ fn ResellerBranding() -> Element {
                                             }
                                             input {
                                                 r#type: "text",
-                                                class: "flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm",
+                                                class: "flex-1 px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent font-mono text-sm",
                                                 placeholder: "#F43F5E",
                                                 value: "{accent_color}",
                                                 oninput: move |e| accent_color.set(e.value()),
@@ -4862,10 +4859,10 @@ fn ResellerBranding() -> Element {
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Footer Text" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Footer Text" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "© 2025 My Hosting. All rights reserved.",
                                             value: "{footer_text}",
                                             oninput: move |e| footer_text.set(e.value()),
@@ -4873,34 +4870,34 @@ fn ResellerBranding() -> Element {
                                     }
                                 }
                             }
-                            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                            div { class: "glass-card rounded-2xl p-6",
                                 h3 { class: "text-lg font-semibold text-gray-700 mb-4", "White-Label Domain" }
                                 div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Custom Domain" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Custom Domain" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "panel.mybrand.com",
                                             value: "{custom_domain}",
                                             oninput: move |e| custom_domain.set(e.value()),
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Nameserver 1" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Nameserver 1" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "ns1.mybrand.com",
                                             value: "{custom_ns1}",
                                             oninput: move |e| custom_ns1.set(e.value()),
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Nameserver 2" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Nameserver 2" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "ns2.mybrand.com",
                                             value: "{custom_ns2}",
                                             oninput: move |e| custom_ns2.set(e.value()),
@@ -4910,7 +4907,7 @@ fn ResellerBranding() -> Element {
                             }
                             div { class: "flex justify-end",
                                 button {
-                                    class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50",
+                                    class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50",
                                     disabled: saving(),
                                     onclick: move |_| {
                                         saving.set(true);
@@ -4948,7 +4945,7 @@ fn ResellerBranding() -> Element {
                     }
                 },
                 Some(Err(e)) => rsx! {
-                    div { class: "bg-red-50 text-red-700 rounded-xl p-4", "Error loading branding: {e}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 rounded-xl p-4", "Error loading branding: {e}" }
                 },
                 None => rsx! {
                     div { class: "text-gray-500 p-6", "Loading..." }
@@ -4967,8 +4964,8 @@ fn ResellerSupportTickets() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Support Tickets" }
-                    p { class: "text-gray-500 text-sm mt-1", "All client tickets for your accounts." }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Support Tickets" }
+                    p { class: "text-[13px] text-gray-400 mt-1", "All client tickets for your accounts." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
@@ -4977,25 +4974,25 @@ fn ResellerSupportTickets() -> Element {
                     Icon { name: "refresh-cw", class: "w-5 h-5".to_string() }
                 }
             }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*tickets.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Updated" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for ticket in list.iter() {
                                     tr {
                                         class: if selected_id() == Some(ticket.id) {
                                             "bg-blue-50/30 cursor-pointer transition-colors"
                                         } else {
-                                            "hover:bg-gray-50/50 cursor-pointer transition-colors"
+                                            "hover:bg-black/[0.02] cursor-pointer transition-colors"
                                         },
                                         onclick: {
                                             let tid = ticket.id;
@@ -5064,12 +5061,12 @@ fn ResellerSettings() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Settings" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Settings" }
             div { class: "space-y-6",
                 match &*user.read() {
                     Some(Ok(u)) => rsx! {
                         // Account Info card
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Account Information" }
                             div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                                 div {
@@ -5090,7 +5087,7 @@ fn ResellerSettings() -> Element {
                         }
 
                         // Security card: password + 2FA
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Security" }
 
                             // Password change
@@ -5098,47 +5095,47 @@ fn ResellerSettings() -> Element {
                                 span { class: "text-sm text-gray-700", "Password" }
                             }
                             if let Some(ref err) = pw_error() {
-                                div { class: "bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-4 text-sm",
+                                div { class: "bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-xl p-3 mb-4 text-sm",
                                     "{clean_err(err)}"
                                 }
                             }
                             if pw_success() {
-                                div { class: "bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 mb-4 text-sm",
+                                div { class: "bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-700 rounded-xl p-3 mb-4 text-sm",
                                     "Password changed successfully."
                                 }
                             }
                             div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-4",
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Current Password" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Current Password" }
                                     input {
                                         r#type: "password",
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         value: "{old_pw}",
                                         oninput: move |e| old_pw.set(e.value()),
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "New Password" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "New Password" }
                                     input {
                                         r#type: "password",
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         placeholder: "12+ characters",
                                         value: "{new_pw}",
                                         oninput: move |e| new_pw.set(e.value()),
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Confirm Password" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Confirm Password" }
                                     input {
                                         r#type: "password",
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         value: "{confirm_pw}",
                                         oninput: move |e| confirm_pw.set(e.value()),
                                     }
                                 }
                             }
                             button {
-                                class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 text-sm",
+                                class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50 text-sm",
                                 disabled: pw_saving(),
                                 onclick: move |_| {
                                     let old = old_pw();
@@ -5172,7 +5169,7 @@ fn ResellerSettings() -> Element {
                             }
 
                             // 2FA section
-                            div { class: "border-t border-gray-100 mt-6 pt-6",
+                            div { class: "border-t border-black/[0.05] mt-6 pt-6",
                                 div { class: "flex items-center justify-between",
                                     div {
                                         h4 { class: "text-sm font-semibold text-gray-700", "Two-Factor Authentication" }
@@ -5225,7 +5222,7 @@ fn ResellerSettings() -> Element {
                                 if show_2fa_form() {
                                     div { class: "mt-4 space-y-4",
                                         if let Some(ref err) = tfa_error() {
-                                            div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-sm", "{clean_err(err)}" }
+                                            div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(err)}" }
                                         }
                                         p { class: "text-sm text-gray-600",
                                             "Scan the QR code in your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm."
@@ -5240,12 +5237,12 @@ fn ResellerSettings() -> Element {
                                         }
                                         div { class: "flex items-end gap-4",
                                             div {
-                                                label { class: "block text-sm font-medium text-gray-700 mb-1", "Verification Code" }
+                                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Verification Code" }
                                                 input {
                                                     r#type: "text",
                                                     inputmode: "numeric",
                                                     maxlength: "6",
-                                                    class: "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-40 font-mono text-center text-xl tracking-widest",
+                                                    class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-blue-500 w-40 font-mono text-center text-xl tracking-widest",
                                                     placeholder: "000000",
                                                     value: "{tfa_code}",
                                                     oninput: move |e| tfa_code.set(e.value()),
@@ -5279,7 +5276,7 @@ fn ResellerSettings() -> Element {
 
                                 // 2FA success message
                                 if tfa_success() {
-                                    div { class: "mt-4 bg-green-50 text-green-700 p-3 rounded-lg text-sm",
+                                    div { class: "mt-4 bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm",
                                         "Two-factor authentication has been enabled."
                                     }
                                 }
@@ -5288,13 +5285,13 @@ fn ResellerSettings() -> Element {
                                 if show_disable_2fa() {
                                     div { class: "mt-4 space-y-3",
                                         if let Some(ref err) = disable_2fa_error() {
-                                            div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-sm", "{clean_err(err)}" }
+                                            div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(err)}" }
                                         }
                                         p { class: "text-sm text-gray-600", "Enter your password to disable two-factor authentication." }
                                         div { class: "flex items-end gap-4",
                                             input {
                                                 r#type: "password",
-                                                class: "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 w-64",
+                                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-amber-500 w-64",
                                                 placeholder: "Your current password",
                                                 value: "{disable_2fa_pw}",
                                                 oninput: move |e| disable_2fa_pw.set(e.value()),
@@ -5342,14 +5339,14 @@ fn ClientDashboard() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-8",
-                h2 { class: "text-2xl font-bold text-gray-900",
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900",
                     if let Some(ref user) = auth() {
                         "Welcome back, {user.username}"
                     } else {
                         "Dashboard"
                     }
                 }
-                p { class: "text-gray-500 mt-1 text-sm", "Manage your websites, databases, and hosting services." }
+                p { class: "text-[13px] text-gray-400 mt-1", "Manage your websites, databases, and hosting services." }
             }
             match &*dashboard.read() {
                 Some(Ok(d)) => rsx! {
@@ -5364,7 +5361,7 @@ fn ClientDashboard() -> Element {
                 None => rsx! {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5",
                         for _ in 0..4 {
-                            div { class: "bg-white rounded-2xl border border-gray-100 p-6 animate-pulse",
+                            div { class: "glass-card rounded-2xl p-6 animate-pulse",
                                 div { class: "h-3 bg-gray-200 rounded w-20 mb-4" }
                                 div { class: "h-8 bg-gray-100 rounded w-12" }
                             }
@@ -5409,20 +5406,20 @@ fn ClientSites() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "My Websites" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "My Websites" }
 
             // Create site form
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Add Website" }
                 if let Some(err) = create_error() {
-                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                 }
                 form { onsubmit: on_create, class: "flex gap-4 items-end flex-wrap",
                     div { class: "flex-1 min-w-[200px]",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Domain" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Domain" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "example.com",
                             value: "{new_domain}",
                             oninput: move |e| new_domain.set(e.value()),
@@ -5430,9 +5427,9 @@ fn ClientSites() -> Element {
                         }
                     }
                     div { class: "w-48",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Site Type" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Site Type" }
                         select {
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                             value: "{new_site_type}",
                             onchange: move |e| new_site_type.set(e.value()),
                             option { value: "PHP", "PHP" }
@@ -5443,7 +5440,7 @@ fn ClientSites() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                        class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                         disabled: creating(),
                         if creating() { "Adding..." } else { "Add Site" }
                     }
@@ -5451,23 +5448,23 @@ fn ClientSites() -> Element {
             }
 
             // Sites list
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*sites.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "SSL" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "HTTPS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "HSTS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "SSL" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HTTPS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HSTS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for site in list.iter() {
                                     SiteRow { site: site.clone(), sites_resource: sites }
                                 }
@@ -5657,10 +5654,10 @@ fn SiteRow(
 
     let status_btn_class = match current_status {
         panel::models::site::SiteStatus::Active => {
-            "text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors disabled:opacity-50"
+            "text-xs px-2 py-1 rounded bg-amber-500/[0.08] text-amber-700 hover:bg-yellow-200 transition-colors disabled:opacity-50"
         }
         _ => {
-            "text-xs px-2 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 transition-colors disabled:opacity-50"
+            "text-xs px-2 py-1 rounded bg-emerald-500/[0.08] text-emerald-700 hover:bg-green-200 transition-colors disabled:opacity-50"
         }
     };
 
@@ -5670,7 +5667,7 @@ fn SiteRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4",
                 div { class: "text-sm font-medium text-gray-900", "{site_domain}" }
                 if let Some(err) = row_error() {
@@ -5692,7 +5689,7 @@ fn SiteRow(
                 if ssl_on {
                     button {
                         class: "text-xs px-2 py-1 rounded transition-colors disabled:opacity-50",
-                        class: if https_on { "bg-green-100 text-green-800 hover:bg-green-200" } else { "bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if https_on { "bg-emerald-500/[0.08] text-emerald-700 hover:bg-green-200" } else { "bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: on_toggle_https,
                         disabled: busy(),
                         if https_on { "Forced" } else { "Off" }
@@ -5705,7 +5702,7 @@ fn SiteRow(
                 if ssl_on && https_on {
                     button {
                         class: "text-xs px-2 py-1 rounded transition-colors disabled:opacity-50",
-                        class: if hsts_on { "bg-purple-100 text-purple-800 hover:bg-purple-200" } else { "bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if hsts_on { "bg-purple-500/[0.08] text-purple-700 hover:bg-purple-200" } else { "bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: on_toggle_hsts,
                         disabled: busy(),
                         title: if hsts_on { "HSTS active — click to disable" } else { "Click to enable HSTS" },
@@ -5748,7 +5745,7 @@ fn SiteRow(
                         class: if show_logs() {
                             "text-xs px-2 py-1 rounded bg-indigo-200 text-indigo-800 hover:bg-indigo-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| show_logs.toggle(),
                         "Logs"
@@ -5757,7 +5754,7 @@ fn SiteRow(
                         class: if show_cert() {
                             "text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| { show_cert.toggle(); show_auth.set(false); },
                         title: "SSL Certificate management",
@@ -5767,7 +5764,7 @@ fn SiteRow(
                         class: if basic_auth_on || show_auth() {
                             "text-xs px-2 py-1 rounded bg-orange-200 text-orange-800 hover:bg-orange-300"
                         } else {
-                            "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                         },
                         onclick: move |_| { show_auth.toggle(); show_cert.set(false); },
                         title: "HTTP Basic Authentication",
@@ -5782,7 +5779,7 @@ fn SiteRow(
                             "Yes"
                         }
                         button {
-                            class: "text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300",
+                            class: "text-xs px-2 py-1 rounded bg-black/[0.06] text-gray-600 hover:bg-gray-300",
                             onclick: move |_| confirm_delete.set(false),
                             "No"
                         }
@@ -5892,7 +5889,7 @@ fn SiteRow(
                             }
                         }
                         if ssl_on {
-                            p { class: "text-xs text-green-700 font-medium", "✓ SSL is currently enabled for this site" }
+                            p { class: "text-xs text-emerald-700 font-medium", "✓ SSL is currently enabled for this site" }
                         }
                     }
                 }
@@ -6102,7 +6099,7 @@ fn ClientDatabases() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Databases" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Databases" }
                 button {
                     class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 text-sm",
                     onclick: open_phpmyadmin_all,
@@ -6112,20 +6109,20 @@ fn ClientDatabases() -> Element {
             }
 
             if let Some(err) = pma_error() {
-                div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
             }
 
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Create Database" }
                 if let Some(err) = create_error() {
-                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                 }
                 form { onsubmit: on_create, class: "flex gap-4 items-end",
                     div { class: "flex-1",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Database Name" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Database Name" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "my_database",
                             value: "{new_name}",
                             oninput: move |e| {
@@ -6143,25 +6140,25 @@ fn ClientDatabases() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors",
+                        class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-lg transition-colors",
                         "Create"
                     }
                 }
             }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*databases.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
-                                tr { class: "hover:bg-gray-50/50 transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Name" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Users" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                            thead { class: "border-b border-black/[0.05]",
+                                tr { class: "hover:bg-black/[0.02] transition-colors",
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Users" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for db in list.iter() {
                                     DatabaseRow { db: db.clone(), databases_resource: databases }
                                 }
@@ -6302,7 +6299,7 @@ fn DatabaseRow(
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-6 py-4 text-sm font-medium text-gray-900", "{db.name}" }
             td { class: "px-6 py-4 text-sm text-gray-500", "{db.database_type}" }
             td { class: "px-6 py-4", StatusBadge { status: db.status.to_string() } }
@@ -6318,9 +6315,9 @@ fn DatabaseRow(
                     }
                     button {
                         class: if show_manage() {
-                            "px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded transition-colors"
+                            "px-3 py-1 bg-black/[0.06] text-gray-600 text-xs rounded transition-colors"
                         } else {
-                            "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded transition-colors"
+                            "px-3 py-1 bg-gray-100 hover:bg-black/[0.06] text-gray-600 text-xs rounded transition-colors"
                         },
                         onclick: move |_| show_manage.set(!show_manage()),
                         if show_manage() { "Hide Users" } else { "Manage Users" }
@@ -6343,7 +6340,7 @@ fn DatabaseRow(
         }
         // Expandable user management section
         if show_manage() {
-            tr { class: "bg-gray-50/70 border-b border-gray-100",
+            tr { class: "bg-gray-50/70 border-b border-black/[0.05]",
                 td { colspan: "5", class: "px-6 pb-5 pt-3",
                     div { class: "max-w-3xl space-y-4",
                         h4 { class: "text-sm font-semibold text-gray-700", "Database Users" }
@@ -6360,16 +6357,16 @@ fn DatabaseRow(
                                     }
                                 } else {
                                     rsx! {
-                                        div { class: "border border-gray-200 rounded-lg overflow-hidden",
+                                        div { class: "border border-black/[0.08] rounded-xl overflow-hidden",
                                             table { class: "w-full text-sm",
                                                 thead { class: "bg-gray-100 border-b border-gray-200",
                                                     tr {
-                                                        th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Username" }
-                                                        th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Privileges" }
-                                                        th { class: "px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
+                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Privileges" }
+                                                        th { class: "px-4 py-2 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                                     }
                                                 }
-                                                tbody { class: "divide-y divide-gray-100",
+                                                tbody { class: "divide-y divide-black/[0.04]",
                                                     for user in visible {
                                                         DbUserRow {
                                                             user: user.clone(),
@@ -6391,17 +6388,17 @@ fn DatabaseRow(
                         }
 
                         // Add user form
-                        div { class: "border border-gray-200 rounded-lg p-4 bg-white",
+                        div { class: "border border-black/[0.08] rounded-xl p-4 bg-white",
                             h5 { class: "text-sm font-semibold text-gray-700 mb-3", "Add Database User" }
                             if let Some(err) = add_error() {
-                                div { class: "bg-red-50 text-red-700 p-2 rounded text-xs mb-3", "{err}" }
+                                div { class: "bg-red-500/[0.08] text-red-600 p-2 rounded text-xs mb-3", "{err}" }
                             }
                             form { onsubmit: add_user, class: "flex flex-wrap gap-3 items-end",
                                 div {
                                     label { class: "block text-xs font-medium text-gray-600 mb-1", "Username" }
                                     input {
                                         r#type: "text",
-                                        class: "px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         placeholder: "app_user",
                                         value: "{new_username}",
                                         oninput: move |e| new_username.set(e.value()),
@@ -6413,7 +6410,7 @@ fn DatabaseRow(
                                     label { class: "block text-xs font-medium text-gray-600 mb-1", "Password" }
                                     input {
                                         r#type: "password",
-                                        class: "px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         placeholder: "Min 12 chars",
                                         value: "{new_password}",
                                         oninput: move |e| new_password.set(e.value()),
@@ -6424,7 +6421,7 @@ fn DatabaseRow(
                                 button {
                                     r#type: "submit",
                                     disabled: adding(),
-                                    class: "px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded transition-colors disabled:opacity-50",
+                                    class: "px-4 py-1.5 bg-gray-900 hover:bg-gray-900/90 text-white text-sm font-medium rounded transition-colors disabled:opacity-50",
                                     if adding() { "Adding…" } else { "Add User" }
                                 }
                             }
@@ -6466,7 +6463,7 @@ fn DatabaseRow(
                         "This will permanently delete the database and all its data. This action cannot be undone."
                     }
                     // Download section
-                    div { class: "bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5",
+                    div { class: "bg-amber-500/[0.08] border border-amber-500/20 rounded-xl p-4 mb-5",
                         p { class: "text-sm font-medium text-amber-800 mb-3",
                             "💾 Download a backup before deleting (optional)"
                         }
@@ -6475,7 +6472,7 @@ fn DatabaseRow(
                         }
                         div { class: "flex gap-2",
                             button {
-                                class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2",
+                                class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40 flex items-center gap-2",
                                 disabled: downloading_dump(),
                                 onclick: download_db,
                                 if downloading_dump() {
@@ -6489,14 +6486,14 @@ fn DatabaseRow(
                     }
                     // Confirm input
                     div { class: "mb-5",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
                             "Type "
                             span { class: "font-mono font-bold text-red-600", "DELETE" }
                             " to confirm"
                         }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
                             placeholder: "DELETE",
                             value: "{delete_confirm_input}",
                             oninput: move |e| delete_confirm_input.set(e.value()),
@@ -6507,7 +6504,7 @@ fn DatabaseRow(
                     // Action buttons
                     div { class: "flex justify-end gap-3",
                         button {
-                            class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                            class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                             disabled: deleting_db(),
                             onclick: move |_| {
                                 show_delete_confirm.set(false);
@@ -6572,7 +6569,7 @@ fn DbUserRow(user: panel::models::database::DatabaseUser, on_change: EventHandle
                 if let Some(priv_str) = &user.privileges {
                     span { "{priv_str}" }
                 } else {
-                    span { class: "text-gray-300", "—" }
+                    span { class: "text-gray-400", "—" }
                 }
             }
             td { class: "px-4 py-2",
@@ -6656,21 +6653,21 @@ fn ClientDns() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "DNS Management" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "DNS Management" }
 
             // Create zone form
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+            div { class: "glass-card rounded-2xl p-6 mb-6",
                 h3 { class: "text-lg font-semibold text-gray-800 mb-4", "Add DNS Zone" }
                 p { class: "text-sm text-gray-500 mb-4", "Zones are managed via Cloudflare. Adding a zone will create it in Cloudflare and assign nameservers." }
                 if let Some(err) = create_error() {
-                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-4 text-sm", "{err}" }
                 }
                 form { onsubmit: on_create_zone, class: "flex gap-4 items-end",
                     div { class: "flex-1",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Domain" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Domain" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "example.com",
                             value: "{new_domain}",
                             oninput: move |e| new_domain.set(e.value()),
@@ -6679,7 +6676,7 @@ fn ClientDns() -> Element {
                     }
                     button {
                         r#type: "submit",
-                        class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                        class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                         disabled: creating(),
                         if creating() { "Creating..." } else { "Add Zone" }
                     }
@@ -6690,7 +6687,7 @@ fn ClientDns() -> Element {
             match &*zones.read() {
                 Some(Ok(list)) => rsx! {
                     if list.is_empty() {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center",
+                        div { class: "glass-card rounded-2xl p-6 text-center",
                             p { class: "text-gray-500", "No DNS zones configured. Add one above!" }
                         }
                     }
@@ -6699,12 +6696,12 @@ fn ClientDns() -> Element {
                     }
                 },
                 Some(Err(e)) => rsx! {
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                    div { class: "glass-card rounded-2xl p-6",
                         p { class: "text-red-600", "Error: {e}" }
                     }
                 },
                 None => rsx! {
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                    div { class: "glass-card rounded-2xl p-6",
                         p { class: "text-gray-500", "Loading..." }
                     }
                 },
@@ -6746,15 +6743,15 @@ fn DnsZoneCard(
     };
 
     let sync_color = match zone.sync_status.as_deref() {
-        Some("Synced") => "bg-green-100 text-green-700",
+        Some("Synced") => "bg-emerald-500/[0.08] text-emerald-700",
         Some("Pending") => "bg-yellow-100 text-yellow-700",
         Some("Error") => "bg-red-100 text-red-700",
-        _ => "bg-gray-100 text-gray-700",
+        _ => "bg-black/[0.04] text-gray-600",
     };
     let sync_label = zone.sync_status.as_deref().unwrap_or("Unknown");
 
     rsx! {
-        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden",
+        div { class: "glass-card rounded-2xl mb-4 overflow-hidden",
             // Zone header
             div { class: "p-6",
                 div { class: "flex items-center justify-between",
@@ -6769,7 +6766,7 @@ fn DnsZoneCard(
                     }
                     div { class: "flex items-center gap-2",
                         {
-                            let expand_cls = if expanded() { "bg-gray-200 text-gray-700" } else { "bg-gray-100 hover:bg-gray-200 text-gray-600" };
+                            let expand_cls = if expanded() { "bg-black/[0.06] text-gray-600" } else { "bg-gray-100 hover:bg-gray-200 text-gray-600" };
                             rsx! {
                                 button {
                                     class: "px-4 py-2 text-sm font-medium rounded-lg transition-colors {expand_cls}",
@@ -6870,7 +6867,7 @@ fn DnsRecordPanel(
                 div { class: "flex items-center justify-between mb-3",
                     h4 { class: "text-sm font-semibold text-gray-700 uppercase tracking-wide", "DNS Records" }
                     button {
-                        class: "px-3 py-1.5 text-sm font-medium rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-colors",
+                        class: "px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-900 hover:bg-gray-900/90 text-white transition-colors",
                         onclick: move |_| show_form.set(!show_form()),
                         if show_form() { "Cancel" } else { "+ Add Record" }
                     }
@@ -6879,14 +6876,14 @@ fn DnsRecordPanel(
                 if show_form() {
                     div { class: "bg-white rounded-xl p-4 border border-gray-200 mb-4",
                         if let Some(err) = add_error() {
-                            div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-3 text-sm", "{err}" }
+                            div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-3 text-sm", "{err}" }
                         }
                         form { onsubmit: on_add_record,
                             div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4",
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Type" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Type" }
                                     select {
-                                        class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                        class: "w-full px-3 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                         value: "{rec_type}",
                                         onchange: move |e| rec_type.set(e.value()),
                                         option { value: "A", "A" }
@@ -6900,10 +6897,10 @@ fn DnsRecordPanel(
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Name" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Name" }
                                     input {
                                         r#type: "text",
-                                        class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                        class: "w-full px-3 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                         placeholder: "@ or subdomain",
                                         value: "{rec_name}",
                                         oninput: move |e| rec_name.set(e.value()),
@@ -6911,13 +6908,13 @@ fn DnsRecordPanel(
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Value" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Value" }
                                     {
                                         let ph = match rec_type().as_str() { "A" => "192.168.1.1", "AAAA" => "2001:db8::1", "CNAME" => "target.example.com", "MX" => "mail.example.com", "TXT" => "v=spf1 ...", _ => "value" };
                                         rsx! {
                                             input {
                                                 r#type: "text",
-                                                class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                                class: "w-full px-3 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                                 placeholder: "{ph}",
                                                 value: "{rec_value}",
                                                 oninput: move |e| rec_value.set(e.value()),
@@ -6930,10 +6927,10 @@ fn DnsRecordPanel(
                             div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-4",
                                 if rec_type() == "MX" || rec_type() == "SRV" {
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Priority" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Priority" }
                                         input {
                                             r#type: "number",
-                                            class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-3 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             value: "{rec_priority}",
                                             oninput: move |e| rec_priority.set(e.value()),
                                             min: "0",
@@ -6942,9 +6939,9 @@ fn DnsRecordPanel(
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "TTL (seconds)" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "TTL (seconds)" }
                                     select {
-                                        class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                        class: "w-full px-3 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                         value: "{rec_ttl}",
                                         onchange: move |e| rec_ttl.set(e.value()),
                                         option { value: "1", "Auto" }
@@ -6958,7 +6955,7 @@ fn DnsRecordPanel(
                             }
                             button {
                                 r#type: "submit",
-                                class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50",
+                                class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                 disabled: adding(),
                                 if adding() { "Adding..." } else { "Add Record" }
                             }
@@ -6978,15 +6975,15 @@ fn DnsRecordPanel(
                                 table { class: "w-full",
                                     thead {
                                         tr { class: "border-b border-gray-200",
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Type" }
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Name" }
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Value" }
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Priority" }
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "TTL" }
-                                            th { class: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Value" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "TTL" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                         }
                                     }
-                                    tbody { class: "divide-y divide-gray-100",
+                                    tbody { class: "divide-y divide-black/[0.04]",
                                         for record in list.iter() {
                                             DnsRecordRow {
                                                 record: record.clone(),
@@ -7044,14 +7041,14 @@ fn DnsRecordRow(
         panel::models::dns::RecordType::Aaaa => "bg-indigo-100 text-indigo-700",
         panel::models::dns::RecordType::Cname => "bg-purple-100 text-purple-700",
         panel::models::dns::RecordType::Mx => "bg-amber-100 text-amber-700",
-        panel::models::dns::RecordType::Txt => "bg-green-100 text-green-700",
+        panel::models::dns::RecordType::Txt => "bg-emerald-500/[0.08] text-emerald-700",
         panel::models::dns::RecordType::Srv => "bg-pink-100 text-pink-700",
         panel::models::dns::RecordType::Caa => "bg-teal-100 text-teal-700",
-        panel::models::dns::RecordType::Ns => "bg-gray-100 text-gray-700",
+        panel::models::dns::RecordType::Ns => "bg-black/[0.04] text-gray-600",
     };
 
     rsx! {
-        tr { class: "hover:bg-gray-50/50 transition-colors",
+        tr { class: "hover:bg-black/[0.02] transition-colors",
             td { class: "px-4 py-2.5",
                 span { class: "text-xs font-mono font-semibold px-2 py-0.5 rounded {type_color}", "{record.r#type}" }
             }
@@ -7060,7 +7057,7 @@ fn DnsRecordRow(
             td { class: "px-4 py-2.5 text-sm text-gray-500",
                 match record.r#type {
                     panel::models::dns::RecordType::Mx | panel::models::dns::RecordType::Srv => rsx! { "{record.priority}" },
-                    _ => rsx! { span { class: "text-gray-300", "—" } },
+                    _ => rsx! { span { class: "text-gray-400", "—" } },
                 }
             }
             td { class: "px-4 py-2.5 text-sm text-gray-500", "{ttl_display}" }
@@ -7085,7 +7082,7 @@ fn ClientEmail() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Email" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Email" }
             }
             match &*domains.read() {
                 Some(Ok(list)) if !list.is_empty() => rsx! {
@@ -7099,7 +7096,7 @@ fn ClientEmail() -> Element {
                                 let domain_status = domain.status.clone();
                                 let no_limits = domain.send_limit_per_hour == 0 && domain.send_limit_per_day == 0;
                                 rsx! {
-                                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+                                    div { class: "glass-card rounded-2xl overflow-hidden",
                                         // Domain header row
                                         div { class: "flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50/60 transition-colors",
                                             onclick: move |_| {
@@ -7110,8 +7107,8 @@ fn ClientEmail() -> Element {
                                                 }
                                             },
                                             div { class: "flex items-center gap-3",
-                                                div { class: "p-2 bg-rose-50 rounded-lg",
-                                                    Icon { name: "mail", class: "w-4 h-4 text-rose-500".to_string() }
+                                                div { class: "p-2 bg-black/[0.04] rounded-lg",
+                                                    Icon { name: "mail", class: "w-4 h-4 text-gray-700".to_string() }
                                                 }
                                                 div {
                                                     p { class: "font-semibold text-gray-900 text-sm", "{domain_name}" }
@@ -7136,9 +7133,9 @@ fn ClientEmail() -> Element {
                     }
                 },
                 Some(Ok(_)) => rsx! {
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center",
-                        div { class: "mx-auto w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mb-5",
-                            Icon { name: "mail", class: "w-8 h-8 text-rose-500".to_string() }
+                    div { class: "glass-card rounded-2xl p-12 text-center",
+                        div { class: "mx-auto w-16 h-16 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-5",
+                            Icon { name: "mail", class: "w-8 h-8 text-gray-700".to_string() }
                         }
                         h3 { class: "text-lg font-semibold text-gray-800 mb-2", "No Email Domains" }
                         p { class: "text-gray-500", "Contact your administrator to set up email hosting for your account." }
@@ -7172,7 +7169,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
     let mut backup_error = use_signal(|| None::<String>);
 
     rsx! {
-        div { class: "border-t border-gray-100",
+        div { class: "border-t border-black/[0.05]",
             match &*mailboxes.read() {
                 Some(Ok(mboxes)) if !mboxes.is_empty() => rsx! {
                     div { class: "divide-y divide-gray-50",
@@ -7189,7 +7186,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                                         // Mailbox row header
                                         div { class: "flex items-center justify-between",
                                             div { class: "flex items-center gap-3 min-w-0",
-                                                div { class: "p-1.5 bg-gray-100 rounded-lg shrink-0",
+                                                div { class: "p-1.5 bg-black/[0.04] rounded-xl shrink-0",
                                                     Icon { name: "inbox", class: "w-3.5 h-3.5 text-gray-500".to_string() }
                                                 }
                                                 div { class: "min-w-0",
@@ -7203,7 +7200,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                                                 StatusBadge { status: mb.status.clone() }
                                                 // Stats button
                                                 button {
-                                                    class: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50",
+                                                    class: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                                     disabled: is_stats_loading,
                                                     onclick: move |_| {
                                                         if has_stats {
@@ -7236,7 +7233,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                                                 }
                                                 // Backup button
                                                 button {
-                                                    class: "flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50",
+                                                    class: "flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-500/[0.08] text-emerald-700 text-xs font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40",
                                                     disabled: is_backup_loading,
                                                     onclick: move |_| {
                                                         backup_error.set(None);
@@ -7271,7 +7268,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                                                             p { class: "text-xs text-gray-500 mt-0.5", "Total Messages" }
                                                         }
                                                         div { class: "bg-white rounded-lg p-3 text-center shadow-sm",
-                                                            p { class: "text-lg font-bold text-rose-600", "{st.messages_new}" }
+                                                            p { class: "text-lg font-bold text-gray-700", "{st.messages_new}" }
                                                             p { class: "text-xs text-gray-500 mt-0.5", "Unread" }
                                                         }
                                                         div { class: "bg-white rounded-lg p-3 text-center shadow-sm",
@@ -7353,7 +7350,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                     // Backup error
                     if let Some(err) = backup_error() {
                         div { class: "px-6 pb-4",
-                            div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-xs", "{err}" }
+                            div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-xs", "{err}" }
                         }
                     }
                 },
@@ -7435,13 +7432,13 @@ fn ClientBackups() -> Element {
             // ── Page header
             div { class: "flex items-center justify-between mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Backups" }
-                    p { class: "text-gray-500 text-sm mt-1",
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Backups" }
+                    p { class: "text-[13px] text-gray-400 mt-1",
                         "Per-domain and per-mailbox scheduled backups with history and stats."
                     }
                 }
                 button {
-                    class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2",
+                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2",
                     onclick: move |_| { active_tab.set("create"); form_error.set(None); form_success.set(None); },
                     Icon { name: "plus", class: "w-4 h-4".to_string() }
                     "New Schedule"
@@ -7464,7 +7461,7 @@ fn ClientBackups() -> Element {
             }
 
             // ── Tab bar
-            div { class: "flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6",
+            div { class: "flex gap-1 bg-black/[0.04] rounded-xl p-1 w-fit mb-6",
                 for (label, id) in [("Schedules", "schedules"), ("Recent Runs", "runs"), ("New Schedule", "create")] {
                     button {
                         class: if active_tab() == id {
@@ -7484,7 +7481,7 @@ fn ClientBackups() -> Element {
             if active_tab() == "schedules" {
                 match &*schedules_res.read() {
                     Some(Ok(list)) if list.is_empty() => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center",
+                        div { class: "glass-card rounded-2xl p-12 text-center",
                             div { class: "mx-auto w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-5",
                                 Icon { name: "archive", class: "w-8 h-8 text-amber-500".to_string() }
                             }
@@ -7493,14 +7490,14 @@ fn ClientBackups() -> Element {
                                 "Create a schedule to automatically back up a website or mailbox."
                             }
                             button {
-                                class: "px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg text-sm transition-colors",
+                                class: "px-6 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-lg text-sm transition-colors",
                                 onclick: move |_| active_tab.set("create"),
                                 "Create First Schedule"
                             }
                         }
                     },
                     Some(Ok(list)) => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+                        div { class: "glass-card rounded-2xl overflow-hidden",
                             table { class: "w-full text-sm",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
@@ -7572,7 +7569,7 @@ fn ClientBackups() -> Element {
                         div { class: "bg-red-50 rounded-2xl border border-red-200 p-6 text-red-700 text-sm", "Error loading schedules: {e}" }
                     },
                     None => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 animate-pulse text-sm",
+                        div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 animate-pulse text-sm",
                             "Loading schedules…"
                         }
                     },
@@ -7593,7 +7590,7 @@ fn ClientBackups() -> Element {
                     }
                     if selected_schedule_id().is_some() {
                         button {
-                            class: "text-xs text-rose-500 hover:text-rose-700 underline",
+                            class: "text-xs text-gray-700 hover:text-red-600 underline",
                             onclick: move |_| selected_schedule_id.set(None),
                             "Show all"
                         }
@@ -7604,11 +7601,11 @@ fn ClientBackups() -> Element {
                     let render_runs = |runs: &Vec<panel::models::backup::BackupRun>| {
                         rsx! {
                             if runs.is_empty() {
-                                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 text-sm",
+                                div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 text-sm",
                                     "No backup runs recorded yet."
                                 }
                             } else {
-                                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+                                div { class: "glass-card rounded-2xl overflow-hidden",
                                     table { class: "w-full text-sm",
                                         thead { class: "bg-gray-50 border-b border-gray-200",
                                             tr {
@@ -7634,12 +7631,12 @@ fn ClientBackups() -> Element {
                         match &*runs_res.read() {
                             Some(Some(runs)) => render_runs(runs),
                             Some(None) => rsx! {
-                                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 text-sm",
+                                div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 text-sm",
                                     "No runs found for this schedule."
                                 }
                             },
                             None => rsx! {
-                                div { class: "bg-white p-8 text-center text-gray-400 animate-pulse text-sm rounded-2xl border border-gray-100",
+                                div { class: "bg-white p-8 text-center text-gray-400 animate-pulse text-sm rounded-2xl border border-black/[0.05]",
                                     "Loading…"
                                 }
                             },
@@ -7651,7 +7648,7 @@ fn ClientBackups() -> Element {
                                 div { class: "bg-red-50 rounded-2xl border border-red-200 p-6 text-red-700 text-sm", "Error: {e}" }
                             },
                             None => rsx! {
-                                div { class: "bg-white p-8 text-center text-gray-400 animate-pulse text-sm rounded-2xl border border-gray-100",
+                                div { class: "bg-white p-8 text-center text-gray-400 animate-pulse text-sm rounded-2xl border border-black/[0.05]",
                                     "Loading…"
                                 }
                             },
@@ -7664,14 +7661,14 @@ fn ClientBackups() -> Element {
             // CREATE SCHEDULE TAB
             // ─────────────────────────────────────────────────────────────
             if active_tab() == "create" {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl",
+                div { class: "glass-card rounded-2xl p-6 max-w-2xl",
                     h3 { class: "text-base font-semibold text-gray-800 mb-5", "New Backup Schedule" }
 
                     if let Some(ref err) = form_error() {
-                        div { class: "mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm", "{err}" }
+                        div { class: "mb-4 p-3 bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-lg text-sm", "{err}" }
                     }
                     if let Some(ref ok) = form_success() {
-                        div { class: "mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm", "{ok}" }
+                        div { class: "mb-4 p-3 bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-700 rounded-lg text-sm", "{ok}" }
                     }
 
                     form {
@@ -7753,7 +7750,7 @@ fn ClientBackups() -> Element {
                                 match &*sites_res.read() {
                                     Some(Ok(sites)) if !sites.is_empty() => rsx! {
                                         select {
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm bg-white",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm bg-white",
                                             value: "{form_site_id}",
                                             onchange: move |e| form_site_id.set(e.value().parse().unwrap_or(0)),
                                             option { value: "0", disabled: true, "-- Select website --" }
@@ -7770,7 +7767,7 @@ fn ClientBackups() -> Element {
                                 match &*email_res.read() {
                                     Some(Ok(domains)) if !domains.is_empty() => rsx! {
                                         select {
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm bg-white",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm bg-white",
                                             onchange: move |e| form_mailbox_id.set(e.value().parse().unwrap_or(0)),
                                             option { value: "0", disabled: true, "-- Select mailbox --" }
                                             for d in domains.iter() {
@@ -7792,7 +7789,7 @@ fn ClientBackups() -> Element {
                                 label { class: "block text-xs font-medium text-gray-600 mb-1", "Schedule Name" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm",
                                     placeholder: "e.g. Daily site backup",
                                     value: "{form_name}",
                                     oninput: move |e| form_name.set(e.value()),
@@ -7806,7 +7803,7 @@ fn ClientBackups() -> Element {
                                 }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm font-mono",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm font-mono",
                                     placeholder: "@daily",
                                     value: "{form_schedule}",
                                     oninput: move |e| form_schedule.set(e.value()),
@@ -7828,7 +7825,7 @@ fn ClientBackups() -> Element {
                                 label { class: "block text-xs font-medium text-gray-600 mb-1", "Destination Path" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm font-mono",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm font-mono",
                                     placeholder: "/var/backups/panel",
                                     value: "{form_destination}",
                                     oninput: move |e| form_destination.set(e.value()),
@@ -7837,7 +7834,7 @@ fn ClientBackups() -> Element {
                             div {
                                 label { class: "block text-xs font-medium text-gray-600 mb-1", "Storage Type" }
                                 select {
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm bg-white",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm bg-white",
                                     value: "{form_storage}",
                                     onchange: move |e| form_storage.set(e.value()),
                                     option { value: "local", "Local Disk" }
@@ -7856,7 +7853,7 @@ fn ClientBackups() -> Element {
                                 }
                                 input {
                                     r#type: "number",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm",
                                     min: "0", max: "365",
                                     value: "{form_retention}",
                                     oninput: move |e| form_retention.set(e.value().parse().unwrap_or(7)),
@@ -7866,7 +7863,7 @@ fn ClientBackups() -> Element {
                                 input {
                                     r#type: "checkbox",
                                     id: "compress_flag",
-                                    class: "rounded border-gray-300 text-rose-500 focus:ring-rose-500",
+                                    class: "rounded border-gray-300 text-gray-700 focus:ring-black/[0.15]",
                                     checked: form_compress(),
                                     onchange: move |e| form_compress.set(e.checked()),
                                 }
@@ -7881,16 +7878,16 @@ fn ClientBackups() -> Element {
                             button {
                                 r#type: "submit",
                                 class: if submitting() {
-                                    "px-6 py-2.5 bg-rose-300 text-white rounded-lg text-sm font-medium cursor-not-allowed"
+                                    "px-6 py-2.5 bg-black/[0.04] text-white rounded-lg text-sm font-medium cursor-not-allowed"
                                 } else {
-                                    "px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                    "px-6 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium transition-colors"
                                 },
                                 disabled: submitting(),
                                 if submitting() { "Creating…" } else { "Create Schedule" }
                             }
                             button {
                                 r#type: "button",
-                                class: "px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors",
+                                class: "px-6 py-2.5 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg text-sm font-medium transition-colors",
                                 onclick: move |_| { active_tab.set("schedules"); form_error.set(None); form_success.set(None); },
                                 "Cancel"
                             }
@@ -7913,7 +7910,7 @@ pub fn BackupStatCard(label: &'static str, value: String, color: &'static str) -
         _ => ("bg-gray-50", "text-gray-600"),
     };
     rsx! {
-        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-4",
+        div { class: "glass-card rounded-2xl p-4",
             p { class: "text-xs text-gray-500 font-medium uppercase tracking-wide mb-1", "{label}" }
             p { class: "text-xl font-bold {text}", "{value}" }
         }
@@ -7940,7 +7937,7 @@ fn BackupScheduleRow(
         format!("Mailbox #{}", sched.mailbox_id.unwrap_or(0))
     };
     let (status_bg, status_text) = if sched.enabled {
-        ("bg-green-100 text-green-700", "Active")
+        ("bg-emerald-500/[0.08] text-emerald-700", "Active")
     } else {
         ("bg-gray-100 text-gray-500", "Disabled")
     };
@@ -7959,7 +7956,7 @@ fn BackupScheduleRow(
     };
 
     rsx! {
-        tr { class: "border-b border-gray-100 hover:bg-gray-50/40 transition-colors",
+        tr { class: "border-b border-black/[0.05] hover:bg-gray-50/40 transition-colors",
             td { class: "px-4 py-3 font-medium text-gray-900", "{sched.name}" }
             td { class: "px-4 py-3 text-gray-500 text-xs font-mono", "{target_label}" }
             td { class: "px-4 py-3 text-gray-500 text-xs font-mono", "{sched.schedule}" }
@@ -8020,7 +8017,7 @@ fn BackupScheduleRow(
 #[component]
 fn BackupRunRow(run: panel::models::backup::BackupRun) -> Element {
     let (status_cls, status_label) = match run.status.as_str() {
-        "success" => ("bg-green-100 text-green-700", "Success"),
+        "success" => ("bg-emerald-500/[0.08] text-emerald-700", "Success"),
         "failed" => ("bg-red-100 text-red-700", "Failed"),
         _ => ("bg-yellow-100 text-yellow-700", "Running"),
     };
@@ -8044,7 +8041,7 @@ fn BackupRunRow(run: panel::models::backup::BackupRun) -> Element {
     let started_at_str = run.started_at.format("%b %d %H:%M:%S").to_string();
 
     rsx! {
-        tr { class: "border-b border-gray-100 hover:bg-gray-50/40 transition-colors",
+        tr { class: "border-b border-black/[0.05] hover:bg-gray-50/40 transition-colors",
             td { class: "px-4 py-3 text-xs text-gray-700 font-mono",
                 "{started_at_str}"
             }
@@ -8067,21 +8064,21 @@ fn BackupRunRow(run: panel::models::backup::BackupRun) -> Element {
 fn ClientUsage() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Resource Usage" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Resource Usage" }
             div { class: "grid grid-cols-1 md:grid-cols-2 gap-5",
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                div { class: "glass-card rounded-2xl p-6",
                     div { class: "flex items-center gap-3 mb-4",
-                        div { class: "p-2 bg-rose-50 rounded-lg",
-                            Icon { name: "hard-drive", class: "w-5 h-5 text-rose-500".to_string() }
+                        div { class: "p-2 bg-black/[0.04] rounded-lg",
+                            Icon { name: "hard-drive", class: "w-5 h-5 text-gray-700".to_string() }
                         }
                         h3 { class: "text-base font-semibold text-gray-800", "Disk Usage" }
                     }
                     div { class: "w-full bg-gray-100 rounded-full h-3 mb-2",
-                        div { class: "bg-rose-500 h-3 rounded-full transition-all duration-500", style: "width: 35%" }
+                        div { class: "bg-gray-900 h-3 rounded-full transition-all duration-500", style: "width: 35%" }
                     }
                     p { class: "text-sm text-gray-500", "Usage data loaded from your quota" }
                 }
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                div { class: "glass-card rounded-2xl p-6",
                     div { class: "flex items-center gap-3 mb-4",
                         div { class: "p-2 bg-blue-50 rounded-lg",
                             Icon { name: "trending-up", class: "w-5 h-5 text-blue-500".to_string() }
@@ -8128,8 +8125,8 @@ fn ClientFtp() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "FTP Usage Statistics" }
-                p { class: "text-gray-500 text-sm mt-1",
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "FTP Usage Statistics" }
+                p { class: "text-[13px] text-gray-400 mt-1",
                     "Transfer activity across all your FTP accounts."
                 }
             }
@@ -8144,44 +8141,44 @@ fn ClientFtp() -> Element {
                 Some(Ok(s)) => rsx! {
                     // ── Summary cards ──
                     div { class: "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6",
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-3 mb-3",
                                 div { class: "p-2 bg-indigo-50 rounded-lg",
                                     Icon { name: "users", class: "w-5 h-5 text-indigo-500".to_string() }
                                 }
                                 span { class: "text-sm font-medium text-gray-500", "Accounts" }
                             }
-                            p { class: "text-2xl font-bold text-gray-900", "{s.active_accounts}" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900", "{s.active_accounts}" }
                             p { class: "text-xs text-gray-400 mt-1", "active of {s.total_accounts} total" }
                         }
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-3 mb-3",
                                 div { class: "p-2 bg-green-50 rounded-lg",
                                     Icon { name: "upload", class: "w-5 h-5 text-green-500".to_string() }
                                 }
                                 span { class: "text-sm font-medium text-gray-500", "Uploads" }
                             }
-                            p { class: "text-2xl font-bold text-gray-900", "{s.total_uploads}" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900", "{s.total_uploads}" }
                             p { class: "text-xs text-gray-400 mt-1", "{fmt_bytes(s.bytes_uploaded)} transferred" }
                         }
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-3 mb-3",
                                 div { class: "p-2 bg-blue-50 rounded-lg",
                                     Icon { name: "download", class: "w-5 h-5 text-blue-500".to_string() }
                                 }
                                 span { class: "text-sm font-medium text-gray-500", "Downloads" }
                             }
-                            p { class: "text-2xl font-bold text-gray-900", "{s.total_downloads}" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900", "{s.total_downloads}" }
                             p { class: "text-xs text-gray-400 mt-1", "{fmt_bytes(s.bytes_downloaded)} transferred" }
                         }
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-3 mb-3",
-                                div { class: "p-2 bg-rose-50 rounded-lg",
-                                    Icon { name: "hard-drive", class: "w-5 h-5 text-rose-500".to_string() }
+                                div { class: "p-2 bg-black/[0.04] rounded-lg",
+                                    Icon { name: "hard-drive", class: "w-5 h-5 text-gray-700".to_string() }
                                 }
                                 span { class: "text-sm font-medium text-gray-500", "Total Transferred" }
                             }
-                            p { class: "text-2xl font-bold text-gray-900",
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900",
                                 "{fmt_bytes(s.bytes_uploaded + s.bytes_downloaded)}"
                             }
                             p { class: "text-xs text-gray-400 mt-1", "all directions" }
@@ -8189,8 +8186,8 @@ fn ClientFtp() -> Element {
                     }
 
                     // ── Per-account breakdown ──
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6",
-                        div { class: "px-6 py-4 border-b border-gray-100",
+                    div { class: "glass-card rounded-2xl overflow-hidden mb-6",
+                        div { class: "px-6 py-4 border-b border-black/[0.05]",
                             h3 { class: "font-semibold text-gray-900", "Per-Account Breakdown" }
                         }
                         if s.per_account.is_empty() {
@@ -8200,19 +8197,19 @@ fn ClientFtp() -> Element {
                         } else {
                             div { class: "overflow-x-auto",
                                 table { class: "w-full text-sm",
-                                    thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                    thead { class: "border-b border-black/[0.05]",
                                         tr {
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Username" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Uploads" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Up Bytes" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Downloads" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Down Bytes" }
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Last Active" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Uploads" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Up Bytes" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Downloads" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Down Bytes" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Last Active" }
                                         }
                                     }
-                                    tbody { class: "divide-y divide-gray-100",
+                                    tbody { class: "divide-y divide-black/[0.04]",
                                         for acct in s.per_account.iter() {
-                                            tr { class: "hover:bg-gray-50/50",
+                                            tr { class: "hover:bg-black/[0.02]",
                                                 td { class: "px-5 py-3 font-medium text-gray-900", "{acct.username}" }
                                                 td { class: "px-5 py-3 text-right text-green-600", "{acct.total_uploads}" }
                                                 td { class: "px-5 py-3 text-right text-gray-600", "{fmt_bytes(acct.bytes_uploaded)}" }
@@ -8234,8 +8231,8 @@ fn ClientFtp() -> Element {
                     }
 
                     // ── Recent transfers ──
-                    div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
-                        div { class: "px-6 py-4 border-b border-gray-100",
+                    div { class: "glass-card rounded-2xl overflow-hidden",
+                        div { class: "px-6 py-4 border-b border-black/[0.05]",
                             h3 { class: "font-semibold text-gray-900", "Recent Transfers" }
                         }
                         if s.recent_transfers.is_empty() {
@@ -8245,32 +8242,32 @@ fn ClientFtp() -> Element {
                         } else {
                             div { class: "overflow-x-auto",
                                 table { class: "w-full text-sm",
-                                    thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                    thead { class: "border-b border-black/[0.05]",
                                         tr {
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Time" }
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "User" }
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Direction" }
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "File" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Size" }
-                                            th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Secs" }
-                                            th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Client IP" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Time" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "User" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Direction" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "File" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Size" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Secs" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Client IP" }
                                         }
                                     }
-                                    tbody { class: "divide-y divide-gray-100",
+                                    tbody { class: "divide-y divide-black/[0.04]",
                                         for xfer in s.recent_transfers.iter() {
-                                            tr { class: "hover:bg-gray-50/50",
+                                            tr { class: "hover:bg-black/[0.02]",
                                                 td { class: "px-5 py-3 text-gray-400 text-xs whitespace-nowrap",
                                                     "{fmt_dt(&xfer.completed_at)}"
                                                 }
                                                 td { class: "px-5 py-3 text-gray-700", "{xfer.username}" }
                                                 td { class: "px-5 py-3",
                                                     if xfer.direction == "Upload" {
-                                                        span { class: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700",
+                                                        span { class: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/[0.08] text-emerald-700",
                                                             Icon { name: "upload", class: "w-3 h-3".to_string() }
                                                             "Upload"
                                                         }
                                                     } else {
-                                                        span { class: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700",
+                                                        span { class: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-500/[0.08] text-blue-700",
                                                             Icon { name: "download", class: "w-3 h-3".to_string() }
                                                             "Download"
                                                         }
@@ -8311,8 +8308,8 @@ fn AdminSupportTickets() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Support Tickets" }
-                    p { class: "text-gray-500 text-sm mt-1", "All client and reseller tickets." }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Support Tickets" }
+                    p { class: "text-[13px] text-gray-400 mt-1", "All client and reseller tickets." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
@@ -8321,25 +8318,25 @@ fn AdminSupportTickets() -> Element {
                     Icon { name: "refresh-cw", class: "w-5 h-5".to_string() }
                 }
             }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*tickets.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
+                            thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Updated" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for ticket in list.iter() {
                                     tr {
                                         class: if selected_id() == Some(ticket.id) {
-                                            "bg-rose-50/30 cursor-pointer transition-colors"
+                                            "bg-black/[0.04]/30 cursor-pointer transition-colors"
                                         } else {
-                                            "hover:bg-gray-50/50 cursor-pointer transition-colors"
+                                            "hover:bg-black/[0.02] cursor-pointer transition-colors"
                                         },
                                         onclick: {
                                             let tid = ticket.id;
@@ -8394,8 +8391,8 @@ fn TicketDetail(
     let mut reply_error = use_signal(|| None::<String>);
 
     rsx! {
-        div { class: "mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
-            div { class: "px-6 py-4 bg-gray-50 border-b border-gray-200/60 flex items-center justify-between",
+        div { class: "mt-6 glass-card rounded-2xl overflow-hidden",
+            div { class: "px-6 py-4 border-b border-black/[0.05] flex items-center justify-between",
                 match &*data.read() {
                     Some(Ok((ticket, _))) => rsx! { h3 { class: "text-lg font-semibold text-gray-900", "{ticket.subject}" } },
                     _ => rsx! { h3 { class: "text-lg font-semibold text-gray-500", "Ticket Detail" } },
@@ -8425,9 +8422,9 @@ fn TicketDetail(
                                             div { class: if is_mine { "flex justify-end" } else { "flex" },
                                                 div {
                                                     class: if is_mine {
-                                                        "max-w-[75%] bg-rose-50 border border-rose-200 rounded-xl px-4 py-3"
+                                                        "max-w-[75%] bg-black/[0.04] border border-rose-200 rounded-xl px-4 py-3"
                                                     } else {
-                                                        "max-w-[75%] bg-gray-100 border border-gray-200 rounded-xl px-4 py-3"
+                                                        "max-w-[75%] bg-gray-100 border border-black/[0.08] rounded-xl px-4 py-3"
                                                     },
                                                     p { class: "text-sm text-gray-900 whitespace-pre-wrap", "{msg.body}" }
                                                     p { class: "text-xs text-gray-400 mt-1",
@@ -8443,12 +8440,12 @@ fn TicketDetail(
                                 }
                             }
                             if is_open {
-                                div { class: "border-t border-gray-100 pt-4",
+                                div { class: "border-t border-black/[0.05] pt-4",
                                     if let Some(ref err) = reply_error() {
-                                        div { class: "bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-3 text-sm", "{err}" }
+                                        div { class: "bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-lg p-3 mb-3 text-sm", "{err}" }
                                     }
                                     textarea {
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm resize-none",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm resize-none",
                                         rows: "3",
                                         placeholder: "Type your reply...",
                                         value: "{reply_body}",
@@ -8456,7 +8453,7 @@ fn TicketDetail(
                                     }
                                     div { class: "flex gap-2 mt-2",
                                         button {
-                                            class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50",
+                                            class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50",
                                             disabled: reply_sending() || reply_body().trim().is_empty(),
                                             onclick: move |_| {
                                                 let rb = reply_body();
@@ -8478,7 +8475,7 @@ fn TicketDetail(
                                             if reply_sending() { "Sending..." } else { "Send Reply" }
                                         }
                                         button {
-                                            class: "px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors",
+                                            class: "px-4 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg text-sm font-medium transition-colors",
                                             onclick: move |_| {
                                                 reply_error.set(None);
                                                 spawn(async move {
@@ -8493,7 +8490,7 @@ fn TicketDetail(
                                     }
                                 }
                             } else {
-                                div { class: "border-t border-gray-100 pt-4",
+                                div { class: "border-t border-black/[0.05] pt-4",
                                     p { class: "text-sm text-gray-500 italic", "This ticket is closed." }
                                 }
                             }
@@ -8522,9 +8519,9 @@ fn ClientSupportTickets() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Support Tickets" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Support Tickets" }
                 button {
-                    class: "flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium transition-colors text-sm",
+                    class: "flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-xl font-medium transition-colors text-sm",
                     onclick: move |_| {
                         show_form.set(!show_form());
                         submit_error.set(None);
@@ -8534,26 +8531,26 @@ fn ClientSupportTickets() -> Element {
                 }
             }
             if show_form() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6",
+                div { class: "glass-card rounded-2xl p-6 mb-6",
                     h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Open New Ticket" }
                     if let Some(ref err) = submit_error() {
-                        div { class: "bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-4 text-sm", "{err}" }
+                        div { class: "bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-xl p-3 mb-4 text-sm", "{err}" }
                     }
                     div { class: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4",
                         div {
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Subject" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Subject" }
                             input {
                                 r#type: "text",
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                 placeholder: "Brief description of your issue",
                                 value: "{subject}",
                                 oninput: move |e| subject.set(e.value()),
                             }
                         }
                         div {
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Priority" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Priority" }
                             select {
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                 value: "{priority}",
                                 onchange: move |e| priority.set(e.value()),
                                 option { value: "Low", "Low" }
@@ -8563,9 +8560,9 @@ fn ClientSupportTickets() -> Element {
                             }
                         }
                         div {
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Department" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Department" }
                             select {
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                 value: "{department}",
                                 onchange: move |e| department.set(e.value()),
                                 option { value: "General", "General" }
@@ -8576,9 +8573,9 @@ fn ClientSupportTickets() -> Element {
                         }
                     }
                     div { class: "mb-4",
-                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Message" }
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Message" }
                         textarea {
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             rows: "4",
                             placeholder: "Describe your issue in detail...",
                             value: "{body}",
@@ -8586,7 +8583,7 @@ fn ClientSupportTickets() -> Element {
                         }
                     }
                     button {
-                        class: "px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium transition-colors text-sm disabled:opacity-50",
+                        class: "px-6 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-xl font-medium transition-colors text-sm disabled:opacity-50",
                         disabled: submitting(),
                         onclick: move |_| {
                             let s = subject();
@@ -8628,22 +8625,22 @@ fn ClientSupportTickets() -> Element {
                     }
                 }
             }
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*tickets.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
-                            thead { class: "bg-gray-50 border-b border-gray-200/60",
-                                tr { class: "hover:bg-gray-50/50 transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Updated" }
+                            thead { class: "border-b border-black/[0.05]",
+                                tr { class: "hover:bg-black/[0.02] transition-colors",
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for ticket in list.iter() {
                                     tr {
-                                        class: if selected_id() == Some(ticket.id) { "bg-rose-50/30 cursor-pointer transition-colors" } else { "hover:bg-gray-50/50 cursor-pointer transition-colors" },
+                                        class: if selected_id() == Some(ticket.id) { "bg-black/[0.04]/30 cursor-pointer transition-colors" } else { "hover:bg-black/[0.02] cursor-pointer transition-colors" },
                                         onclick: {
                                             let tid = ticket.id;
                                             move |_| {
@@ -8691,7 +8688,7 @@ fn ClientWebStats() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-2", "Web Statistics" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-2", "Web Statistics" }
             p { class: "text-sm text-gray-500 mb-6",
                 "Analyze your visitors with Webalizer, GoAccess, or AWStats. Reports are built from the OpenLiteSpeed access log for each domain."
             }
@@ -8731,14 +8728,14 @@ fn ClientWebStats() -> Element {
             }
 
             if let Some(err) = run_error() {
-                div { class: "bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm",
+                div { class: "bg-red-500/[0.08] border border-red-500/20 text-red-700 rounded-lg p-3 mb-4 text-sm",
                     "{err}"
                 }
             }
 
             // Stats table per site/tool
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
-                div { class: "px-6 py-4 border-b border-gray-100",
+            div { class: "glass-card rounded-2xl overflow-hidden",
+                div { class: "px-6 py-4 border-b border-black/[0.05]",
                     h3 { class: "text-base font-semibold text-gray-800", "Domain Statistics" }
                 }
                 match (&*sites.read(), &*stats.read()) {
@@ -8750,16 +8747,16 @@ fn ClientWebStats() -> Element {
                             }
                         } else {
                             table { class: "w-full",
-                                thead { class: "bg-gray-50 border-b border-gray-200/60",
+                                thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Domain" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Tool" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Last Run" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Status" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Actions" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Domain" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Tool" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Last Run" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Status" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Actions" }
                                     }
                                 }
-                                tbody { class: "divide-y divide-gray-100",
+                                tbody { class: "divide-y divide-black/[0.04]",
                                     for site in site_list.iter() {
                                         for tool in [
                                             panel::models::stats::StatsTool::Webalizer,
@@ -8786,14 +8783,14 @@ fn ClientWebStats() -> Element {
                                                 let last_error = cfg.and_then(|c| c.last_error.clone());
 
                                                 rsx! {
-                                                    tr { class: "hover:bg-gray-50/50 transition-colors",
+                                                    tr { class: "hover:bg-black/[0.02] transition-colors",
                                                         td { class: "px-6 py-3 text-sm font-medium text-gray-900", "{domain}" }
                                                         td { class: "px-6 py-3 text-sm text-gray-600", "{tool_label}" }
                                                         td { class: "px-6 py-3 text-xs text-gray-500", "{last_run}" }
                                                         td { class: "px-6 py-3",
                                                             match last_status {
                                                                 Some(panel::models::stats::StatsRunStatus::Success) => rsx! {
-                                                                    span { class: "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700",
+                                                                    span { class: "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/[0.08] text-emerald-700",
                                                                         "✓ Success"
                                                                     }
                                                                 },
@@ -8822,9 +8819,9 @@ fn ClientWebStats() -> Element {
                                                                 // Enable/Disable toggle
                                                                 button {
                                                                     class: if enabled {
-                                                                        "text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50"
+                                                                        "text-xs px-2 py-1 rounded bg-emerald-500/[0.08] text-emerald-700 hover:bg-green-200 disabled:opacity-50"
                                                                     } else {
-                                                                        "text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                                                                        "text-xs px-2 py-1 rounded bg-black/[0.04] text-gray-600 hover:bg-gray-200 disabled:opacity-50"
                                                                     },
                                                                     disabled: toggle_busy(),
                                                                     onclick: {
@@ -8866,7 +8863,7 @@ fn ClientWebStats() -> Element {
                                                                 // View report link
                                                                 if matches!(last_status, Some(panel::models::stats::StatsRunStatus::Success)) {
                                                                     a {
-                                                                        class: "text-xs px-2 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200",
+                                                                        class: "text-xs px-2 py-1 rounded bg-black/[0.04] text-red-600 hover:bg-black/[0.06]",
                                                                         href: "#",
                                                                         onclick: {
                                                                             let _domain = domain.clone();
@@ -8926,13 +8923,13 @@ struct StatsToolCardProps {
 #[component]
 fn StatsToolCard(props: StatsToolCardProps) -> Element {
     let (bg, text, dot) = if props.installed {
-        ("bg-green-50", "text-green-700", "bg-green-500")
+        ("bg-green-50", "text-emerald-700", "bg-green-500")
     } else {
         ("bg-gray-50", "text-gray-500", "bg-gray-300")
     };
 
     rsx! {
-        div { class: "bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm",
+        div { class: "bg-white rounded-xl border border-black/[0.05] p-4 flex items-center gap-3 shadow-sm",
             div { class: "p-2.5 rounded-lg {bg}",
                 Icon { name: props.icon, class: format!("w-5 h-5 {text}") }
             }
@@ -8994,11 +8991,11 @@ fn ClientSettings() -> Element {
 
     rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-bold text-gray-900 mb-6", "Account Settings" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Account Settings" }
             match &*user.read() {
                 Some(Ok(u)) => rsx! {
                     div { class: "space-y-6",
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Profile Information" }
                             div { class: "grid grid-cols-2 gap-4",
                                 div {
@@ -9022,12 +9019,12 @@ fn ClientSettings() -> Element {
                             }
                         }
                         // Contact details card
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             div { class: "flex items-center justify-between mb-4",
                                 h3 { class: "text-lg font-semibold text-gray-700", "Contact Details" }
                                 if !details_editing() {
                                     button {
-                                        class: "px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors",
+                                        class: "px-3 py-1.5 text-sm bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors",
                                         onclick: {
                                             let company = u.company.clone().unwrap_or_default();
                                             let address = u.address.clone().unwrap_or_default();
@@ -9047,34 +9044,34 @@ fn ClientSettings() -> Element {
                             }
                             if details_editing() {
                                 if let Some(err) = details_error() {
-                                    div { class: "bg-red-50 text-red-700 p-3 rounded-lg mb-3 text-sm", "{err}" }
+                                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-3 text-sm", "{err}" }
                                 }
                                 div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Company" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "Acme Inc.",
                                             value: "{edit_company}",
                                             oninput: move |e| edit_company.set(e.value()),
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Phone" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone" }
                                         input {
                                             r#type: "tel",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "+1 555 000 0000",
                                             value: "{edit_phone}",
                                             oninput: move |e| edit_phone.set(e.value()),
                                         }
                                     }
                                     div {
-                                        label { class: "block text-sm font-medium text-gray-700 mb-1", "Address" }
+                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address" }
                                         input {
                                             r#type: "text",
-                                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                             placeholder: "123 Main St, City",
                                             value: "{edit_address}",
                                             oninput: move |e| edit_address.set(e.value()),
@@ -9083,7 +9080,7 @@ fn ClientSettings() -> Element {
                                 }
                                 div { class: "flex gap-2 mt-4",
                                     button {
-                                        class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
                                         disabled: details_saving(),
                                         onclick: move |_| {
                                             details_saving.set(true);
@@ -9110,7 +9107,7 @@ fn ClientSettings() -> Element {
                                         if details_saving() { "Saving..." } else { "Save" }
                                     }
                                     button {
-                                        class: "px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm",
+                                        class: "px-4 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors text-sm",
                                         onclick: move |_| {
                                             details_editing.set(false);
                                             details_error.set(None);
@@ -9120,7 +9117,7 @@ fn ClientSettings() -> Element {
                                 }
                             } else {
                                 if details_success() {
-                                    div { class: "bg-green-50 text-green-700 p-3 rounded-lg mb-3 text-sm", "Contact details updated." }
+                                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-3 text-sm", "Contact details updated." }
                                 }
                                 div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                                     div {
@@ -9144,11 +9141,11 @@ fn ClientSettings() -> Element {
                                 }
                             }
                         }
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-6",
+                        div { class: "glass-card rounded-2xl p-6",
                             h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Security" }
                             div { class: "flex gap-4 mb-4",
                                 button {
-                                    class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm",
+                                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm",
                                     onclick: move |_| {
                                         show_pw_form.set(!show_pw_form());
                                         pw_error.set(None);
@@ -9200,41 +9197,41 @@ fn ClientSettings() -> Element {
 
                             // Change password success (shown after form closes)
                             if pw_success() && !show_pw_form() {
-                                div { class: "bg-green-50 text-green-700 p-3 rounded-lg text-sm", "Password changed successfully." }
+                                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm", "Password changed successfully." }
                             }
 
                             // Change password form
                             if show_pw_form() {
-                                div { class: "border-t border-gray-100 pt-4 space-y-3",
+                                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
                                     if let Some(err) = pw_error() {
-                                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
+                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
                                     }
                                     div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                                         div {
-                                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Current Password" }
+                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Current Password" }
                                             input {
                                                 r#type: "password",
-                                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                                 placeholder: "Current password",
                                                 value: "{pw_current}",
                                                 oninput: move |e| pw_current.set(e.value()),
                                             }
                                         }
                                         div {
-                                            label { class: "block text-sm font-medium text-gray-700 mb-1", "New Password" }
+                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "New Password" }
                                             input {
                                                 r#type: "password",
-                                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                                 placeholder: "New password (12+ chars)",
                                                 value: "{pw_new}",
                                                 oninput: move |e| pw_new.set(e.value()),
                                             }
                                         }
                                         div {
-                                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Confirm New Password" }
+                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Confirm New Password" }
                                             input {
                                                 r#type: "password",
-                                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                                 placeholder: "Confirm new password",
                                                 value: "{pw_confirm}",
                                                 oninput: move |e| pw_confirm.set(e.value()),
@@ -9242,7 +9239,7 @@ fn ClientSettings() -> Element {
                                         }
                                     }
                                     button {
-                                        class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
                                         disabled: pw_saving(),
                                         onclick: move |_| {
                                             let cur = pw_current();
@@ -9279,9 +9276,9 @@ fn ClientSettings() -> Element {
 
                             // 2FA setup form
                             if show_2fa_form() {
-                                div { class: "border-t border-gray-100 pt-4 space-y-4",
+                                div { class: "border-t border-black/[0.05] pt-4 space-y-4",
                                     if let Some(err) = tfa_error() {
-                                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
+                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
                                     }
                                     p { class: "text-sm text-gray-600",
                                         "Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm."
@@ -9297,13 +9294,13 @@ fn ClientSettings() -> Element {
                                     }
                                     div { class: "flex items-end gap-4",
                                         div {
-                                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Verification Code" }
+                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Verification Code" }
                                             input {
                                                 r#type: "text",
                                                 inputmode: "numeric",
                                                 pattern: "[0-9]*",
                                                 maxlength: "6",
-                                                class: "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-40 font-mono text-center text-xl tracking-widest",
+                                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent w-40 font-mono text-center text-xl tracking-widest",
                                                 placeholder: "000000",
                                                 value: "{tfa_code}",
                                                 oninput: move |e| tfa_code.set(e.value()),
@@ -9337,24 +9334,24 @@ fn ClientSettings() -> Element {
 
                             // 2FA success message
                             if tfa_success() {
-                                div { class: "border-t border-gray-100 pt-4",
-                                    div { class: "bg-green-50 text-green-700 p-3 rounded-lg text-sm", "Two-factor authentication has been enabled." }
+                                div { class: "border-t border-black/[0.05] pt-4",
+                                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm", "Two-factor authentication has been enabled." }
                                 }
                             }
 
                             // Disable 2FA form
                             if show_disable_2fa() {
-                                div { class: "border-t border-gray-100 pt-4 space-y-3",
+                                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
                                     if let Some(err) = disable_2fa_error() {
-                                        div { class: "bg-red-50 text-red-700 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
+                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
                                     }
                                     p { class: "text-sm text-gray-600", "Enter your password to disable two-factor authentication." }
                                     div { class: "flex items-end gap-4",
                                         div {
-                                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Password" }
+                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
                                             input {
                                                 r#type: "password",
-                                                class: "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64",
+                                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64",
                                                 placeholder: "Your current password",
                                                 value: "{disable_2fa_pw}",
                                                 oninput: move |e| disable_2fa_pw.set(e.value()),
@@ -9404,7 +9401,7 @@ fn PageNotFound(route: Vec<String>) -> Element {
                 p { class: "text-gray-600 mb-4", "Page not found: /{not_found_path}" }
                 Link {
                     to: Route::Login {},
-                    class: "text-rose-500 hover:text-rose-600",
+                    class: "text-gray-700 hover:text-gray-700",
                     "← Back to login"
                 }
             }

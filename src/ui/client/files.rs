@@ -123,7 +123,7 @@ pub fn ClientFileManager() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6 flex-wrap gap-4",
-                h2 { class: "text-2xl font-bold text-gray-900", "File Manager" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "File Manager" }
 
                 // Site selector
                 div { class: "flex items-center gap-3",
@@ -131,7 +131,7 @@ pub fn ClientFileManager() -> Element {
                     match &*sites.read() {
                         Some(Ok(list)) => rsx! {
                             select {
-                                class: "px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                                class: "px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                 onchange: move |e| {
                                     let val: i64 = e.value().parse().unwrap_or(-1);
                                     if let Some(Ok(list)) = &*sites.read() {
@@ -166,17 +166,17 @@ pub fn ClientFileManager() -> Element {
             }
 
             if selected_site.read().is_none() {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center",
-                    div { class: "mx-auto w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mb-5",
-                        Icon { name: "folder", class: "w-8 h-8 text-rose-500".to_string() }
+                div { class: "glass-card rounded-2xl p-12 text-center",
+                    div { class: "mx-auto w-16 h-16 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-5",
+                        Icon { name: "folder", class: "w-8 h-8 text-gray-700".to_string() }
                     }
                     h3 { class: "text-lg font-semibold text-gray-800 mb-2", "No Sites Found" }
                     p { class: "text-gray-500", "Create a site first to use the file manager." }
                 }
             } else {
                 // Breadcrumb + toolbar
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 mb-4",
-                    div { class: "px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3",
+                div { class: "glass-card rounded-2xl mb-4",
+                    div { class: "px-5 py-3 border-b border-black/[0.05] flex items-center justify-between flex-wrap gap-3",
                         // Breadcrumb
                         nav { class: "flex items-center gap-1 text-sm flex-wrap",
                             for (label, path) in breadcrumbs(&current_path.read()) {
@@ -184,7 +184,7 @@ pub fn ClientFileManager() -> Element {
                                     let p = path.clone();
                                     rsx! {
                                         button {
-                                            class: "text-rose-500 hover:text-rose-700 font-medium",
+                                            class: "text-gray-700 hover:text-red-600 font-medium",
                                             onclick: move |_| current_path.set(p.clone()),
                                             "{label}"
                                         }
@@ -197,14 +197,14 @@ pub fn ClientFileManager() -> Element {
                         div { class: "flex items-center gap-2 flex-wrap",
                             // New Folder
                             button {
-                                class: "flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium rounded-lg transition-colors",
+                                class: "flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-900/90 text-white text-xs font-medium rounded-xl transition-all duration-200",
                                 onclick: move |_| { new_dir_name.set(String::new()); show_new_dir.set(true); },
                                 Icon { name: "folder-plus", class: "w-3.5 h-3.5".to_string() }
                                 "New Folder"
                             }
                             // Upload
                             label {
-                                class: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer",
+                                class: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer",
                                 title: "Upload a file to the current directory",
                                 input {
                                     r#type: "file",
@@ -266,7 +266,7 @@ pub fn ClientFileManager() -> Element {
                             } else {
                                 div { class: "overflow-x-auto",
                                     table { class: "w-full text-sm",
-                                        thead { class: "bg-gray-50 border-b border-gray-100",
+                                        thead { class: "bg-gray-50 border-b border-black/[0.05]",
                                             tr {
                                                 th { class: "px-5 py-3 text-left font-medium text-gray-500 text-xs uppercase", "Name" }
                                                 th { class: "px-5 py-3 text-left font-medium text-gray-500 text-xs uppercase", "Size" }
@@ -278,7 +278,7 @@ pub fn ClientFileManager() -> Element {
                                         tbody { class: "divide-y divide-gray-50",
                                             // ".." up-dir row when not at root
                                             if current_path.read().as_str() != "/" {
-                                                tr { class: "hover:bg-gray-50",
+                                                tr { class: "hover:bg-black/[0.02]",
                                                     td { class: "px-5 py-3 font-medium text-blue-600",
                                                         button {
                                                             class: "flex items-center gap-2",
@@ -336,7 +336,7 @@ pub fn ClientFileManager() -> Element {
                                                             td { class: "px-5 py-3 font-medium text-gray-800",
                                                                 if is_dir {
                                                                     button {
-                                                                        class: "flex items-center gap-2 hover:text-rose-600",
+                                                                        class: "flex items-center gap-2 hover:text-gray-700",
                                                                         onclick: move |_| current_path.set(e_path.clone()),
                                                                         Icon { name: icon, class: format!("w-4 h-4 {}", icon_color) }
                                                                         "{e.name}"
@@ -519,7 +519,7 @@ pub fn ClientFileManager() -> Element {
                         h3 { class: "text-lg font-semibold text-gray-900 mb-4", "New Folder" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "folder-name",
                             value: "{new_dir_name}",
                             oninput: move |e| new_dir_name.set(e.value()),
@@ -527,12 +527,12 @@ pub fn ClientFileManager() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                 onclick: move |_| show_new_dir.set(false),
                                 "Cancel"
                             }
                             button {
-                                class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium",
+                                class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium",
                                 onclick: move |_| {
                                     let sid = match selected_site.read().as_ref().map(|s| s.id) {
                                         Some(id) => id,
@@ -569,19 +569,19 @@ pub fn ClientFileManager() -> Element {
                         h3 { class: "text-lg font-semibold text-gray-900 mb-4", "Rename" }
                         input {
                             r#type: "text",
-                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-rose-500 focus:border-transparent",
+                            class: "w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             value: "{rename_value}",
                             oninput: move |e| rename_value.set(e.value()),
                             autofocus: true,
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                 onclick: move |_| show_rename.set(false),
                                 "Cancel"
                             }
                             button {
-                                class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium",
+                                class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium",
                                 onclick: move |_| {
                                     let sid = match selected_site.read().as_ref().map(|s| s.id) {
                                         Some(id) => id,
@@ -615,7 +615,7 @@ pub fn ClientFileManager() -> Element {
                     div { class: "bg-white rounded-2xl shadow-xl p-6 w-full max-w-md",
                         h3 { class: "text-lg font-semibold text-gray-900 mb-2", "Confirm Delete" }
                         if let Some(ref entry) = *delete_target.read() {
-                            p { class: "text-gray-500 text-sm mb-6",
+                            p { class: "text-[13px] text-gray-400 mb-6",
                                 "Delete "
                                 span { class: "font-mono text-gray-800", "{entry.name}" }
                                 "? This cannot be undone."
@@ -623,7 +623,7 @@ pub fn ClientFileManager() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                 onclick: move |_| show_delete.set(false),
                                 "Cancel"
                             }
@@ -665,10 +665,10 @@ pub fn ClientFileManager() -> Element {
                             }
                         }
                         div { class: "mb-4",
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Octal mode (e.g. 644, 755)" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Octal mode (e.g. 644, 755)" }
                             input {
                                 r#type: "text",
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent font-mono",
                                 maxlength: "3",
                                 value: "{chmod_value}",
                                 oninput: move |e| chmod_value.set(e.value()),
@@ -677,12 +677,12 @@ pub fn ClientFileManager() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                 onclick: move |_| show_chmod.set(false),
                                 "Cancel"
                             }
                             button {
-                                class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium",
+                                class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium",
                                 onclick: move |_| {
                                     let sid = match selected_site.read().as_ref().map(|s| s.id) {
                                         Some(id) => id,
@@ -720,10 +720,10 @@ pub fn ClientFileManager() -> Element {
                             }
                         }
                         div { class: "mb-4",
-                            label { class: "block text-sm font-medium text-gray-700 mb-1", "Destination path" }
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Destination path" }
                             input {
                                 r#type: "text",
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent font-mono",
                                 value: "{move_dest}",
                                 oninput: move |e| move_dest.set(e.value()),
                                 placeholder: "/images/banner.jpg",
@@ -731,12 +731,12 @@ pub fn ClientFileManager() -> Element {
                         }
                         div { class: "flex justify-end gap-3",
                             button {
-                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                 onclick: move |_| show_move.set(false),
                                 "Cancel"
                             }
                             button {
-                                class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium",
+                                class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium",
                                 onclick: move |_| {
                                     let sid = match selected_site.read().as_ref().map(|s| s.id) {
                                         Some(id) => id,
@@ -767,7 +767,7 @@ pub fn ClientFileManager() -> Element {
             if show_editor() {
                 div { class: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4",
                     div { class: "bg-white rounded-2xl shadow-xl flex flex-col w-full max-w-4xl h-[80vh]",
-                        div { class: "flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0",
+                        div { class: "flex items-center justify-between px-6 py-4 border-b border-black/[0.05] shrink-0",
                             h3 { class: "text-lg font-semibold text-gray-900",
                                 if let Some(ref entry) = *editor_target.read() {
                                     "{entry.name}"
@@ -777,7 +777,7 @@ pub fn ClientFileManager() -> Element {
                             }
                             div { class: "flex items-center gap-3",
                                 button {
-                                    class: "px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50",
+                                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg text-sm font-medium disabled:opacity-50",
                                     disabled: editor_saving(),
                                     onclick: move |_| {
                                         let sid = match selected_site.read().as_ref().map(|s| s.id) {
@@ -802,7 +802,7 @@ pub fn ClientFileManager() -> Element {
                                     if editor_saving() { "Saving…" } else { "Save" }
                                 }
                                 button {
-                                    class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50",
+                                    class: "px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-black/[0.02]",
                                     onclick: move |_| show_editor.set(false),
                                     "Close"
                                 }

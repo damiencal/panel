@@ -60,17 +60,17 @@ pub fn ClientGit() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Git Integration" }
-                p { class: "text-gray-500 text-sm mt-1", "Attach and manage Git repositories for your websites." }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Git Integration" }
+                p { class: "text-[13px] text-gray-400 mt-1", "Attach and manage Git repositories for your websites." }
             }
 
             // ── Site selector ──
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6",
+            div { class: "glass-card rounded-2xl p-5 mb-6",
                 label { class: "block text-sm font-medium text-gray-700 mb-2", "Select Website" }
                 match &*sites.read() {
                     Some(Ok(site_list)) => rsx! {
                         select {
-                            class: "w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-white text-sm",
+                            class: "w-full max-w-sm px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] bg-white text-sm",
                             value: "{selected_site_id}",
                             onchange: move |e| {
                                 let val: i64 = e.value().parse().unwrap_or(0);
@@ -87,7 +87,7 @@ pub fn ClientGit() -> Element {
                         }
                     },
                     Some(Err(e)) => rsx! { p { class: "text-red-600 text-sm", "Error loading sites: {e}" } },
-                    None => rsx! { p { class: "text-gray-500 text-sm", "Loading sites..." } },
+                    None => rsx! { p { class: "text-[13px] text-gray-400", "Loading sites..." } },
                 }
             }
 
@@ -96,13 +96,13 @@ pub fn ClientGit() -> Element {
                 match &*repo_resource.read() {
                     // ── No repo attached ──────────────────────────────────────────────
                     Some(Ok(None)) => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-10",
+                        div { class: "glass-card rounded-2xl p-10",
                             div { class: "text-center mb-8",
-                                div { class: "mx-auto w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center mb-4",
-                                    Icon { name: "git-branch", class: "w-7 h-7 text-rose-500".to_string() }
+                                div { class: "mx-auto w-14 h-14 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-4",
+                                    Icon { name: "git-branch", class: "w-7 h-7 text-gray-700".to_string() }
                                 }
                                 h3 { class: "text-lg font-semibold text-gray-800 mb-1", "No Repository Attached" }
-                                p { class: "text-gray-500 text-sm", "Attach a Git repository to deploy and manage your site's code." }
+                                p { class: "text-[13px] text-gray-400", "Attach a Git repository to deploy and manage your site's code." }
                             }
                             if let Some(ref err) = attach_error() {
                                 div { class: "max-w-lg mx-auto bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm", "{err}" }
@@ -125,10 +125,10 @@ pub fn ClientGit() -> Element {
                                 },
                                 class: "max-w-lg mx-auto space-y-4",
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Repository URL" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Repository URL" }
                                     input {
                                         r#type: "text",
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm",
                                         placeholder: "https://github.com/user/repo.git  or  git@github.com:user/repo.git",
                                         value: "{attach_url}",
                                         oninput: move |e| attach_url.set(e.value()),
@@ -136,10 +136,10 @@ pub fn ClientGit() -> Element {
                                     }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-700 mb-1", "Branch" }
+                                    label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Branch" }
                                     input {
                                         r#type: "text",
-                                        class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm",
+                                        class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm",
                                         placeholder: "main",
                                         value: "{attach_branch}",
                                         oninput: move |e| attach_branch.set(e.value()),
@@ -149,7 +149,7 @@ pub fn ClientGit() -> Element {
                                 div { class: "flex justify-center pt-2",
                                     button {
                                         r#type: "submit",
-                                        class: "px-8 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 text-sm",
+                                        class: "px-8 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 disabled:opacity-50 text-sm",
                                         disabled: attaching(),
                                         if attaching() { "Attaching..." } else { "Attach Repository" }
                                     }
@@ -163,7 +163,7 @@ pub fn ClientGit() -> Element {
                         let repo = repo.clone();
                         rsx! {
                             // Repo info card
-                            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5",
+                            div { class: "glass-card rounded-2xl p-5 mb-5",
                                 div { class: "flex items-start justify-between gap-4 flex-wrap",
                                     div { class: "flex items-center gap-3",
                                         div { class: "w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0",
@@ -185,7 +185,7 @@ pub fn ClientGit() -> Element {
                                     }
                                     div { class: "flex gap-2 flex-wrap",
                                         button {
-                                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors",
+                                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200",
                                             onclick: move |_| {
                                                 let sid = selected_site_id();
                                                 action_error.set(None);
@@ -200,7 +200,7 @@ pub fn ClientGit() -> Element {
                                             "(Re)generate Deploy Key"
                                         }
                                         button {
-                                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition-colors",
+                                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200",
                                             onclick: move |_| {
                                                 let sid = selected_site_id();
                                                 action_loading.set(true);
@@ -235,7 +235,7 @@ pub fn ClientGit() -> Element {
                                     }
                                 // Existing deploy key stored on record
                                 } else if let Some(ref pub_key) = repo.deploy_key_pub {
-                                    div { class: "mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg",
+                                    div { class: "mt-4 p-3 bg-gray-50 border border-black/[0.08] rounded-xl",
                                         p { class: "text-xs font-semibold text-gray-700 mb-1", "Current deploy key (public):" }
                                         pre { class: "text-xs text-gray-700 font-mono break-all whitespace-pre-wrap select-all", "{pub_key}" }
                                     }
@@ -243,10 +243,10 @@ pub fn ClientGit() -> Element {
                             }
 
                             // Action bar
-                            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5",
+                            div { class: "glass-card rounded-2xl p-5 mb-5",
                                 div { class: "flex items-start gap-3 flex-wrap",
                                     button {
-                                        class: "flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50",
+                                        class: "flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-50",
                                         disabled: action_loading(),
                                         onclick: move |_| {
                                             let sid = selected_site_id();
@@ -270,7 +270,7 @@ pub fn ClientGit() -> Element {
                                         "Pull"
                                     }
                                     button {
-                                        class: "flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50",
+                                        class: "flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-50",
                                         disabled: action_loading(),
                                         onclick: move |_| {
                                             let sid = selected_site_id();
@@ -294,13 +294,13 @@ pub fn ClientGit() -> Element {
                                     div { class: "flex flex-1 gap-2 items-center min-w-[260px]",
                                         input {
                                             r#type: "text",
-                                            class: "flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500",
+                                            class: "flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-black/[0.15]",
                                             placeholder: "Commit message…",
                                             value: "{commit_msg}",
                                             oninput: move |e| commit_msg.set(e.value()),
                                         }
                                         button {
-                                            class: "flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap",
+                                            class: "flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-50 whitespace-nowrap",
                                             disabled: action_loading() || commit_msg().trim().is_empty(),
                                             onclick: move |_| {
                                                 let sid = selected_site_id();
@@ -340,25 +340,25 @@ pub fn ClientGit() -> Element {
                             }
 
                             // Tabs
-                            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+                            div { class: "glass-card rounded-2xl overflow-hidden",
                                 div { class: "flex border-b border-gray-200",
                                     button {
                                         class: "flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition-colors",
-                                        class: if active_tab() == "status" { "border-rose-500 text-rose-600" } else { "border-transparent text-gray-500 hover:text-gray-700" },
+                                        class: if active_tab() == "status" { "border-rose-500 text-gray-700" } else { "border-transparent text-gray-500 hover:text-gray-700" },
                                         onclick: move |_| active_tab.set("status".to_string()),
                                         Icon { name: "list", class: "w-4 h-4".to_string() }
                                         "Working Tree"
                                     }
                                     button {
                                         class: "flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition-colors",
-                                        class: if active_tab() == "branches" { "border-rose-500 text-rose-600" } else { "border-transparent text-gray-500 hover:text-gray-700" },
+                                        class: if active_tab() == "branches" { "border-rose-500 text-gray-700" } else { "border-transparent text-gray-500 hover:text-gray-700" },
                                         onclick: move |_| active_tab.set("branches".to_string()),
                                         Icon { name: "git-branch", class: "w-4 h-4".to_string() }
                                         "Branches"
                                     }
                                     button {
                                         class: "flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition-colors",
-                                        class: if active_tab() == "history" { "border-rose-500 text-rose-600" } else { "border-transparent text-gray-500 hover:text-gray-700" },
+                                        class: if active_tab() == "history" { "border-rose-500 text-gray-700" } else { "border-transparent text-gray-500 hover:text-gray-700" },
                                         onclick: move |_| active_tab.set("history".to_string()),
                                         Icon { name: "clock", class: "w-4 h-4".to_string() }
                                         "Commit History"
@@ -370,7 +370,7 @@ pub fn ClientGit() -> Element {
                                         div { class: "flex items-center justify-between mb-3",
                                             p { class: "text-sm font-medium text-gray-700", "Uncommitted changes (git status)" }
                                             button {
-                                                class: "text-xs text-rose-500 hover:text-rose-600 font-medium",
+                                                class: "text-xs text-gray-700 hover:text-gray-700 font-medium",
                                                 onclick: move |_| status_resource.restart(),
                                                 "↻ Refresh"
                                             }
@@ -383,11 +383,11 @@ pub fn ClientGit() -> Element {
                                                         "Working tree is clean — nothing to commit."
                                                     }
                                                 } else {
-                                                    pre { class: "bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs font-mono text-gray-800 overflow-auto max-h-64 whitespace-pre-wrap", "{s}" }
+                                                    pre { class: "bg-gray-50 border border-black/[0.08] rounded-xl p-4 text-xs font-mono text-gray-800 overflow-auto max-h-64 whitespace-pre-wrap", "{s}" }
                                                 }
                                             },
                                             Some(Err(e)) => rsx! { p { class: "text-red-600 text-sm", "Error: {e}" } },
-                                            None => rsx! { p { class: "text-gray-500 text-sm", "Loading…" } },
+                                            None => rsx! { p { class: "text-[13px] text-gray-400", "Loading…" } },
                                         }
                                     }
                                 } else if active_tab() == "branches" {
@@ -395,7 +395,7 @@ pub fn ClientGit() -> Element {
                                         div { class: "flex items-center justify-between mb-3",
                                             p { class: "text-sm font-medium text-gray-700", "Local and remote-tracking branches" }
                                             button {
-                                                class: "text-xs text-rose-500 hover:text-rose-600 font-medium",
+                                                class: "text-xs text-gray-700 hover:text-gray-700 font-medium",
                                                 onclick: move |_| branches_resource.restart(),
                                                 "↻ Refresh"
                                             }
@@ -403,7 +403,7 @@ pub fn ClientGit() -> Element {
                                         match &*branches_resource.read() {
                                             Some(Ok(branch_list)) => rsx! {
                                                 if branch_list.is_empty() {
-                                                    p { class: "text-gray-500 text-sm", "No branches found. Pull from remote first." }
+                                                    p { class: "text-[13px] text-gray-400", "No branches found. Pull from remote first." }
                                                 } else {
                                                     div { class: "space-y-2",
                                                         for branch in branch_list.iter() {
@@ -417,7 +417,7 @@ pub fn ClientGit() -> Element {
                                                 }
                                             },
                                             Some(Err(e)) => rsx! { p { class: "text-red-600 text-sm", "Error: {e}" } },
-                                            None => rsx! { p { class: "text-gray-500 text-sm", "Loading…" } },
+                                            None => rsx! { p { class: "text-[13px] text-gray-400", "Loading…" } },
                                         }
                                     }
                                 } else {
@@ -425,7 +425,7 @@ pub fn ClientGit() -> Element {
                                         div { class: "flex items-center justify-between mb-3",
                                             p { class: "text-sm font-medium text-gray-700", "Recent commits (last 50)" }
                                             button {
-                                                class: "text-xs text-rose-500 hover:text-rose-600 font-medium",
+                                                class: "text-xs text-gray-700 hover:text-gray-700 font-medium",
                                                 onclick: move |_| log_resource.restart(),
                                                 "↻ Refresh"
                                             }
@@ -433,19 +433,19 @@ pub fn ClientGit() -> Element {
                                         match &*log_resource.read() {
                                             Some(Ok(commits)) => rsx! {
                                                 if commits.is_empty() {
-                                                    p { class: "text-gray-500 text-sm",
+                                                    p { class: "text-[13px] text-gray-400",
                                                         "No commits yet. Pull from remote or create your first commit above."
                                                     }
                                                 } else {
-                                                    div { class: "divide-y divide-gray-100",
+                                                    div { class: "divide-y divide-black/[0.04]",
                                                         for commit in commits.iter() {
-                                                            div { class: "flex items-start gap-3 py-3 hover:bg-gray-50/50 rounded-lg px-2 transition-colors",
+                                                            div { class: "flex items-start gap-3 py-3 hover:bg-black/[0.02] rounded-lg px-2 transition-colors",
                                                                 div { class: "w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5",
                                                                     Icon { name: "git-commit", class: "w-3.5 h-3.5 text-gray-400".to_string() }
                                                                 }
                                                                 div { class: "flex-1 min-w-0",
                                                                     div { class: "flex items-baseline gap-2 flex-wrap",
-                                                                        span { class: "font-mono text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded",
+                                                                        span { class: "font-mono text-xs bg-black/[0.04] text-gray-600 px-1.5 py-0.5 rounded",
                                                                             "{commit.hash_short}"
                                                                         }
                                                                         span { class: "text-sm text-gray-900 font-medium", "{commit.message}" }
@@ -462,7 +462,7 @@ pub fn ClientGit() -> Element {
                                                 }
                                             },
                                             Some(Err(e)) => rsx! { p { class: "text-red-600 text-sm", "Error: {e}" } },
-                                            None => rsx! { p { class: "text-gray-500 text-sm", "Loading…" } },
+                                            None => rsx! { p { class: "text-[13px] text-gray-400", "Loading…" } },
                                         }
                                     }
                                 }
@@ -471,12 +471,12 @@ pub fn ClientGit() -> Element {
                     },
 
                     Some(Err(e)) => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center",
+                        div { class: "glass-card rounded-2xl p-8 text-center",
                             p { class: "text-red-600 text-sm", "Error: {e}" }
                         }
                     },
                     None => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center",
+                        div { class: "glass-card rounded-2xl p-8 text-center",
                             div { class: "animate-pulse text-gray-400 text-sm", "Loading repository info…" }
                         }
                     },
@@ -515,7 +515,7 @@ pub fn GitBranchRow(
                 }
                 if !is_current {
                     button {
-                        class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50",
+                        class: "flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200 disabled:opacity-50",
                         disabled: switching(),
                         onclick: move |_| {
                             switching.set(true);

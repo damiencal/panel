@@ -31,19 +31,19 @@ pub fn ClientCron() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8",
             div { class: "mb-6",
-                h2 { class: "text-2xl font-bold text-gray-900", "Cron Jobs" }
-                p { class: "text-gray-500 text-sm mt-1",
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Cron Jobs" }
+                p { class: "text-[13px] text-gray-400 mt-1",
                     "Schedule recurring commands for each website. Changes are written directly to the site owner's crontab."
                 }
             }
 
             // ── Site selector ──────────────────────────────────────────────
-            div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6",
+            div { class: "glass-card rounded-2xl p-5 mb-6",
                 label { class: "block text-sm font-medium text-gray-700 mb-2", "Select Website" }
                 match &*sites.read() {
                     Some(Ok(site_list)) if !site_list.is_empty() => rsx! {
                         select {
-                            class: "w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-white text-sm",
+                            class: "w-full max-w-sm px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] bg-white text-sm",
                             value: "{selected_site_id}",
                             onchange: move |e| {
                                 let val: i64 = e.value().parse().unwrap_or(0);
@@ -57,7 +57,7 @@ pub fn ClientCron() -> Element {
                         }
                     },
                     Some(Ok(_)) => rsx! {
-                        p { class: "text-gray-500 text-sm", "No websites found. Create one first." }
+                        p { class: "text-[13px] text-gray-400", "No websites found. Create one first." }
                     },
                     Some(Err(e)) => rsx! {
                         p { class: "text-red-600 text-sm", "Error loading sites: {e}" }
@@ -70,7 +70,7 @@ pub fn ClientCron() -> Element {
 
             if selected_site_id() != 0 {
                 // ── Add cron job form ──────────────────────────────────────
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6",
+                div { class: "glass-card rounded-2xl p-5 mb-6",
                     h3 { class: "text-sm font-semibold text-gray-700 mb-4", "Add New Cron Job" }
 
                     if let Some(ref err) = form_error() {
@@ -106,7 +106,7 @@ pub fn ClientCron() -> Element {
                                 }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm font-mono",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm font-mono",
                                     placeholder: "*/5 * * * *",
                                     value: "{schedule}",
                                     oninput: move |e| schedule.set(e.value()),
@@ -126,7 +126,7 @@ pub fn ClientCron() -> Element {
                                 label { class: "block text-xs font-medium text-gray-600 mb-1", "Command" }
                                 input {
                                     r#type: "text",
-                                    class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm font-mono",
+                                    class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm font-mono",
                                     placeholder: "/usr/bin/php /home/user/site.com/artisan schedule:run",
                                     value: "{command}",
                                     oninput: move |e| command.set(e.value()),
@@ -141,7 +141,7 @@ pub fn ClientCron() -> Element {
                             }
                             input {
                                 r#type: "text",
-                                class: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-sm",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] text-sm",
                                 placeholder: "Laravel scheduler, backup script, etc.",
                                 value: "{description}",
                                 oninput: move |e| description.set(e.value()),
@@ -151,7 +151,7 @@ pub fn ClientCron() -> Element {
                         div { class: "flex justify-end",
                             button {
                                 r#type: "submit",
-                                class: "flex items-center gap-2 px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 text-sm",
+                                class: "flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-900/90 text-white font-medium rounded-xl transition-all duration-200 disabled:opacity-50 text-sm",
                                 disabled: submitting(),
                                 Icon { name: "plus", class: "w-4 h-4".to_string() }
                                 if submitting() { "Adding…" } else { "Add Cron Job" }
@@ -161,11 +161,11 @@ pub fn ClientCron() -> Element {
                 }
 
                 // ── Cron job list ──────────────────────────────────────────
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
-                    div { class: "px-5 py-4 border-b border-gray-100 flex items-center justify-between",
+                div { class: "glass-card rounded-2xl overflow-hidden",
+                    div { class: "px-5 py-4 border-b border-black/[0.05] flex items-center justify-between",
                         h3 { class: "text-sm font-semibold text-gray-700", "Scheduled Jobs" }
                         button {
-                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors",
+                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border border-black/[0.08] rounded-xl transition-colors",
                             onclick: move |_| jobs_resource.restart(),
                             Icon { name: "refresh-cw", class: "w-3.5 h-3.5".to_string() }
                             "Refresh"
@@ -223,7 +223,7 @@ pub fn CronJobRow(
         .map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string());
 
     rsx! {
-        div { class: "flex items-start gap-3 px-5 py-4 hover:bg-gray-50/50 transition-colors",
+        div { class: "flex items-start gap-3 px-5 py-4 hover:bg-black/[0.02] transition-colors",
             // Enable/disable toggle
             button {
                 class: "mt-0.5 shrink-0 disabled:opacity-50",
@@ -254,7 +254,7 @@ pub fn CronJobRow(
             // Job details
             div { class: "flex-1 min-w-0",
                 div { class: "flex items-center gap-2 flex-wrap",
-                    code { class: "text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded", "{job.schedule}" }
+                    code { class: "text-xs font-mono bg-black/[0.04] text-gray-600 px-2 py-0.5 rounded", "{job.schedule}" }
                     code { class: "text-xs font-mono text-gray-600 truncate max-w-xs", "{job.command}" }
                 }
                 if !job.description.is_empty() {
@@ -277,7 +277,7 @@ pub fn CronJobRow(
 
             // Delete button
             button {
-                class: "shrink-0 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40",
+                class: "shrink-0 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 disabled:opacity-40",
                 title: "Delete cron job",
                 disabled: deleting() || toggling(),
                 onclick: move |_| {

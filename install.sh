@@ -20,6 +20,7 @@ set -euo pipefail
 INSTALL_MODE="binary"      # default: download prebuilt binary from GitHub
 PINNED_VERSION=""          # empty = latest release
 USER_PROVIDED_HOSTNAME=""
+UPGRADE_MODE="false"
 
 for arg in "$@"; do
     case "$arg" in
@@ -32,13 +33,17 @@ for arg in "$@"; do
         --hostname=*)
             USER_PROVIDED_HOSTNAME="${arg#--hostname=}"
             ;;
+        --upgrade)
+            UPGRADE_MODE="true"
+            ;;
         --help|-h)
-            echo "Usage: $0 [--from-source] [--version=vX.Y.Z] [--hostname=admin.domain.com]"
+            echo "Usage: $0 [--from-source] [--version=vX.Y.Z] [--hostname=admin.domain.com] [--upgrade]"
             echo ""
             echo "  (default)       Download and install a prebuilt binary from GitHub Releases"
             echo "  --from-source   Build the panel binary from source using Rust/Cargo"
             echo "  --version=v...  Pin a specific release version (binary mode only)"
             echo "  --hostname=...  Provide a hostname to automatically generate a Let's Encrypt certificate"
+            echo "  --upgrade       Upgrade an existing installation in-place (backs up DB; rolls back on failure)"
             exit 0
             ;;
     esac
@@ -1303,6 +1308,113 @@ print_summary() {
 }
 
 ################################################################################
+# In-place upgrade with pre-flight DB snapshot and automatic rollback
+################################################################################
+
+upgrade_panel() {
+    print_header "Upgrading Panel (in-place)"
+
+    # Sanity check: a previous installation must exist
+    if [[ ! -f "$INSTALL_DIR/panel" ]]; then
+        print_error "No panel binary found at $INSTALL_DIR/panel."
+        print_info  "Run the installer without --upgrade for a fresh installation."
+        exit 1
+    fi
+
+    local TIMESTAMP
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+    # ── 1. Pre-upgrade database snapshot ──────────────────────────────────────
+    mkdir -p "$DATA_DIR/backups"
+    local DB_BACKUP="$DATA_DIR/backups/panel-pre-upgrade-${TIMESTAMP}.db"
+
+    if [[ -f "$DATA_DIR/panel.db" ]]; then
+        cp "$DATA_DIR/panel.db" "$DB_BACKUP"
+        chown "$PANEL_USER:$PANEL_GROUP" "$DB_BACKUP"
+        chmod 640 "$DB_BACKUP"
+        print_success "Database snapshot saved → $DB_BACKUP"
+    else
+        print_warning "No existing database found — skipping DB backup"
+        DB_BACKUP=""
+    fi
+
+    # ── 2. Preserve current binary for rollback ───────────────────────────────
+    cp "$INSTALL_DIR/panel" "$INSTALL_DIR/panel.rollback"
+
+    # ── 3. Stop the running service ───────────────────────────────────────────
+    print_info "Stopping panel service..."
+    if is_systemd_active; then
+        systemctl stop panel 2>/dev/null || true
+    else
+        service panel stop 2>/dev/null || true
+    fi
+    sleep 1
+
+    # ── 4. Download / build the new binary ───────────────────────────────────
+    # build_panel sets INSTALLED_VERSION
+    INSTALLED_VERSION="unknown"
+    build_panel
+
+    # ── 5. Start service and wait for it to become healthy ────────────────────
+    print_info "Starting panel service..."
+    if is_systemd_active; then
+        systemctl start panel 2>/dev/null || true
+    else
+        service panel start 2>/dev/null || true
+    fi
+
+    local PANEL_PORT="${PANEL_PORT:-3030}"
+    local RETRIES=20
+    print_info "Waiting up to ${RETRIES}s for the panel to respond on port ${PANEL_PORT}..."
+
+    while [[ $RETRIES -gt 0 ]]; do
+        if curl -sf --max-time 2 "http://127.0.0.1:${PANEL_PORT}/" >/dev/null 2>&1; then
+            print_success "Panel is responding — upgrade to $INSTALLED_VERSION succeeded"
+            rm -f "$INSTALL_DIR/panel.rollback"
+            return 0
+        fi
+        sleep 1
+        (( RETRIES-- ))
+    done
+
+    # ── 6. Rollback on failure ────────────────────────────────────────────────
+    print_error "Panel failed to respond after upgrade — initiating rollback!"
+
+    if is_systemd_active; then
+        systemctl stop panel 2>/dev/null || true
+    else
+        service panel stop 2>/dev/null || true
+    fi
+
+    # Restore binary
+    if [[ -f "$INSTALL_DIR/panel.rollback" ]]; then
+        mv "$INSTALL_DIR/panel.rollback" "$INSTALL_DIR/panel"
+        chown "$PANEL_USER:$PANEL_GROUP" "$INSTALL_DIR/panel"
+        chmod 755 "$INSTALL_DIR/panel"
+        print_info "Previous binary restored"
+    fi
+
+    # Restore database
+    if [[ -n "$DB_BACKUP" && -f "$DB_BACKUP" ]]; then
+        cp "$DB_BACKUP" "$DATA_DIR/panel.db"
+        chown "$PANEL_USER:$PANEL_GROUP" "$DATA_DIR/panel.db"
+        chmod 640 "$DATA_DIR/panel.db"
+        print_info "Database restored from $DB_BACKUP"
+    fi
+
+    # Restart with the old binary
+    if is_systemd_active; then
+        systemctl start panel 2>/dev/null || true
+    else
+        service panel start 2>/dev/null || true
+    fi
+
+    print_error "Rollback complete. The previous version has been restored."
+    [[ -n "$DB_BACKUP" ]] && print_info "Pre-upgrade database snapshot: $DB_BACKUP"
+    exit 1
+}
+
+################################################################################
 # Main Installation Flow
 ################################################################################
 
@@ -1385,5 +1497,10 @@ main() {
     print_summary
 }
 
-# Run main installation
-main "$@"
+# Route to upgrade or full installation
+if [[ "$UPGRADE_MODE" == "true" ]]; then
+    check_root
+    upgrade_panel
+else
+    main "$@"
+fi

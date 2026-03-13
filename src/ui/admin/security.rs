@@ -166,7 +166,7 @@ pub fn AdminFirewall() -> Element {
             // Header
             div { class: "flex items-center justify-between",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Firewall (UFW)" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Firewall (UFW)" }
                     p { class: "text-sm text-gray-500 mt-1", "Manage UFW rules, default policies, and IP blocks." }
                 }
                 div { class: "flex gap-2",
@@ -193,14 +193,14 @@ pub fn AdminFirewall() -> Element {
 
             // Feedback
             if let Some(msg) = ok_msg() {
-                div { class: "bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm", "{msg}" }
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 px-4 py-3 rounded-lg text-sm", "{msg}" }
             }
             if let Some(err) = error() {
-                div { class: "bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{err}" }
             }
 
             // Status card
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+            div { class: "glass-card rounded-2xl shadow-sm p-5",
                 h3 { class: "text-sm font-semibold text-gray-700 mb-3", "Status" }
                 match &*status_res.read() {
                     Some(Ok(s)) => rsx! {
@@ -247,12 +247,12 @@ pub fn AdminFirewall() -> Element {
             // Quick-add rule + IP block side-by-side
             div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                 // Add rule
-                div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+                div { class: "glass-card rounded-2xl shadow-sm p-5",
                     h3 { class: "text-sm font-semibold text-gray-700 mb-3", "Add Rule" }
                     div { class: "space-y-3",
                         div { class: "grid grid-cols-2 gap-2",
                             select {
-                                class: "border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                class: "border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 value: add_action(),
                                 oninput: move |e| add_action.set(e.value()),
                                 option { value: "allow", "Allow" }
@@ -261,7 +261,7 @@ pub fn AdminFirewall() -> Element {
                                 option { value: "limit", "Limit" }
                             }
                             select {
-                                class: "border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                class: "border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 value: add_proto(),
                                 oninput: move |e| add_proto.set(e.value()),
                                 option { value: "tcp", "TCP" }
@@ -270,25 +270,25 @@ pub fn AdminFirewall() -> Element {
                             }
                         }
                         input {
-                            class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                            class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "Port (e.g. 80, 443, 8080:8090)",
                             value: add_port(),
                             oninput: move |e| add_port.set(e.value()),
                         }
                         input {
-                            class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                            class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "From IP/CIDR (leave blank for any)",
                             value: add_from(),
                             oninput: move |e| add_from.set(e.value()),
                         }
                         input {
-                            class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                            class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "Comment (optional)",
                             value: add_comment(),
                             oninput: move |e| add_comment.set(e.value()),
                         }
                         button {
-                            class: "w-full py-2 text-sm font-medium bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50",
+                            class: "w-full py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50",
                             onclick: do_add_rule,
                             disabled: busy(),
                             "Add Rule"
@@ -297,12 +297,12 @@ pub fn AdminFirewall() -> Element {
                 }
 
                 // IP block
-                div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+                div { class: "glass-card rounded-2xl shadow-sm p-5",
                     h3 { class: "text-sm font-semibold text-gray-700 mb-3", "One-Click IP Block" }
                     p { class: "text-xs text-gray-400 mb-3", "Immediately deny all traffic from an IP or CIDR range." }
                     div { class: "space-y-3",
                         input {
-                            class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                            class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "IP address or CIDR (e.g. 1.2.3.4 or 1.2.3.0/24)",
                             value: block_ip(),
                             oninput: move |e| block_ip.set(e.value()),
@@ -316,11 +316,11 @@ pub fn AdminFirewall() -> Element {
                     }
 
                     // Export / Import
-                    div { class: "mt-5 pt-5 border-t border-gray-100",
+                    div { class: "mt-5 pt-5 border-t border-black/[0.05]",
                         h4 { class: "text-sm font-semibold text-gray-700 mb-2", "Export / Import Rules" }
                         div { class: "flex gap-2 flex-wrap",
                             button {
-                                class: "px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors",
+                                class: "px-3 py-1.5 text-xs font-medium bg-white border border-black/[0.08] rounded-xl hover:bg-gray-50 transition-colors",
                                 onclick: move |_| {
                                     spawn(async move {
                                         match server_ufw_export_rules().await {
@@ -332,7 +332,7 @@ pub fn AdminFirewall() -> Element {
                                 "Export"
                             }
                             button {
-                                class: "px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors",
+                                class: "px-3 py-1.5 text-xs font-medium bg-white border border-black/[0.08] rounded-xl hover:bg-gray-50 transition-colors",
                                 onclick: move |_| show_import.set(!show_import()),
                                 "Import"
                             }
@@ -340,7 +340,7 @@ pub fn AdminFirewall() -> Element {
                         if show_import() {
                             div { class: "mt-3 space-y-2",
                                 textarea {
-                                    class: "w-full h-32 border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono",
+                                    class: "w-full h-32 border border-black/[0.08] rounded-xl px-3 py-2 text-xs font-mono",
                                     placeholder: "Paste iptables-restore format rules here…",
                                     value: import_text(),
                                     oninput: move |e| import_text.set(e.value()),
@@ -358,8 +358,8 @@ pub fn AdminFirewall() -> Element {
             }
 
             // Rules table
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden",
-                div { class: "px-5 py-4 border-b border-gray-100 flex items-center justify-between",
+            div { class: "glass-card rounded-2xl shadow-sm overflow-hidden",
+                div { class: "px-5 py-4 border-b border-black/[0.05] flex items-center justify-between",
                     h3 { class: "text-sm font-semibold text-gray-700", "Current Rules" }
                     button {
                         class: "text-xs text-gray-400 hover:text-gray-600",
@@ -395,7 +395,7 @@ pub fn AdminFirewall() -> Element {
                                                 _ => "text-yellow-600",
                                             };
                                             rsx! {
-                                                tr { class: "border-t border-gray-50 hover:bg-gray-50/50",
+                                                tr { class: "border-t border-gray-50 hover:bg-black/[0.02]",
                                                     td { class: "px-4 py-3 text-gray-400", "{num}" }
                                                     td { class: "px-4 py-3 font-semibold {action_class}", "{rule.action}" }
                                                     td { class: "px-4 py-3 font-mono text-xs", "{rule.from}" }
@@ -473,25 +473,25 @@ pub fn AdminWaf() -> Element {
         div { class: "p-6 lg:p-8 max-w-5xl space-y-6",
             div { class: "flex items-center justify-between",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "WAF / ModSecurity" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "WAF / ModSecurity" }
                     p { class: "text-sm text-gray-500 mt-1", "Web application firewall protecting all hosted sites." }
                 }
                 button {
-                    class: "px-3 py-2 text-sm font-medium rounded-lg bg-white border border-gray-200 hover:bg-gray-50",
+                    class: "px-3 py-2 text-sm font-medium rounded-lg bg-white border border-gray-200 hover:bg-black/[0.02]",
                     onclick: move |_| { status_res.restart(); log_res.restart(); },
                     "Refresh"
                 }
             }
 
             if let Some(msg) = ok_msg() {
-                div { class: "bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm", "{msg}" }
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 px-4 py-3 rounded-lg text-sm", "{msg}" }
             }
             if let Some(err) = error() {
-                div { class: "bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{err}" }
             }
 
             // Status + install card
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+            div { class: "glass-card rounded-2xl shadow-sm p-5",
                 h3 { class: "text-sm font-semibold text-gray-700 mb-4", "ModSecurity Status" }
                 match &*status_res.read() {
                     Some(Ok(s)) => rsx! {
@@ -535,9 +535,9 @@ pub fn AdminWaf() -> Element {
                                             rsx! {
                                                 button {
                                                     class: if is_sel {
-                                                        "px-4 py-1.5 text-xs font-semibold rounded-full bg-rose-600 text-white"
+                                                        "px-4 py-1.5 text-xs font-semibold rounded-full bg-gray-900 text-white"
                                                     } else {
-                                                        "px-4 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                        "px-4 py-1.5 text-xs font-semibold rounded-full bg-black/[0.04] text-gray-600 hover:bg-gray-200"
                                                     },
                                                     onclick: {
                                                         let mode_str = mode.to_string();
@@ -563,7 +563,7 @@ pub fn AdminWaf() -> Element {
 
                                 // Rule packs
                                 div { class: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2",
-                                    div { class: "border border-gray-100 rounded-xl p-4",
+                                    div { class: "border border-black/[0.05] rounded-xl p-4",
                                         div { class: "flex items-center justify-between mb-2",
                                             div {
                                                 p { class: "text-sm font-semibold text-gray-800", "OWASP Core Rule Set" }
@@ -573,7 +573,7 @@ pub fn AdminWaf() -> Element {
                                         div { class: "flex gap-2 mt-3",
                                             if !s.owasp_installed {
                                                 button {
-                                                    class: "px-3 py-1.5 text-xs font-medium bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50",
+                                                    class: "px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50",
                                                     disabled: busy(),
                                                     onclick: move |_| {
                                                         error.set(None); ok_msg.set(None); busy.set(true);
@@ -589,7 +589,7 @@ pub fn AdminWaf() -> Element {
                                                 }
                                             } else {
                                                 button {
-                                                    class: "px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-red-100 hover:text-red-700 disabled:opacity-50",
+                                                    class: "px-3 py-1.5 text-xs font-medium bg-emerald-500/[0.08] text-green-700 rounded-lg hover:bg-red-100 hover:text-red-700 disabled:opacity-50",
                                                     disabled: busy(),
                                                     onclick: move |_| {
                                                         error.set(None); ok_msg.set(None); busy.set(true);
@@ -606,7 +606,7 @@ pub fn AdminWaf() -> Element {
                                             }
                                         }
                                     }
-                                    div { class: "border border-gray-100 rounded-xl p-4",
+                                    div { class: "border border-black/[0.05] rounded-xl p-4",
                                         div { class: "flex items-center justify-between mb-2",
                                             div {
                                                 p { class: "text-sm font-semibold text-gray-800", "Comodo WAF Rules" }
@@ -632,7 +632,7 @@ pub fn AdminWaf() -> Element {
                                                 }
                                             } else {
                                                 button {
-                                                    class: "px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-red-100 hover:text-red-700 disabled:opacity-50",
+                                                    class: "px-3 py-1.5 text-xs font-medium bg-emerald-500/[0.08] text-green-700 rounded-lg hover:bg-red-100 hover:text-red-700 disabled:opacity-50",
                                                     disabled: busy(),
                                                     onclick: move |_| {
                                                         error.set(None); ok_msg.set(None); busy.set(true);
@@ -652,7 +652,7 @@ pub fn AdminWaf() -> Element {
                                 }
                             } else {
                                 button {
-                                    class: "px-4 py-2 text-sm font-medium bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50",
+                                    class: "px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50",
                                     disabled: busy(),
                                     onclick: move |_| {
                                         error.set(None); ok_msg.set(None); busy.set(true);
@@ -675,8 +675,8 @@ pub fn AdminWaf() -> Element {
             }
 
             // Audit log
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden",
-                div { class: "px-5 py-4 border-b border-gray-100",
+            div { class: "glass-card rounded-2xl shadow-sm overflow-hidden",
+                div { class: "px-5 py-4 border-b border-black/[0.05]",
                     h3 { class: "text-sm font-semibold text-gray-700", "Audit Log (last 100 events)" }
                 }
                 match &*log_res.read() {
@@ -699,7 +699,7 @@ pub fn AdminWaf() -> Element {
                                 }
                                 tbody {
                                     for entry in entries.iter() {
-                                        tr { class: "border-t border-gray-50 hover:bg-gray-50/50",
+                                        tr { class: "border-t border-gray-50 hover:bg-black/[0.02]",
                                             td { class: "px-4 py-3 text-xs text-gray-400 whitespace-nowrap", "{entry.timestamp}" }
                                             td { class: "px-4 py-3 font-mono text-xs", "{entry.client_ip}" }
                                             td { class: "px-4 py-3 text-xs font-medium", "{entry.method}" }
@@ -769,16 +769,16 @@ pub fn AdminClamAv() -> Element {
     rsx! {
         div { class: "p-6 lg:p-8 max-w-4xl space-y-6",
             div {
-                h2 { class: "text-2xl font-bold text-gray-900", "ClamAV Antivirus" }
+                h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "ClamAV Antivirus" }
                 p { class: "text-sm text-gray-500 mt-1", "Scan files for malware and manage the virus database." }
             }
 
             if let Some(err) = error() {
-                div { class: "bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{err}" }
             }
 
             // DB info card
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+            div { class: "glass-card rounded-2xl shadow-sm p-5",
                 h3 { class: "text-sm font-semibold text-gray-700 mb-4", "Virus Database" }
                 match &*db_res.read() {
                     Some(Ok(info)) => rsx! {
@@ -815,7 +815,7 @@ pub fn AdminClamAv() -> Element {
                     None => rsx! { p { class: "text-sm text-gray-400 mb-4", "Loading..." } },
                 }
                 button {
-                    class: "px-4 py-2 text-sm font-medium bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 flex items-center gap-2",
+                    class: "px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2",
                     onclick: do_update_db,
                     disabled: updating(),
                     if updating() {
@@ -832,12 +832,12 @@ pub fn AdminClamAv() -> Element {
             }
 
             // Scan card
-            div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-5",
+            div { class: "glass-card rounded-2xl shadow-sm p-5",
                 h3 { class: "text-sm font-semibold text-gray-700 mb-4", "Scan Files" }
                 p { class: "text-xs text-gray-400 mb-3", "Only paths under /var/www, /home, /tmp, /srv, and /opt are allowed." }
                 div { class: "flex gap-2",
                     input {
-                        class: "flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono",
+                        class: "flex-1 border border-black/[0.08] rounded-xl px-3 py-2 text-sm font-mono",
                         value: scan_path(),
                         oninput: move |e| scan_path.set(e.value()),
                     }
@@ -872,7 +872,7 @@ pub fn AdminClamAv() -> Element {
                                 }
                             }
                             if report.threats.is_empty() {
-                                div { class: "bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm font-medium",
+                                div { class: "bg-emerald-500/[0.08] text-emerald-700 px-4 py-3 rounded-lg text-sm font-medium",
                                     "✓ No threats found."
                                 }
                             } else {
@@ -887,7 +887,7 @@ pub fn AdminClamAv() -> Element {
                                         }
                                         tbody {
                                             for threat in report.threats.iter() {
-                                                tr { class: "border-t border-gray-100",
+                                                tr { class: "border-t border-black/[0.05]",
                                                     td { class: "px-4 py-2 font-mono text-xs text-red-700", "{threat.path}" }
                                                     td { class: "px-4 py-2 text-xs font-medium text-red-600", "{threat.virus_name}" }
                                                 }
@@ -899,7 +899,7 @@ pub fn AdminClamAv() -> Element {
                         }
                     },
                     Some(Err(ref e)) => rsx! {
-                        div { class: "mt-4 bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{e}" }
+                        div { class: "mt-4 bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{e}" }
                     },
                     None => rsx! { div {} },
                 }
@@ -1029,13 +1029,13 @@ pub fn AdminSshHardening() -> Element {
         div { class: "p-6 lg:p-8 max-w-3xl space-y-6",
             div { class: "flex items-center justify-between",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "SSH Hardening" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "SSH Hardening" }
                     p { class: "text-sm text-gray-500 mt-1", "Configure OpenSSH security settings. Applied via drop-in configuration." }
                 }
                 div { class: "flex items-center gap-3",
                     match &*active_res.read() {
                         Some(Ok(true)) => rsx! {
-                            span { class: "text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700", "Hardening Active" }
+                            span { class: "text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/[0.08] text-green-700", "Hardening Active" }
                         },
                         Some(Ok(false)) => rsx! {
                             span { class: "text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-500", "Default Config" }
@@ -1046,10 +1046,10 @@ pub fn AdminSshHardening() -> Element {
             }
 
             if let Some(msg) = ok_msg() {
-                div { class: "bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm font-medium", "{msg}" }
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 px-4 py-3 rounded-lg text-sm font-medium", "{msg}" }
             }
             if let Some(err) = error() {
-                div { class: "bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{err}" }
+                div { class: "bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{err}" }
             }
             for warn in warnings().iter() {
                 div { class: "bg-yellow-50 text-yellow-800 border border-yellow-200 px-4 py-3 rounded-lg text-sm", "{warn}" }
@@ -1057,14 +1057,14 @@ pub fn AdminSshHardening() -> Element {
 
             match &*config_res.read() {
                 Some(Ok(_)) | None => rsx! {
-                    div { class: "bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6",
+                    div { class: "glass-card rounded-2xl shadow-sm p-6 space-y-6",
 
                         // Port & Root login
                         div { class: "grid grid-cols-2 gap-4",
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "SSH Port" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "65535",
                                     value: port(),
                                     oninput: move |e| port.set(e.value()),
@@ -1073,7 +1073,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Permit Root Login" }
                                 select {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     value: permit_root(),
                                     oninput: move |e| permit_root.set(e.value()),
                                     option { value: "no", "No (recommended)" }
@@ -1108,7 +1108,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Auth Tries" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "20",
                                     value: max_auth_tries(),
                                     oninput: move |e| max_auth_tries.set(e.value()),
@@ -1117,7 +1117,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Login Grace (sec)" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "10", max: "600",
                                     value: login_grace_time(),
                                     oninput: move |e| login_grace_time.set(e.value()),
@@ -1126,7 +1126,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Sessions" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "50",
                                     value: max_sessions(),
                                     oninput: move |e| max_sessions.set(e.value()),
@@ -1139,7 +1139,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Interval (sec)" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "0",
                                     value: client_alive_interval(),
                                     oninput: move |e| client_alive_interval.set(e.value()),
@@ -1148,7 +1148,7 @@ pub fn AdminSshHardening() -> Element {
                             div {
                                 label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Count Max" }
                                 input {
-                                    class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                    class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "0", max: "10",
                                     value: client_alive_count_max(),
                                     oninput: move |e| client_alive_count_max.set(e.value()),
@@ -1191,7 +1191,7 @@ pub fn AdminSshHardening() -> Element {
                         div {
                             label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "AllowUsers (space-separated, leave blank for all)" }
                             input {
-                                class: "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm",
+                                class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 placeholder: "e.g. deploy ubuntu admin",
                                 value: allowed_users(),
                                 oninput: move |e| allowed_users.set(e.value()),
@@ -1201,7 +1201,7 @@ pub fn AdminSshHardening() -> Element {
                         // Actions
                         div { class: "flex items-center gap-3 pt-2",
                             button {
-                                class: "px-5 py-2.5 text-sm font-semibold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors disabled:opacity-50",
+                                class: "px-5 py-2.5 text-sm font-semibold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50",
                                 onclick: apply,
                                 disabled: busy(),
                                 if busy() { "Applying…" } else { "Apply Configuration" }
@@ -1216,7 +1216,7 @@ pub fn AdminSshHardening() -> Element {
                     }
                 },
                 Some(Err(e)) => rsx! {
-                    div { class: "bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm", "{e}" }
+                    div { class: "bg-red-500/[0.08] text-red-600 px-4 py-3 rounded-lg text-sm", "{e}" }
                 },
             }
         }
@@ -1237,8 +1237,8 @@ pub fn AdminBackups() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Backup Overview" }
-                    p { class: "text-gray-500 text-sm mt-1", "Global backup stats and run history across all clients." }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Backup Overview" }
+                    p { class: "text-[13px] text-gray-400 mt-1", "Global backup stats and run history across all clients." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
@@ -1267,7 +1267,7 @@ pub fn AdminBackups() -> Element {
             }
 
             // ── Tab bar
-            div { class: "flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6",
+            div { class: "flex gap-1 bg-black/[0.04] rounded-xl p-1 w-fit mb-6",
                 for (label, id) in [("Stats", "stats"), ("Recent Runs", "runs")] {
                     button {
                         class: if active_tab() == id {
@@ -1284,12 +1284,12 @@ pub fn AdminBackups() -> Element {
             if active_tab() == "runs" {
                 match &*runs_res.read() {
                     Some(Ok(runs)) if runs.is_empty() => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 text-sm",
+                        div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 text-sm",
                             "No backup runs recorded yet."
                         }
                     },
                     Some(Ok(runs)) => rsx! {
-                        div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden",
+                        div { class: "glass-card rounded-2xl overflow-hidden",
                             table { class: "w-full text-sm",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
@@ -1313,13 +1313,13 @@ pub fn AdminBackups() -> Element {
                         div { class: "bg-red-50 rounded-2xl border border-red-200 p-4 text-red-700 text-sm", "Error: {e}" }
                     },
                     None => rsx! {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 animate-pulse text-sm", "Loading…" }
+                        div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 animate-pulse text-sm", "Loading…" }
                     },
                 }
             }
 
             if active_tab() == "stats" {
-                div { class: "bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 text-sm",
+                div { class: "glass-card rounded-2xl p-8 text-center text-gray-400 text-sm",
                     "Select the \"Recent Runs\" tab to see all backup executions, or view per-client details from the Clients page."
                 }
             }
@@ -1330,7 +1330,7 @@ pub fn AdminBackups() -> Element {
 #[component]
 pub fn AdminBackupRunRow(run: panel::models::backup::BackupRun) -> Element {
     let (status_cls, status_label) = match run.status.as_str() {
-        "success" => ("bg-green-100 text-green-700", "Success"),
+        "success" => ("bg-emerald-500/[0.08] text-green-700", "Success"),
         "failed" => ("bg-red-100 text-red-700", "Failed"),
         _ => ("bg-yellow-100 text-yellow-700", "Running"),
     };
@@ -1352,7 +1352,7 @@ pub fn AdminBackupRunRow(run: panel::models::backup::BackupRun) -> Element {
     let started_at_str = run.started_at.format("%b %d %H:%M:%S").to_string();
 
     rsx! {
-        tr { class: "border-b border-gray-100 hover:bg-gray-50/40 transition-colors",
+        tr { class: "border-b border-black/[0.05] hover:bg-gray-50/40 transition-colors",
             td { class: "px-4 py-3 text-xs font-mono text-gray-500", "#{run.schedule_id}" }
             td { class: "px-4 py-3 text-xs font-mono text-gray-500", "#{run.owner_id}" }
             td { class: "px-4 py-3 text-xs font-mono text-gray-700", "{started_at_str}" }

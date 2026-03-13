@@ -44,6 +44,18 @@ jobs:
       - name: Run tests
         run: cargo test --features server
 
+      - name: Migration integrity check
+        run: |
+          # Install sqlx-cli with only the SQLite driver to keep install fast
+          cargo install sqlx-cli --no-default-features --features sqlite --locked
+          # Apply every migration from scratch against a temp database file.
+          # This catches broken SQL, missing semicolons, or order conflicts
+          # before they reach a live server.
+          DATABASE_URL="sqlite:/tmp/panel_migrate_test.db" \
+            sqlx migrate run --source migrations
+          echo "All migrations applied successfully"
+          rm -f /tmp/panel_migrate_test.db
+
   build:
     name: Build (release smoke test)
     runs-on: ubuntu-24.04

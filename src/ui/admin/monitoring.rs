@@ -40,7 +40,7 @@ pub fn AdminMonitoring() -> Element {
             // Page header
             div { class: "flex items-center justify-between",
                 div {
-                    h2 { class: "text-2xl font-bold text-gray-900", "Monitoring" }
+                    h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Monitoring" }
                     p { class: "text-sm text-gray-500 mt-1", "Real-time system health and performance metrics" }
                 }
                 div { class: "flex items-center gap-3",
@@ -52,7 +52,7 @@ pub fn AdminMonitoring() -> Element {
                             let mins = (m.uptime_seconds % 3600) / 60;
                             let uptime_str = if days > 0 { format!("{}d {}h {}m", days, hours, mins) } else { format!("{}h {}m", hours, mins) };
                             rsx! {
-                                div { class: "flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-medium",
+                                div { class: "flex items-center gap-2 px-3 py-1.5 bg-emerald-500/[0.08] text-emerald-700 rounded-lg text-xs font-medium",
                                     div { class: "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" }
                                     "Uptime: {uptime_str}"
                                 }
@@ -85,7 +85,7 @@ pub fn AdminMonitoring() -> Element {
             }
 
             // Tab navigation
-            div { class: "flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit flex-wrap",
+            div { class: "flex items-center gap-1 p-1 bg-black/[0.04] rounded-xl w-fit flex-wrap",
                 {
                     let tabs: Vec<(&str, &str, &str)> = vec![
                         ("overview", "Overview", "layout-dashboard"),
@@ -167,7 +167,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             color: gauge_color(mem_pct),
                         }
                         // Load Average card
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center justify-between mb-4",
                                 div { class: "flex items-center gap-2",
                                     div { class: "p-2 bg-violet-50 rounded-lg",
@@ -178,7 +178,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             }
                             div { class: "flex items-end gap-4",
                                 div {
-                                    p { class: "text-2xl font-bold text-gray-900", "{m.load_1:.2}" }
+                                    p { class: "text-2xl font-semibold tracking-tight text-gray-900", "{m.load_1:.2}" }
                                     p { class: "text-xs text-gray-400 mt-0.5", "1 min" }
                                 }
                                 div {
@@ -196,7 +196,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             let days = m.uptime_seconds / 86400;
                             let hours = (m.uptime_seconds % 86400) / 3600;
                             rsx! {
-                                div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                                div { class: "glass-card rounded-2xl p-5",
                                     div { class: "flex items-center justify-between mb-4",
                                         div { class: "flex items-center gap-2",
                                             div { class: "p-2 bg-emerald-50 rounded-lg",
@@ -205,7 +205,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                                             span { class: "text-sm font-medium text-gray-600", "Uptime" }
                                         }
                                     }
-                                    p { class: "text-2xl font-bold text-gray-900", "{days}d {hours}h" }
+                                    p { class: "text-2xl font-semibold tracking-tight text-gray-900", "{days}d {hours}h" }
                                     p { class: "text-xs text-gray-400 mt-1", "Since last reboot" }
                                 }
                             }
@@ -214,7 +214,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
 
                     // Disk overview (compact)
                     if !m.disks.is_empty() {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-2 mb-4",
                                 Icon { name: "hard-drive", class: "w-4 h-4 text-gray-400".to_string() }
                                 h3 { class: "text-sm font-semibold text-gray-900", "Storage Overview" }
@@ -225,7 +225,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                                         let pct = disk.use_pct;
                                         let bar_color = gauge_bar_color(pct);
                                         rsx! {
-                                            div { class: "p-3 bg-gray-50 rounded-xl",
+                                            div { class: "p-3 bg-black/[0.03] rounded-xl",
                                                 div { class: "flex items-center justify-between mb-2",
                                                     span { class: "text-sm font-medium text-gray-700 truncate", "{disk.mount}" }
                                                     span { class: "text-xs font-semibold text-gray-500", "{pct}%" }
@@ -245,7 +245,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                     // Network + Docker summary side by side
                     div { class: "grid grid-cols-1 lg:grid-cols-2 gap-5",
                         // Network summary
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-2 mb-4",
                                 Icon { name: "wifi", class: "w-4 h-4 text-gray-400".to_string() }
                                 h3 { class: "text-sm font-semibold text-gray-900", "Network Interfaces" }
@@ -258,7 +258,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             } else {
                                 div { class: "space-y-3",
                                     for iface in m.network.iter() {
-                                        div { class: "flex items-center justify-between p-3 bg-gray-50 rounded-xl",
+                                        div { class: "flex items-center justify-between p-3 bg-black/[0.03] rounded-xl",
                                             div { class: "flex items-center gap-3",
                                                 div { class: "w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center",
                                                     Icon { name: "wifi", class: "w-4 h-4 text-blue-600".to_string() }
@@ -284,12 +284,12 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             }
                         }
                         // Docker summary
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                        div { class: "glass-card rounded-2xl p-5",
                             div { class: "flex items-center gap-2 mb-4",
                                 Icon { name: "box", class: "w-4 h-4 text-gray-400".to_string() }
                                 h3 { class: "text-sm font-semibold text-gray-900", "Docker Containers" }
                                 if !m.docker.is_empty() {
-                                    span { class: "ml-auto text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium",
+                                    span { class: "ml-auto text-xs px-2 py-0.5 bg-black/[0.04] text-gray-600 rounded-full font-medium",
                                         "{m.docker.len()}"
                                     }
                                 }
@@ -311,7 +311,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                                                 _ => "bg-gray-400",
                                             };
                                             rsx! {
-                                                div { class: "flex items-center justify-between p-3 bg-gray-50 rounded-xl",
+                                                div { class: "flex items-center justify-between p-3 bg-black/[0.03] rounded-xl",
                                                     div { class: "flex items-center gap-3 min-w-0",
                                                         div { class: "w-2 h-2 rounded-full {state_color} shrink-0" }
                                                         div { class: "min-w-0",
@@ -350,7 +350,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
             None => rsx! {
                 div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5",
                     for _ in 0..4 {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5 animate-pulse",
+                        div { class: "glass-card rounded-2xl p-5 animate-pulse",
                             div { class: "flex items-center gap-2 mb-4",
                                 div { class: "w-8 h-8 bg-gray-200 rounded-lg" }
                                 div { class: "h-4 bg-gray-200 rounded w-20" }
@@ -362,7 +362,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                 }
                 div { class: "grid grid-cols-1 lg:grid-cols-2 gap-5",
                     for _ in 0..2 {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-48" }
+                        div { class: "glass-card rounded-2xl p-5 animate-pulse h-48" }
                     }
                 }
             },
@@ -391,7 +391,7 @@ fn GaugeCard(
     let offset = circumference - (circumference * value as f64 / 100.0);
 
     rsx! {
-        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+        div { class: "glass-card rounded-2xl p-5",
             div { class: "flex items-center justify-between",
                 div {
                     div { class: "flex items-center gap-2 mb-3",
@@ -476,28 +476,28 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
                 rsx! {
                     // Docker summary cards
                     div { class: "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6",
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Total" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1", "{m.docker.len()}" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Total" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{m.docker.len()}" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Running" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Running" }
                             p { class: "text-2xl font-bold text-green-600 mt-1", "{running}" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "CPU Usage" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1", "{total_cpu:.1}%" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "CPU Usage" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{total_cpu:.1}%" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Memory" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1",
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Memory" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1",
                                 {if total_mem >= 1024.0 { format!("{:.1} GB", total_mem / 1024.0) } else { format!("{:.0} MB", total_mem) }}
                             }
                         }
                     }
 
                     if m.docker.is_empty() {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-12 text-center",
+                        div { class: "glass-card rounded-2xl p-12 text-center",
                             div { class: "w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4",
                                 Icon { name: "box", class: "w-8 h-8 text-gray-400".to_string() }
                             }
@@ -505,19 +505,19 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
                             p { class: "text-sm text-gray-500", "Docker is not installed or no containers are configured on this server." }
                         }
                     } else {
-                        div { class: "bg-white rounded-2xl border border-gray-100 overflow-hidden",
+                        div { class: "glass-card rounded-2xl overflow-hidden",
                             table { class: "w-full",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
-                                        th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Container" }
-                                        th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Image" }
-                                        th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                        th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "CPU" }
-                                        th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Memory" }
-                                        th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Ports" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Container" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Image" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "CPU" }
+                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Memory" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Ports" }
                                     }
                                 }
-                                tbody { class: "divide-y divide-gray-100",
+                                tbody { class: "divide-y divide-black/[0.04]",
                                     for c in m.docker.iter() {
                                         {
                                             let state_color = match c.state.as_str() {
@@ -527,13 +527,13 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
                                                 _ => "bg-gray-400",
                                             };
                                             let badge_cls = match c.state.as_str() {
-                                                "running" => "bg-green-50 text-green-700",
-                                                "exited" => "bg-red-50 text-red-700",
+                                                "running" => "bg-emerald-500/[0.08] text-emerald-700",
+                                                "exited" => "bg-red-500/[0.08] text-red-600",
                                                 "paused" => "bg-yellow-50 text-yellow-700",
-                                                _ => "bg-gray-100 text-gray-600",
+                                                _ => "bg-black/[0.04] text-gray-600",
                                             };
                                             rsx! {
-                                                tr { class: "hover:bg-gray-50/50 transition-colors",
+                                                tr { class: "hover:bg-black/[0.02] transition-colors",
                                                     td { class: "px-5 py-3.5",
                                                         div { class: "flex items-center gap-2.5",
                                                             div { class: "w-2 h-2 rounded-full {state_color} shrink-0" }
@@ -567,7 +567,7 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
             None => rsx! {
                 div { class: "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6",
                     for _ in 0..4 {
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4 animate-pulse",
+                        div { class: "glass-card rounded-xl p-4 animate-pulse",
                             div { class: "h-3 bg-gray-200 rounded w-16 mb-2" }
                             div { class: "h-6 bg-gray-200 rounded w-10" }
                         }
@@ -591,31 +591,31 @@ fn MonitoringNetwork(metrics: MetricsResource) -> Element {
                 rsx! {
                     // Summary cards
                     div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6",
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
+                        div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "arrow-down", class: "w-4 h-4 text-green-500".to_string() }
-                                p { class: "text-xs font-medium text-gray-500 uppercase", "Total Received" }
+                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Received" }
                             }
-                            p { class: "text-xl font-bold text-gray-900", "{format_bytes(total_rx)}" }
+                            p { class: "text-xl font-semibold tracking-tight text-gray-900", "{format_bytes(total_rx)}" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
+                        div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "arrow-up", class: "w-4 h-4 text-blue-500".to_string() }
-                                p { class: "text-xs font-medium text-gray-500 uppercase", "Total Sent" }
+                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Sent" }
                             }
-                            p { class: "text-xl font-bold text-gray-900", "{format_bytes(total_tx)}" }
+                            p { class: "text-xl font-semibold tracking-tight text-gray-900", "{format_bytes(total_tx)}" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
+                        div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "alert-triangle", class: "w-4 h-4 text-amber-500".to_string() }
-                                p { class: "text-xs font-medium text-gray-500 uppercase", "Total Errors" }
+                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Errors" }
                             }
-                            p { class: "text-xl font-bold text-gray-900", "{total_errors}" }
+                            p { class: "text-xl font-semibold tracking-tight text-gray-900", "{total_errors}" }
                         }
                     }
 
                     if m.network.is_empty() {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-12 text-center",
+                        div { class: "glass-card rounded-2xl p-12 text-center",
                             div { class: "w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4",
                                 Icon { name: "wifi", class: "w-8 h-8 text-gray-400".to_string() }
                             }
@@ -626,7 +626,7 @@ fn MonitoringNetwork(metrics: MetricsResource) -> Element {
                         // Interface detail cards
                         div { class: "space-y-4",
                             for iface in m.network.iter() {
-                                div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                                div { class: "glass-card rounded-2xl p-5",
                                     div { class: "flex items-center justify-between mb-4",
                                         div { class: "flex items-center gap-3",
                                             div { class: "w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center",
@@ -639,7 +639,7 @@ fn MonitoringNetwork(metrics: MetricsResource) -> Element {
                                         }
                                         {
                                             let has_errors = iface.rx_errors + iface.tx_errors > 0;
-                                            let badge = if has_errors { "bg-amber-50 text-amber-700" } else { "bg-green-50 text-green-700" };
+                                            let badge = if has_errors { "bg-amber-500/[0.08] text-amber-700" } else { "bg-emerald-500/[0.08] text-emerald-700" };
                                             let label = if has_errors { "Errors detected" } else { "Healthy" };
                                             rsx! {
                                                 span { class: "text-xs font-medium px-2.5 py-1 rounded-full {badge}", "{label}" }
@@ -678,7 +678,7 @@ fn MonitoringNetwork(metrics: MetricsResource) -> Element {
             None => rsx! {
                 div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6",
                     for _ in 0..3 {
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4 animate-pulse",
+                        div { class: "glass-card rounded-xl p-4 animate-pulse",
                             div { class: "h-3 bg-gray-200 rounded w-24 mb-2" }
                             div { class: "h-6 bg-gray-200 rounded w-16" }
                         }
@@ -701,22 +701,22 @@ fn MonitoringStorage(metrics: MetricsResource) -> Element {
                 rsx! {
                     // Summary
                     div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6",
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Partitions" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1", "{m.disks.len()}" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Partitions" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{m.disks.len()}" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Total Space" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1", "{total_disk:.1} GB" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Total Space" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{total_disk:.1} GB" }
                         }
-                        div { class: "bg-white rounded-xl border border-gray-100 p-4",
-                            p { class: "text-xs font-medium text-gray-500 uppercase tracking-wide", "Used Space" }
-                            p { class: "text-2xl font-bold text-gray-900 mt-1", "{used_disk:.1} GB" }
+                        div { class: "glass-card rounded-xl p-4",
+                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Used Space" }
+                            p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{used_disk:.1} GB" }
                         }
                     }
 
                     if m.disks.is_empty() {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-12 text-center",
+                        div { class: "glass-card rounded-2xl p-12 text-center",
                             div { class: "w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4",
                                 Icon { name: "hard-drive", class: "w-8 h-8 text-gray-400".to_string() }
                             }
@@ -736,11 +736,11 @@ fn MonitoringStorage(metrics: MetricsResource) -> Element {
                                         _ => "text-emerald-600",
                                     };
                                     rsx! {
-                                        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+                                        div { class: "glass-card rounded-2xl p-5",
                                             div { class: "flex items-start justify-between",
                                                 div { class: "flex-1",
                                                     div { class: "flex items-center gap-3 mb-1",
-                                                        div { class: "w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center",
+                                                        div { class: "w-10 h-10 bg-black/[0.04] rounded-xl flex items-center justify-center",
                                                             Icon { name: "hard-drive", class: "w-5 h-5 text-gray-500".to_string() }
                                                         }
                                                         div {
@@ -778,7 +778,7 @@ fn MonitoringStorage(metrics: MetricsResource) -> Element {
             None => rsx! {
                 div { class: "space-y-4",
                     for _ in 0..3 {
-                        div { class: "bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-32" }
+                        div { class: "glass-card rounded-2xl p-5 animate-pulse h-32" }
                     }
                 }
             },
@@ -954,7 +954,7 @@ fn MonitoringHistory() -> Element {
                             let cls = if active {
                                 "px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white"
                             } else {
-                                "px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                                "px-2.5 py-1 text-xs font-medium rounded-lg bg-black/[0.04] text-gray-600 hover:bg-gray-200 disabled:opacity-50"
                             };
                             let label = if secs < 60 { format!("{secs}s") } else { "1m".to_string() };
                             rsx! {
@@ -973,7 +973,7 @@ fn MonitoringHistory() -> Element {
                         let (cls, icon, label) = if auto_poll() {
                             ("flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors", "pause", "Stop")
                         } else {
-                            ("flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors", "play", "Auto")
+                            ("flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/[0.08] text-green-700 hover:bg-green-200 transition-colors", "play", "Auto")
                         };
                         rsx! {
                             button {
@@ -990,7 +990,7 @@ fn MonitoringHistory() -> Element {
 
                     // Manual sample
                     button {
-                        class: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50",
+                        class: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-500/[0.08] text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50",
                         disabled: loading(),
                         onclick: {
                             let mut do_sample = do_one_sample;
@@ -1003,7 +1003,7 @@ fn MonitoringHistory() -> Element {
                     // Clear
                     if !data.is_empty() {
                         button {
-                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors",
+                            class: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-black/[0.04] text-gray-600 hover:bg-gray-200 transition-colors",
                             onclick: move |_| { history.write().clear(); },
                             Icon { name: "trash-2", class: "w-3.5 h-3.5".to_string() }
                             "Clear"
@@ -1013,7 +1013,7 @@ fn MonitoringHistory() -> Element {
             }
 
             if data.is_empty() {
-                div { class: "bg-white rounded-2xl border border-gray-100 p-16 text-center",
+                div { class: "glass-card rounded-2xl p-16 text-center",
                     Icon { name: "trending-up", class: "w-12 h-12 text-gray-200 mx-auto mb-3".to_string() }
                     p { class: "text-gray-500 font-medium", "No history yet" }
                     p { class: "text-sm text-gray-400 mt-1",
@@ -1183,7 +1183,7 @@ fn LineChartCard(
         .collect();
 
     rsx! {
-        div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+        div { class: "glass-card rounded-2xl p-5",
             // Header
             div { class: "flex items-center justify-between mb-4",
                 div { class: "flex items-center gap-2",
@@ -1298,12 +1298,12 @@ fn MonitoringProcesses() -> Element {
                 div { class: "flex items-center gap-2",
                     span { class: "text-sm text-gray-500", "Sort by:" }
                     button {
-                        class: if sort_by() == "cpu" { "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-700" } else { "px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if sort_by() == "cpu" { "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-700" } else { "px-3 py-1.5 text-xs font-medium rounded-lg bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: move |_| sort_by.set("cpu"),
                         "CPU %"
                     }
                     button {
-                        class: if sort_by() == "mem" { "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-700" } else { "px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200" },
+                        class: if sort_by() == "mem" { "px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-700" } else { "px-3 py-1.5 text-xs font-medium rounded-lg bg-black/[0.04] text-gray-600 hover:bg-gray-200" },
                         onclick: move |_| sort_by.set("mem"),
                         "Memory"
                     }
@@ -1349,7 +1349,7 @@ fn MonitoringProcesses() -> Element {
                         p { class: "text-xs text-gray-400 mb-5", "Use force kill only if the process ignores SIGTERM." }
                         div { class: "flex items-center gap-3 justify-end",
                             button {
-                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors",
+                                class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
                                 onclick: move |_| confirm_kill.set(None),
                                 "Cancel"
                             }
@@ -1407,7 +1407,7 @@ fn MonitoringProcesses() -> Element {
             }
 
             // Process table
-            div { class: "bg-white rounded-2xl border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*procs.read() {
                     Some(Ok(list)) => {
                         let mut sorted = list.clone();
@@ -1420,14 +1420,14 @@ fn MonitoringProcesses() -> Element {
                             table { class: "w-full text-sm",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16", "PID" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Name" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase", "User" }
-                                        th { class: "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10", "St" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-20", "CPU %" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-24", "Memory" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-16", "Threads" }
-                                        th { class: "px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-20", "Action" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16", "PID" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Name" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "User" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10", "St" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20", "CPU %" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-24", "Memory" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16", "Threads" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20", "Action" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-gray-50",
@@ -1479,7 +1479,7 @@ fn MonitoringProcesses() -> Element {
                                                     td { class: "px-4 py-2.5 text-xs text-gray-500 text-right", "{threads}" }
                                                     td { class: "px-4 py-2.5 text-right",
                                                         button {
-                                                            class: "px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors",
+                                                            class: "px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200",
                                                             onclick: move |_| { confirm_kill.set(Some((pid, name2.clone()))); },
                                                             "Kill"
                                                         }
@@ -1502,7 +1502,7 @@ fn MonitoringProcesses() -> Element {
                         }
                     },
                     None => rsx! {
-                        div { class: "p-6 text-gray-500 text-sm animate-pulse", "Loading processes…" }
+                        div { class: "p-6 text-[13px] text-gray-400 animate-pulse", "Loading processes…" }
                     },
                 }
             }
@@ -1531,7 +1531,7 @@ fn MonitoringServicesTab() -> Element {
             }
 
             // DNS Provider
-            div { class: "bg-white rounded-2xl border border-gray-100 p-5",
+            div { class: "glass-card rounded-2xl p-5",
                 div { class: "flex items-center gap-4",
                     div { class: "p-3 bg-orange-50 rounded-xl text-orange-500",
                         Icon { name: "globe", class: "w-7 h-7".to_string() }
@@ -1544,20 +1544,20 @@ fn MonitoringServicesTab() -> Element {
             }
 
             // Services Table
-            div { class: "bg-white rounded-2xl border border-gray-100 overflow-hidden",
+            div { class: "glass-card rounded-2xl overflow-hidden",
                 match &*services.read() {
                     Some(Ok(list)) => rsx! {
                         table { class: "w-full",
                             thead { class: "bg-gray-50 border-b border-gray-200",
                                 tr {
-                                    th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Service" }
-                                    th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Status" }
-                                    th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Port" }
-                                    th { class: "px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase", "Version" }
-                                    th { class: "px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase", "Actions" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Service" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Port" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Version" }
+                                    th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
                                 }
                             }
-                            tbody { class: "divide-y divide-gray-100",
+                            tbody { class: "divide-y divide-black/[0.04]",
                                 for svc in list.iter() {
                                     {
                                         let svc_type = svc.service_type;
@@ -1568,7 +1568,7 @@ fn MonitoringServicesTab() -> Element {
                                         let is_startable = status == ServiceStatus::Stopped || status == ServiceStatus::Unknown;
 
                                         rsx! {
-                                            tr { class: "hover:bg-gray-50/50 transition-colors",
+                                            tr { class: "hover:bg-black/[0.02] transition-colors",
                                                 td { class: "px-5 py-3.5",
                                                     div { class: "flex items-center gap-3",
                                                         div { class: "w-2 h-2 rounded-full {status_dot_color(status)}" }
@@ -1588,7 +1588,7 @@ fn MonitoringServicesTab() -> Element {
                                                                 let mut action_error = action_error;
                                                                 rsx! {
                                                                     button {
-                                                                        class: "px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors",
+                                                                        class: "px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-emerald-500/[0.08] rounded-xl transition-all duration-200",
                                                                         onclick: move |_| {
                                                                             spawn(async move {
                                                                                 let action = ServiceAction { service: svc_type, action: ServiceCommand::Start };
@@ -1609,7 +1609,7 @@ fn MonitoringServicesTab() -> Element {
                                                                 let mut action_error = action_error;
                                                                 rsx! {
                                                                     button {
-                                                                        class: "px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors",
+                                                                        class: "px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200",
                                                                         onclick: move |_| {
                                                                             spawn(async move {
                                                                                 let action = ServiceAction { service: svc_type, action: ServiceCommand::Stop };
@@ -1629,7 +1629,7 @@ fn MonitoringServicesTab() -> Element {
                                                             let mut action_error = action_error;
                                                             rsx! {
                                                                 button {
-                                                                    class: "px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors",
+                                                                    class: "px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all duration-200",
                                                                     onclick: move |_| {
                                                                         spawn(async move {
                                                                             let action = ServiceAction { service: svc_type, action: ServiceCommand::Restart };
@@ -1656,7 +1656,7 @@ fn MonitoringServicesTab() -> Element {
                         }
                     },
                     Some(Err(e)) => rsx! { p { class: "p-6 text-red-600 text-sm", "Error: {e}" } },
-                    None => rsx! { p { class: "p-6 text-gray-500 text-sm", "Loading services..." } },
+                    None => rsx! { p { class: "p-6 text-[13px] text-gray-400", "Loading services..." } },
                 }
             }
         }
