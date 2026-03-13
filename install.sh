@@ -918,15 +918,34 @@ build_panel() {
     print_header "Building hosting control panel from source"
     
     cd "$(dirname "$0")"
-    
-    # Build release binary
-    RUSTFLAGS="-C opt-level=3" cargo build --release
-    
-    # Copy binary to install directory
-    cp target/release/panel "$INSTALL_DIR/panel"
+
+    # Ensure wasm target is available
+    rustup target add wasm32-unknown-unknown
+
+    # Install Dioxus CLI
+    cargo install dioxus-cli --locked
+
+    # Install Tailwind CSS CLI
+    local TW_BIN="tailwindcss-linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+    curl -fsSLo /tmp/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/$TW_BIN"
+    chmod +x /tmp/tailwindcss
+    mv /tmp/tailwindcss /usr/local/bin/tailwindcss
+
+    # Build Tailwind CSS
+    tailwindcss -i input.css -o assets/tailwind.css --minify
+
+    # Build fullstack release (WASM client + server binary)
+    dx build --release --platform web
+
+    # Copy binary and web assets to install directory
+    cp target/dx/panel/release/web/panel "$INSTALL_DIR/panel"
     chown "$PANEL_USER:$PANEL_GROUP" "$INSTALL_DIR/panel"
     chmod 755 "$INSTALL_DIR/panel"
-    
+
+    if [[ -d target/dx/panel/release/web/public ]]; then
+        cp -r target/dx/panel/release/web/public "$INSTALL_DIR/public"
+    fi
+
     # Copy templates
     cp -r templates "$INSTALL_DIR/templates"
 

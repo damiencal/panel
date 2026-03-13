@@ -72,7 +72,7 @@ jobs:
 
       - name: Build release (x86_64)
         if: matrix.cross != true
-        run: dx build --release --platform fullstack
+        run: dx build --release --platform web
 
       - name: Build release (aarch64 cross-compile)
         if: matrix.cross == true

@@ -101,7 +101,7 @@ source $HOME/.cargo/env
 # Clone and build
 git clone https://github.com/damiencal/panel.git
 cd panel
-dx build --release
+dx build --release --platform web
 
 # Run
 ./target/dx/panel/release/web/panel

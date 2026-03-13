@@ -31,15 +31,15 @@ sqlx migrate run
 ### 3. Build
 
 ```bash
-cargo build --release
+dx build --release --platform web
 ```
 
-The binary will be at `target/release/web`
+The server binary and web assets will be at `target/dx/panel/release/web/`
 
 ### 4. Run
 
 ```bash
-RUST_LOG=debug cargo run
+./target/dx/panel/release/web/panel
 ```
 
 Visit `http://localhost:3030`
@@ -59,8 +59,8 @@ cargo test
 # Build docs
 cargo doc --open
 
-# Watch for changes
-cargo watch -x build
+# Develop with hot reload
+dx serve --hot-reload true
 
 # Database operations
 sqlx database create
