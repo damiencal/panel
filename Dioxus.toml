@@ -3,7 +3,7 @@ name = "panel"
 
 [application]
 asset_dir = "assets"
-default_platform = "fullstack"
+default_platform = "web"
 
 [web.app]
 title = "Hosting Panel"

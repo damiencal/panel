@@ -82,4 +82,4 @@ jobs:
         run: tailwindcss -i input.css -o assets/tailwind.css --minify
 
       - name: Build release
-        run: dx build --release --platform fullstack
+        run: dx build --release --platform web
