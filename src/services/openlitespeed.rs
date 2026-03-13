@@ -15,7 +15,7 @@ const LSPHP_BIN: &str = "/usr/local/lsws/lsphp83/bin/lsphp";
 
 /// PHP versions available from the official LiteSpeed repository for Debian bookworm.
 /// Only these values are accepted when installing or assigning a PHP version.
-pub const SUPPORTED_PHP_VERSIONS: &[&str] = &["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
+pub const SUPPORTED_PHP_VERSIONS: &[&str] = crate::models::site::SUPPORTED_PHP_VERSIONS;
 
 /// Convert a dot-separated version string (`"8.3"`) to the package/path suffix (`"83"`).
 /// Validates that both parts are purely numeric; returns `None` on any invalid input.

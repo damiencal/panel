@@ -2,12 +2,17 @@
 use crate::models::auth::LoginResponse;
 use crate::models::user::Enable2FAResponse;
 use dioxus::prelude::*;
+#[cfg(feature = "server")]
 use std::collections::HashMap;
+#[cfg(feature = "server")]
 use std::sync::{Mutex, OnceLock};
+#[cfg(feature = "server")]
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "server")]
 static LOGIN_RATE_LIMITER: OnceLock<Mutex<HashMap<String, Vec<Instant>>>> = OnceLock::new();
 
+#[cfg(feature = "server")]
 fn enforce_login_rate_limit(ip: &str, username: &str) -> Result<(), ServerFnError> {
     let mut limits = LOGIN_RATE_LIMITER
         .get_or_init(|| Mutex::new(HashMap::new()))
@@ -41,6 +46,7 @@ fn enforce_login_rate_limit(ip: &str, username: &str) -> Result<(), ServerFnErro
     Ok(())
 }
 
+#[cfg(feature = "server")]
 fn get_client_ip() -> String {
     #[cfg(feature = "server")]
     if let Some(ctx) = dioxus_fullstack_core::FullstackContext::current() {

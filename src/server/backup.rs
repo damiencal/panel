@@ -552,6 +552,7 @@ async fn backup_mailbox(
 
 // Stub for WASM compilation (server functions are never called client-side).
 #[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
 async fn execute_backup(_sched: &BackupSchedule) -> Result<(i64, String), String> {
     unreachable!()
 }

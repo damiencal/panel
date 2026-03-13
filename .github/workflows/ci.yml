@@ -39,7 +39,7 @@ jobs:
         run: cargo clippy --features server --target x86_64-unknown-linux-gnu -- -D warnings
 
       - name: Clippy (wasm)
-        run: cargo clippy --features web --target wasm32-unknown-unknown -- -D warnings
+        run: cargo clippy --no-default-features --features web --target wasm32-unknown-unknown -- -D warnings
 
       - name: Run tests
         run: cargo test --features server

@@ -1598,7 +1598,7 @@ fn AdminServers() -> Element {
                     div { class: "mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm", "{err}" }
                 }
                 div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3",
-                    { const VERSIONS: &[&str] = panel::services::openlitespeed::SUPPORTED_PHP_VERSIONS;
+                    { const VERSIONS: &[&str] = panel::models::site::SUPPORTED_PHP_VERSIONS;
                       let installed: Vec<String> = match &*php_versions.read() {
                           Some(Ok(v)) => v.clone(),
                           _ => Vec::new(),
@@ -1818,7 +1818,7 @@ fn AdminResellers() -> Element {
                                                 let crypto = web_sys::window().unwrap().crypto().unwrap();
                                                 let mut buf = [0u8; 20];
                                                 let array = js_sys::Uint8Array::new_with_length(20);
-                                                crypto.get_random_values_with_array_buffer_view(&array.unchecked_ref()).unwrap();
+                                                crypto.get_random_values_with_array_buffer_view(array.unchecked_ref()).unwrap();
                                                 array.copy_to(&mut buf);
                                                 let mut chars: Vec<char> = vec![
                                                     upper[(buf[0] as usize) % upper.len()] as char,
@@ -2221,7 +2221,7 @@ fn AdminClients() -> Element {
                                                 let crypto = web_sys::window().unwrap().crypto().unwrap();
                                                 let mut buf = [0u8; 20];
                                                 let array = js_sys::Uint8Array::new_with_length(20);
-                                                crypto.get_random_values_with_array_buffer_view(&array.unchecked_ref()).unwrap();
+                                                crypto.get_random_values_with_array_buffer_view(array.unchecked_ref()).unwrap();
                                                 array.copy_to(&mut buf);
                                                 let mut chars: Vec<char> = vec![
                                                     upper[(buf[0] as usize) % upper.len()] as char,
@@ -5921,7 +5921,7 @@ fn ResellerClients() -> Element {
                                                 let crypto = web_sys::window().unwrap().crypto().unwrap();
                                                 let mut buf = [0u8; 20];
                                                 let array = js_sys::Uint8Array::new_with_length(20);
-                                                crypto.get_random_values_with_array_buffer_view(&array.unchecked_ref()).unwrap();
+                                                crypto.get_random_values_with_array_buffer_view(array.unchecked_ref()).unwrap();
                                                 array.copy_to(&mut buf);
                                                 let mut chars: Vec<char> = vec![
                                                     upper[(buf[0] as usize) % upper.len()] as char,

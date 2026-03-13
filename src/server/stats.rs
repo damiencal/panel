@@ -3,14 +3,17 @@ use crate::models::stats::{StatsConfig, StatsTool, StatsToolAvailability};
 use dioxus::prelude::*;
 
 /// Base directory under which per-domain stats HTML output is stored.
+#[cfg(feature = "server")]
 const STATS_BASE_DIR: &str = "/var/www/stats";
 
 /// Path to the OLS combined-format access log for a domain.
+#[cfg(feature = "server")]
 fn access_log_path(domain: &str) -> String {
     format!("/usr/local/lsws/logs/{}.access.log", domain)
 }
 
 /// Output directory for a domain+tool pair.
+#[cfg(feature = "server")]
 fn output_dir(domain: &str, tool: &str) -> String {
     format!("{}/{}/{}", STATS_BASE_DIR, domain, tool.to_lowercase())
 }
