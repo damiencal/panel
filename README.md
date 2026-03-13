@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="assets/favicon.svg" alt="Panel Logo" width="80" height="80" />
+</p>
+
 # Hosting Control Panel
 
-A modern, open-source web hosting control panel written in **Rust** and **Dioxus 0.7**, designed as an alternative to cPanel.
+A modern, open-source web hosting control panel written in **Rust**, designed as an alternative to cPanel, Plesk, DirectAdmin, CyberPanel..
 
 ## Features
 

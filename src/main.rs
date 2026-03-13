@@ -643,7 +643,7 @@ fn PanelUpdateBanner() -> Element {
     let Some(Ok(ref info)) = version_info
         .read()
         .as_ref()
-        .map(|r| r.as_ref().map(|v| v.clone()).map_err(|e| e.to_string()))
+        .map(|r| r.clone().map_err(|e| e.to_string()))
     else {
         return rsx! {};
     };
@@ -953,7 +953,6 @@ fn AdminHeader(props: HeaderProps) -> Element {
                 button {
                     class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
                     onclick: move |_| {
-                        let nav = nav.clone();
                         spawn(async move {
                             let _ = server_logout().await;
                             clear_auth_storage();
@@ -998,7 +997,6 @@ fn ResellerHeader(props: HeaderProps) -> Element {
                 button {
                     class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
                     onclick: move |_| {
-                        let nav = nav.clone();
                         spawn(async move {
                             let _ = server_logout().await;
                             clear_auth_storage();
@@ -1043,7 +1041,6 @@ fn ClientHeader(props: HeaderProps) -> Element {
                 button {
                     class: "flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors",
                     onclick: move |_| {
-                        let nav = nav.clone();
                         spawn(async move {
                             let _ = server_logout().await;
                             clear_auth_storage();
@@ -2368,7 +2365,7 @@ fn AdminClientRow(
 ) -> Element {
     let user_id = user.id;
     let is_active = user.status == panel::models::user::AccountStatus::Active;
-    let is_suspended = user.status == panel::models::user::AccountStatus::Suspended;
+    let _is_suspended = user.status == panel::models::user::AccountStatus::Suspended;
     let mut users_resource = users_resource;
     let mut action_error = action_error;
     let mut confirm_delete = use_signal(|| false);
@@ -2480,8 +2477,6 @@ fn AdminClientRow(
                         button {
                             class: if is_active {
                                 "px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg font-medium transition-colors disabled:opacity-50"
-                            } else if is_suspended {
-                                "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             } else {
                                 "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             },
@@ -3842,13 +3837,13 @@ fn AdminDatabases() -> Element {
 fn AdminEmail() -> Element {
     let domains = use_resource(move || async move { server_admin_list_email_domains().await });
     let mut editing = use_signal(|| None::<i64>);
-    let mut edit_hourly = use_signal(|| String::new());
-    let mut edit_daily = use_signal(|| String::new());
+    let mut edit_hourly = use_signal(String::new);
+    let mut edit_daily = use_signal(String::new);
     let mut save_error = use_signal(|| None::<String>);
     let mut save_ok = use_signal(|| false);
 
     let save_limits = {
-        let mut domains = domains.clone();
+        let mut domains = domains;
         move |_| {
             let domain_id = match editing() {
                 Some(id) => id,
@@ -3956,7 +3951,7 @@ fn AdminEmail() -> Element {
                                                         div { class: "flex gap-2",
                                                             button {
                                                                 class: "px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-lg transition-colors",
-                                                                onclick: save_limits.clone(),
+                                                                onclick: save_limits,
                                                                 "Save"
                                                             }
                                                             button {
@@ -4923,7 +4918,7 @@ fn MonitoringHistory() -> Element {
         }
         let interval = interval_secs();
         let auto_poll = auto_poll;
-        let mut do_sample = do_one_sample.clone();
+        let mut do_sample = do_one_sample;
         spawn(async move {
             loop {
                 if !auto_poll() {
@@ -5002,7 +4997,7 @@ fn MonitoringHistory() -> Element {
                         class: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50",
                         disabled: loading(),
                         onclick: {
-                            let mut do_sample = do_one_sample.clone();
+                            let mut do_sample = do_one_sample;
                             move |_| do_sample()
                         },
                         Icon { name: "activity", class: "w-3.5 h-3.5".to_string() }
@@ -5363,10 +5358,10 @@ fn MonitoringProcesses() -> Element {
                                 "Cancel"
                             }
                             {
-                                let mut procs2 = procs.clone();
-                                let mut confirm_kill2 = confirm_kill.clone();
-                                let mut kill_error2 = kill_error.clone();
-                                let mut kill_loading2 = kill_loading.clone();
+                                let mut procs2 = procs;
+                                let mut confirm_kill2 = confirm_kill;
+                                let mut kill_error2 = kill_error;
+                                let mut kill_loading2 = kill_loading;
                                 rsx! {
                                     button {
                                         class: "px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60",
@@ -5387,10 +5382,10 @@ fn MonitoringProcesses() -> Element {
                                 }
                             }
                             {
-                                let mut procs3 = procs.clone();
-                                let mut confirm_kill3 = confirm_kill.clone();
-                                let mut kill_error3 = kill_error.clone();
-                                let mut kill_loading3 = kill_loading.clone();
+                                let mut procs3 = procs;
+                                let mut confirm_kill3 = confirm_kill;
+                                let mut kill_error3 = kill_error;
+                                let mut kill_loading3 = kill_loading;
                                 rsx! {
                                     button {
                                         class: "px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-60",
@@ -5460,7 +5455,7 @@ fn MonitoringProcesses() -> Element {
                                                 "Z" => "text-red-600",
                                                 _ => "text-gray-400",
                                             };
-                                            let mut confirm_kill = confirm_kill.clone();
+                                            let mut confirm_kill = confirm_kill;
                                             rsx! {
                                                 tr { class: "hover:bg-gray-50/60 transition-colors",
                                                     td { class: "px-4 py-2.5 font-mono text-xs text-gray-400", "{pid}" }
@@ -5575,8 +5570,6 @@ fn MonitoringServicesTab() -> Element {
                                         let version_str = svc.version.clone().unwrap_or_else(|| "—".to_string());
                                         let is_stoppable = status == ServiceStatus::Running;
                                         let is_startable = status == ServiceStatus::Stopped || status == ServiceStatus::Unknown;
-                                        let services = services.clone();
-                                        let action_error = action_error.clone();
 
                                         rsx! {
                                             tr { class: "hover:bg-gray-50/50 transition-colors",
@@ -5595,8 +5588,8 @@ fn MonitoringServicesTab() -> Element {
                                                     div { class: "flex items-center justify-end gap-2",
                                                         if is_startable {
                                                             {
-                                                                let mut services = services.clone();
-                                                                let mut action_error = action_error.clone();
+                                                                let mut services = services;
+                                                                let mut action_error = action_error;
                                                                 rsx! {
                                                                     button {
                                                                         class: "px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors",
@@ -5616,8 +5609,8 @@ fn MonitoringServicesTab() -> Element {
                                                         }
                                                         if is_stoppable {
                                                             {
-                                                                let mut services = services.clone();
-                                                                let mut action_error = action_error.clone();
+                                                                let mut services = services;
+                                                                let mut action_error = action_error;
                                                                 rsx! {
                                                                     button {
                                                                         class: "px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors",
@@ -5636,8 +5629,8 @@ fn MonitoringServicesTab() -> Element {
                                                             }
                                                         }
                                                         {
-                                                            let mut services = services.clone();
-                                                            let mut action_error = action_error.clone();
+                                                            let mut services = services;
+                                                            let mut action_error = action_error;
                                                             rsx! {
                                                                 button {
                                                                     class: "px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors",
@@ -6057,7 +6050,7 @@ fn ResellerClientRow(
 ) -> Element {
     let user_id = user.id;
     let is_active = user.status == panel::models::user::AccountStatus::Active;
-    let is_suspended = user.status == panel::models::user::AccountStatus::Suspended;
+    let _is_suspended = user.status == panel::models::user::AccountStatus::Suspended;
     let mut clients_resource = clients_resource;
     let mut action_error = action_error;
     let mut confirm_delete = use_signal(|| false);
@@ -6128,8 +6121,6 @@ fn ResellerClientRow(
                         button {
                             class: if is_active {
                                 "px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg font-medium transition-colors disabled:opacity-50"
-                            } else if is_suspended {
-                                "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             } else {
                                 "px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors disabled:opacity-50"
                             },
@@ -8600,12 +8591,9 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                                                         stats_loading.set(Some(mb_id));
                                                         let did = domain_id;
                                                         spawn(async move {
-                                                            match server_get_mailbox_stats(did, mb_id).await {
-                                                                Ok(s) => {
-                                                                    stats_cache.write().insert(mb_id, s);
-                                                                    stats_open.set(Some(mb_id));
-                                                                }
-                                                                Err(_) => {}
+                                                            if let Ok(s) = server_get_mailbox_stats(did, mb_id).await {
+                                                                stats_cache.write().insert(mb_id, s);
+                                                                stats_open.set(Some(mb_id));
                                                             }
                                                             stats_loading.set(None);
                                                         });
@@ -11645,7 +11633,7 @@ fn AdminAntiSpam() -> Element {
     let mut spam_threshold = use_signal(|| "5.0".to_string());
     let mut add_header = use_signal(|| true);
     let mut quarantine = use_signal(|| false);
-    let mut quarantine_mailbox = use_signal(|| String::new());
+    let mut quarantine_mailbox = use_signal(String::new);
     let mut reject_score = use_signal(|| "15.0".to_string());
     let mut clamav = use_signal(|| false);
     let mut mailscanner = use_signal(|| false);
@@ -11668,7 +11656,7 @@ fn AdminAntiSpam() -> Element {
     });
 
     let save = {
-        let mut settings_res = settings_res.clone();
+        let mut settings_res = settings_res;
         move |_| {
             let eng = engine();
             let thresh: f64 = spam_threshold().parse().unwrap_or(5.0);
@@ -11896,7 +11884,7 @@ fn AdminMailQueue() -> Element {
     let mut action_ok = use_signal(|| None::<String>);
 
     let flush = {
-        let mut queue = queue.clone();
+        let mut queue = queue;
         move |_| {
             action_error.set(None);
             action_ok.set(None);
@@ -11915,7 +11903,7 @@ fn AdminMailQueue() -> Element {
     };
 
     let delete_all = {
-        let mut queue = queue.clone();
+        let mut queue = queue;
         move |_| {
             action_error.set(None);
             action_ok.set(None);
@@ -11992,7 +11980,7 @@ fn AdminMailQueue() -> Element {
                                                 "hold" => "bg-yellow-100 text-yellow-700",
                                                 _ => "bg-gray-100 text-gray-600",
                                             };
-                                            let queue2 = queue.clone();
+                                            let queue2 = queue;
                                             rsx! {
                                                 tr { class: "hover:bg-gray-50/50",
                                                     td { class: "px-4 py-3 font-mono text-xs text-gray-700", "{entry.queue_id}" }
@@ -12013,7 +12001,7 @@ fn AdminMailQueue() -> Element {
                                                                 title: "Delete message",
                                                                 onclick: move |_| {
                                                                     let id = qid.clone();
-                                                                    let mut queue2 = queue2.clone();
+                                                                    let mut queue2 = queue2;
                                                                     spawn(async move {
                                                                         server_delete_queued_message(id).await.ok();
                                                                         queue2.restart();
@@ -12058,7 +12046,7 @@ fn AdminEmailStats() -> Element {
     let mut days = use_signal(|| 7i64);
     let mut stats = use_resource(move || async move { server_get_email_stats(days()).await });
     let logs = use_resource(move || async move { server_get_mail_logs(100, None).await });
-    let mut search = use_signal(|| String::new());
+    let mut search = use_signal(String::new);
     let mut search_res: Resource<Result<Vec<panel::models::email::EmailLogEntry>, ServerFnError>> =
         use_resource(move || async move {
             let s = search();
@@ -12223,7 +12211,7 @@ fn AdminEmailStats() -> Element {
 
 #[component]
 fn AdminEmailDebug() -> Element {
-    let mut target_domain = use_signal(|| String::new());
+    let mut target_domain = use_signal(String::new);
     let mut result: Signal<Option<panel::models::email::EmailDebugResult>> = use_signal(|| None);
     let mut running = use_signal(|| false);
     let mut debug_error = use_signal(|| None::<String>);
@@ -12409,16 +12397,16 @@ fn AdminFirewall() -> Element {
 
     // quick-add form
     let mut add_action = use_signal(|| "allow".to_string());
-    let mut add_port = use_signal(|| String::new());
-    let mut add_from = use_signal(|| String::new());
+    let mut add_port = use_signal(String::new);
+    let mut add_from = use_signal(String::new);
     let mut add_proto = use_signal(|| "tcp".to_string());
-    let mut add_comment = use_signal(|| String::new());
+    let mut add_comment = use_signal(String::new);
 
     // ip-block form
-    let mut block_ip = use_signal(|| String::new());
+    let mut block_ip = use_signal(String::new);
 
     // import textarea
-    let mut import_text = use_signal(|| String::new());
+    let mut import_text = use_signal(String::new);
     let mut show_import = use_signal(|| false);
 
     let mut refresh = move || {
@@ -13323,7 +13311,7 @@ fn AdminSshHardening() -> Element {
     let mut permit_empty = use_signal(|| false);
     let mut use_dns = use_signal(|| false);
     let mut banner = use_signal(|| true);
-    let mut allowed_users = use_signal(|| String::new());
+    let mut allowed_users = use_signal(String::new);
     let mut client_alive_interval = use_signal(|| "300".to_string());
     let mut client_alive_count_max = use_signal(|| "2".to_string());
     let mut max_sessions = use_signal(|| "4".to_string());
@@ -13331,7 +13319,7 @@ fn AdminSshHardening() -> Element {
     let mut busy = use_signal(|| false);
     let mut error = use_signal(|| None::<String>);
     let mut ok_msg = use_signal(|| None::<String>);
-    let mut warnings = use_signal(|| Vec::<String>::new());
+    let mut warnings = use_signal(Vec::<String>::new);
 
     // Populate form on load
     use_effect(move || {
