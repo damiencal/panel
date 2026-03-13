@@ -156,22 +156,14 @@ impl PureFtpdService {
         // Create home directory if needed
         shell::exec("mkdir", &["-p", home_dir]).await?;
 
-        // Hash the password instead of storing plaintext.
-        // Use openssl to generate a SHA-512 crypt hash.
-        let hash_output = shell::exec("openssl", &["passwd", "-6", "-stdin"]).await;
-        let password_hash = match hash_output {
-            Ok(output) => String::from_utf8_lossy(&output.stdout).trim().to_string(),
-            Err(_) => {
-                // Fallback: use shell exec_stdin for piping password
-                let output = super::shell::exec_stdin(
-                    "openssl",
-                    &["passwd", "-6", "-stdin"],
-                    password.as_bytes(),
-                )
-                .await?;
-                String::from_utf8_lossy(&output.stdout).trim().to_string()
-            }
-        };
+        // Always pipe password via stdin so it is never exposed in the process list
+        let hash_output = shell::exec_stdin(
+            "openssl",
+            &["passwd", "-6", "-stdin"],
+            password.as_bytes(),
+        )
+        .await?;
+        let password_hash = String::from_utf8_lossy(&hash_output.stdout).trim().to_string();
 
         let passwd_args = format!(
             "{}:{}:{}:{}::{}::::::::::::::\n",

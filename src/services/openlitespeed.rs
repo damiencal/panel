@@ -298,6 +298,9 @@ impl OpenLiteSpeedService {
 
     /// Delete a virtual host.
     pub async fn delete_vhost(&self, domain: &str) -> Result<(), ServiceError> {
+        // Defense-in-depth: validate domain before constructing filesystem path
+        crate::utils::validators::validate_domain(domain)
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         info!("Deleting virtual host for domain: {}", domain);
 
         let vhost_dir = format!("{}/{}", OLS_VHOST_DIR, domain);

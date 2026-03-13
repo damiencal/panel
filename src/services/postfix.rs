@@ -87,6 +87,9 @@ impl PostfixService {
     /// Configure Postfix for virtual domain hosting.
     /// Sets up virtual mailbox domains, mailboxes, and aliases using hash files.
     pub async fn configure_virtual_hosting(&self, hostname: &str) -> Result<(), ServiceError> {
+        // Defense-in-depth: validate hostname at service layer
+        crate::utils::validators::validate_domain(hostname)
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         info!("Configuring Postfix for virtual hosting...");
 
         // Create vmail system user for virtual mailbox delivery
@@ -301,6 +304,9 @@ impl PostfixService {
 
     /// Remove a virtual alias.
     pub async fn remove_alias(&self, source: &str) -> Result<(), ServiceError> {
+        // Defense-in-depth: validate email at service layer
+        crate::utils::validators::validate_email(source)
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         let content = fs::read_to_string(VIRTUAL_ALIAS_FILE)
             .await
             .unwrap_or_default();
@@ -338,6 +344,8 @@ impl PostfixService {
 
     /// Remove all mailboxes for a domain.
     async fn remove_domain_mailboxes(&self, domain: &str) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent mailbox map updates
+        let _lock = super::filelock::FileLock::exclusive(VIRTUAL_MAILBOX_FILE)?;
         let content = fs::read_to_string(VIRTUAL_MAILBOX_FILE)
             .await
             .unwrap_or_default();
@@ -357,6 +365,8 @@ impl PostfixService {
 
     /// Remove all aliases for a domain.
     async fn remove_domain_aliases(&self, domain: &str) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent alias map updates
+        let _lock = super::filelock::FileLock::exclusive(VIRTUAL_ALIAS_FILE)?;
         let content = fs::read_to_string(VIRTUAL_ALIAS_FILE)
             .await
             .unwrap_or_default();
@@ -469,6 +479,15 @@ impl PostfixService {
         cert_path: &str,
         key_path: &str,
     ) -> Result<(), super::ServiceError> {
+        // Defense-in-depth: reject paths containing newlines or null bytes
+        if cert_path.contains('\n') || cert_path.contains('\0') {
+            return Err(super::ServiceError::CommandFailed("Invalid cert path".into()));
+        }
+        if key_path.contains('\n') || key_path.contains('\0') {
+            return Err(super::ServiceError::CommandFailed("Invalid key path".into()));
+        }
+        // File lock prevents TOCTOU race on concurrent main.cf updates
+        let _lock = super::filelock::FileLock::exclusive(POSTFIX_MAIN_CF)?;
         let main_cf = tokio::fs::read_to_string(POSTFIX_MAIN_CF)
             .await
             .unwrap_or_default();

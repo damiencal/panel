@@ -53,6 +53,17 @@ impl DkimService {
     /// Generate a 2048-bit RSA DKIM key pair for `domain` using `selector`.
     /// Returns the DNS TXT record value (the `v=DKIM1; k=rsa; p=…` string).
     pub async fn generate_key(&self, domain: &str, selector: &str) -> Result<String, ServiceError> {
+        // Defense-in-depth: validate inputs at service layer
+        crate::utils::validators::validate_domain(domain)
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+        if selector.is_empty()
+            || selector.len() > 63
+            || !selector.chars().all(|c| c.is_alphanumeric() || c == '-')
+        {
+            return Err(ServiceError::CommandFailed(
+                "Invalid DKIM selector: must be alphanumeric/hyphen, max 63 chars".into(),
+            ));
+        }
         info!(
             "Generating DKIM key for domain {} selector {}",
             domain, selector
@@ -105,6 +116,17 @@ impl DkimService {
 
     /// Remove a domain's DKIM configuration.
     pub async fn delete_key(&self, domain: &str, selector: &str) -> Result<(), ServiceError> {
+        // Defense-in-depth: validate inputs at service layer
+        crate::utils::validators::validate_domain(domain)
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+        if selector.is_empty()
+            || selector.len() > 63
+            || !selector.chars().all(|c| c.is_alphanumeric() || c == '-')
+        {
+            return Err(ServiceError::CommandFailed(
+                "Invalid DKIM selector: must be alphanumeric/hyphen, max 63 chars".into(),
+            ));
+        }
         self.remove_from_signing_table(domain).await?;
         self.remove_from_key_table(domain, selector).await?;
 
@@ -147,6 +169,8 @@ UserID              opendkim
     }
 
     async fn add_to_signing_table(&self, domain: &str, selector: &str) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent signing-table updates
+        let _lock = super::filelock::FileLock::exclusive(OPENDKIM_SIGNING_TABLE)?;
         let content = fs::read_to_string(OPENDKIM_SIGNING_TABLE)
             .await
             .unwrap_or_default();
@@ -168,6 +192,8 @@ UserID              opendkim
     }
 
     async fn remove_from_signing_table(&self, domain: &str) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent signing-table updates
+        let _lock = super::filelock::FileLock::exclusive(OPENDKIM_SIGNING_TABLE)?;
         let content = fs::read_to_string(OPENDKIM_SIGNING_TABLE)
             .await
             .unwrap_or_default();
@@ -189,6 +215,8 @@ UserID              opendkim
         selector: &str,
         private_key_path: &str,
     ) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent key-table updates
+        let _lock = super::filelock::FileLock::exclusive(OPENDKIM_KEY_TABLE)?;
         let content = fs::read_to_string(OPENDKIM_KEY_TABLE)
             .await
             .unwrap_or_default();
@@ -214,6 +242,8 @@ UserID              opendkim
         domain: &str,
         selector: &str,
     ) -> Result<(), ServiceError> {
+        // File lock prevents TOCTOU race on concurrent key-table updates
+        let _lock = super::filelock::FileLock::exclusive(OPENDKIM_KEY_TABLE)?;
         let content = fs::read_to_string(OPENDKIM_KEY_TABLE)
             .await
             .unwrap_or_default();

@@ -245,6 +245,9 @@ impl DovecotService {
                 "Password hash must be SHA512-CRYPT format (starting with $6$)".to_string(),
             ));
         }
+        // Defense-in-depth: ensure hash contains no injection characters
+        crate::utils::validators::validate_passwd_field(password_hash, "password_hash")
+            .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
         let _lock = super::filelock::FileLock::exclusive(DOVECOT_USERS_FILE)?;
 

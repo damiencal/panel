@@ -29,16 +29,7 @@ impl UfwService {
     pub async fn enable(&self) -> Result<(), ServiceError> {
         info!("Enabling UFW…");
         // Use `--force` to avoid interactive prompt
-        let out = tokio::process::Command::new("ufw")
-            .args(["--force", "enable"])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
+        shell::exec("ufw", &["--force", "enable"]).await?;
         info!("UFW enabled");
         Ok(())
     }
@@ -60,16 +51,7 @@ impl UfwService {
 
     /// Reset UFW to defaults (removes all rules).
     pub async fn reset(&self) -> Result<(), ServiceError> {
-        let out = tokio::process::Command::new("ufw")
-            .args(["--force", "reset"])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
+        shell::exec("ufw", &["--force", "reset"]).await?;
         info!("UFW reset to defaults");
         Ok(())
     }
@@ -79,11 +61,7 @@ impl UfwService {
         if !self.is_installed().await {
             return Err(ServiceError::NotInstalled);
         }
-        let out = tokio::process::Command::new("ufw")
-            .args(["status", "verbose"])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        let out = shell::exec("ufw", &["status", "verbose"]).await?;
         let text = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_ufw_status(&text))
     }
@@ -93,11 +71,7 @@ impl UfwService {
         if !self.is_installed().await {
             return Err(ServiceError::NotInstalled);
         }
-        let out = tokio::process::Command::new("ufw")
-            .args(["status", "numbered"])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        let out = shell::exec("ufw", &["status", "numbered"]).await?;
         let text = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_numbered_rules(&text))
     }
@@ -167,16 +141,7 @@ impl UfwService {
     pub async fn block_ip(&self, ip: &str) -> Result<(), ServiceError> {
         validate_ip_or_cidr(ip)?;
         info!("Blocking IP: {ip}");
-        let out = tokio::process::Command::new("ufw")
-            .args(["deny", "from", ip, "to", "any"])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
+        shell::exec("ufw", &["deny", "from", ip, "to", "any"]).await?;
         info!("IP {ip} blocked");
         Ok(())
     }
@@ -189,16 +154,7 @@ impl UfwService {
             ));
         }
         let num_str = number.to_string();
-        let out = tokio::process::Command::new("ufw")
-            .args(["--force", "delete", &num_str])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
+        shell::exec("ufw", &["--force", "delete", &num_str]).await?;
         info!("UFW rule #{number} deleted");
         Ok(())
     }
@@ -244,11 +200,7 @@ impl UfwService {
         }
         if out.is_empty() {
             // Fall back to `ufw status verbose`
-            let cmd_out = tokio::process::Command::new("ufw")
-                .args(["status", "verbose"])
-                .output()
-                .await
-                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            let cmd_out = shell::exec("ufw", &["status", "verbose"]).await?;
             out = String::from_utf8_lossy(&cmd_out.stdout).to_string();
         }
         Ok(out)
@@ -280,31 +232,14 @@ impl UfwService {
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     async fn run_ufw(&self, args: &[&str]) -> Result<(), ServiceError> {
-        let out = tokio::process::Command::new("ufw")
-            .args(args)
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
-        Ok(())
+        // Route through shell::exec for allowlist check and argument validation
+        shell::exec("ufw", args).await.map(|_| ())
     }
 
     async fn run_ufw_owned(&self, args: Vec<String>) -> Result<(), ServiceError> {
-        let out = tokio::process::Command::new("ufw")
-            .args(&args)
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        if !out.status.success() {
-            return Err(ServiceError::CommandFailed(
-                String::from_utf8_lossy(&out.stderr).to_string(),
-            ));
-        }
-        Ok(())
+        // Route through shell::exec for allowlist check and argument validation
+        let args_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        shell::exec("ufw", &args_refs).await.map(|_| ())
     }
 }
 
