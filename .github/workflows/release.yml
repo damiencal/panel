@@ -66,10 +66,15 @@ jobs:
 
       - name: Build release (aarch64 cross-compile)
         if: matrix.cross == true
+        env:
+          # Tell openssl-sys / pkg-config to allow cross-compilation lookups
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
         run: |
           # Build the WASM client (always targets wasm32, runs on the host)
           dx build --release --platform web
-          # Build the server binary for aarch64 using cross (Docker sysroot handles OpenSSL/SQLite)
+          # Build the server binary for aarch64 using cross.
+          # Cross.toml pre-build hooks install libssl-dev:arm64 inside the container.
           cross build --release --features server --target ${{ matrix.target }}
 
       - name: Prepare release artifact (x86_64)
