@@ -20,8 +20,8 @@ pub async fn server_list_packages() -> Result<Vec<Package>, ServerFnError> {
 }
 
 /// Create a new package (admin or reseller).
-#[allow(clippy::too_many_arguments)]
 #[server]
+#[allow(clippy::too_many_arguments)]
 pub async fn server_create_package(
     name: String,
     description: Option<String>,

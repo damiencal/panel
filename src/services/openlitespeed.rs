@@ -564,6 +564,7 @@ errorLog               /usr/local/lsws/logs/{domain}.error.log {{\n\
     /// - PHP via lsapi.
     /// - Far-future cache expiry + CORS for static assets.
     /// - Dedicated `/.well-known/` context for ACME challenges.
+    #[allow(clippy::too_many_arguments)]
     fn wordpress_vhost(
         domain: &str,
         doc_root: &str,
@@ -656,6 +657,7 @@ enableWebsocket        1
     /// - Dotfiles blocked.
     /// - Far-future cache expiry + CORS for static assets.
     /// - Dedicated `/.well-known/` context for ACME challenges.
+    #[allow(clippy::too_many_arguments)]
     fn static_vhost(
         domain: &str,
         doc_root: &str,
@@ -719,6 +721,7 @@ enableWebsocket        0
 
     /// Generate a generic PHP-enabled OLS vhost config (used for `SiteType::Php`,
     /// `SiteType::ReverseProxy`, `SiteType::NodeJs`, and any future variants).
+    #[allow(clippy::too_many_arguments)]
     fn php_vhost(
         domain: &str,
         doc_root: &str,
