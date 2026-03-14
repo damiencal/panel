@@ -18,7 +18,7 @@ fn get_jwt_key() -> &'static str {
     )
 }
 
-const TOKEN_EXPIRY_HOURS: i64 = 1;
+const TOKEN_EXPIRY_HOURS: i64 = 24;
 
 /// Create a JWT token.
 pub fn create_token(

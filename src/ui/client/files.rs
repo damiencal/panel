@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
+use crate::lucide::Icon;
 use dioxus::prelude::*;
 use panel::server::*;
-use crate::lucide::Icon;
 
 /// Format file size in human-readable units.
 fn fmt_file_bytes(bytes: u64) -> String {
@@ -53,12 +53,11 @@ pub fn ClientFileManager() -> Element {
     let mut selected_site: Signal<Option<panel::models::site::Site>> = use_signal(|| None);
     let mut current_path = use_signal(|| "/".to_string());
 
-    // Directory listing – refreshed whenever site or path changes
-    let site_id_for_list = selected_site.read().as_ref().map(|s| s.id);
-    let path_for_list = current_path.read().clone();
+    // Directory listing – refreshed whenever site or path changes.
+    // Read signals inside the closure so the reactive context tracks them.
     let entries = use_resource(move || {
-        let sid = site_id_for_list;
-        let p = path_for_list.clone();
+        let sid = selected_site.read().as_ref().map(|s| s.id);
+        let p = current_path.read().clone();
         async move {
             if let Some(id) = sid {
                 server_fm_list_dir(id, p).await
@@ -223,21 +222,20 @@ pub fn ClientFileManager() -> Element {
                                                 spawn(async move {
                                                     #[cfg(target_arch = "wasm32")]
                                                     {
-                                                        if let Some(file_engine) = files {
-                                                            for name in file_engine.files() {
-                                                                if let Some(bytes) = file_engine.read_file(&name).await {
-                                                                    let encoded_path = js_sys::encode_uri_component(&path);
-                                                                    let encoded_name = js_sys::encode_uri_component(&name);
-                                                                    let url = format!("/api/files/upload?site_id={sid}&path={encoded_path}&filename={encoded_name}");
-                                                                    let arr = js_sys::Uint8Array::from(bytes.as_slice());
-                                                                    let blob = web_sys::Blob::new_with_u8_array_sequence(&js_sys::Array::of1(&arr)).unwrap();
-                                                                    let window = web_sys::window().unwrap();
-                                                                    let opts = web_sys::RequestInit::new();
-                                                                    opts.set_method("POST");
-                                                                    opts.set_body(&blob);
-                                                                    let request = web_sys::Request::new_with_str_and_init(&url, &opts).unwrap();
-                                                                    let _ = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request)).await;
-                                                                }
+                                                        for file_data in &files {
+                                                            let name = file_data.name();
+                                                            if let Ok(bytes) = file_data.read_bytes().await {
+                                                                let encoded_path = js_sys::encode_uri_component(&path).as_string().unwrap_or_default();
+                                                                let encoded_name = js_sys::encode_uri_component(&name).as_string().unwrap_or_default();
+                                                                let url = format!("/api/files/upload?site_id={sid}&path={encoded_path}&filename={encoded_name}");
+                                                                let arr = js_sys::Uint8Array::from(bytes.as_ref() as &[u8]);
+                                                                let blob = web_sys::Blob::new_with_u8_array_sequence(&js_sys::Array::of1(&arr)).unwrap();
+                                                                let window = web_sys::window().unwrap();
+                                                                let opts = web_sys::RequestInit::new();
+                                                                opts.set_method("POST");
+                                                                opts.set_body(&blob);
+                                                                let request = web_sys::Request::new_with_str_and_init(&url, &opts).unwrap();
+                                                                let _ = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request)).await;
                                                             }
                                                         }
                                                     }

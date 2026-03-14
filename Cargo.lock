@@ -3165,6 +3165,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

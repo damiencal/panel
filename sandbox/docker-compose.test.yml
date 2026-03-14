@@ -1,0 +1,67 @@
+version: "3.9"
+
+# =============================================================================
+# Sandbox test environment for web.com.do panel
+#
+# Usage:
+#   docker compose -f sandbox/docker-compose.test.yml up --build -d
+#   ./sandbox/scripts/wait-for-services.sh
+#   npx playwright test
+#   docker compose -f sandbox/docker-compose.test.yml down -v
+# =============================================================================
+
+services:
+  sandbox:
+    build:
+      context: ..           # workspace root (so COPY of migrations/, install.sh, etc. works)
+      dockerfile: sandbox/Dockerfile
+    image: panel-sandbox:latest
+    container_name: panel-sandbox
+    # Required for systemd + UFW + ClamAV inside Docker
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    # systemd needs /run and /tmp as tmpfs
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    # cgroups volume
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # Persist the installed state across container restarts (speeds up re-runs)
+      - panel_data:/opt/panel
+      - panel_webroot:/var/www
+      - panel_mail:/var/mail/vhosts
+    ports:
+      - "8080:8080"    # panel UI
+      - "8180:80"      # OLS / WordPress
+      - "8443:443"     # OLS HTTPS (self-signed in sandbox)
+    environment:
+      PANEL_SANDBOX: "1"
+      DEBIAN_FRONTEND: noninteractive
+      TZ: UTC
+    # Ready when the panel HTTP responds
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    # Resource limits — keeps CI runner stable
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 1g
+    restart: "no"
+
+volumes:
+  panel_data:
+  panel_webroot:
+  panel_mail:

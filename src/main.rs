@@ -2,13 +2,13 @@
 #![allow(non_snake_case)]
 mod lucide;
 mod ui;
-use ui::admin::monitoring::*;
+use lucide::Icon;
 use ui::admin::admin_email::*;
+use ui::admin::monitoring::*;
 use ui::admin::security::*;
+use ui::client::cron::*;
 use ui::client::files::*;
 use ui::client::git::*;
-use ui::client::cron::*;
-use lucide::Icon;
 
 use dioxus::prelude::*;
 use panel::models::user::Role;
@@ -359,8 +359,7 @@ async fn file_download_handler(
         http::header::CONTENT_TYPE,
         http::HeaderValue::from_static("application/octet-stream"),
     );
-    if let Ok(v) =
-        http::HeaderValue::from_str(&format!("attachment; filename=\"{safe_filename}\""))
+    if let Ok(v) = http::HeaderValue::from_str(&format!("attachment; filename=\"{safe_filename}\""))
     {
         headers.insert(http::header::CONTENT_DISPOSITION, v);
     }
@@ -486,24 +485,20 @@ async fn file_upload_handler(
     }
 
     // Read body bytes
-    let body_bytes = match dioxus::server::axum::body::to_bytes(req.into_body(), MAX_UPLOAD_BYTES)
-        .await
-    {
-        Ok(b) => b,
-        Err(_) => {
-            return (
-                http::StatusCode::PAYLOAD_TOO_LARGE,
-                "Upload exceeds 50 MiB limit",
-            )
-                .into_response()
-        }
-    };
+    let body_bytes =
+        match dioxus::server::axum::body::to_bytes(req.into_body(), MAX_UPLOAD_BYTES).await {
+            Ok(b) => b,
+            Err(_) => {
+                return (
+                    http::StatusCode::PAYLOAD_TOO_LARGE,
+                    "Upload exceeds 50 MiB limit",
+                )
+                    .into_response()
+            }
+        };
 
     // Atomic write (temp + rename)
-    let temp_name = format!(
-        ".panel_upload_{}",
-        uuid::Uuid::new_v4().as_simple()
-    );
+    let temp_name = format!(".panel_upload_{}", uuid::Uuid::new_v4().as_simple());
     let parent = match dest_path.parent() {
         Some(p) => p.to_path_buf(),
         None => {
@@ -1541,14 +1536,10 @@ fn StatCard(
 #[component]
 pub fn StatusBadge(status: String) -> Element {
     let color = match status.as_str() {
-        "Active" | "Running" | "Success" | "Open" =>
-            "bg-emerald-500/[0.08] text-emerald-700",
-        "Suspended" | "Stopped" | "Error" =>
-            "bg-red-500/[0.08] text-red-600",
-        "Pending" | "Unknown" =>
-            "bg-amber-500/[0.08] text-amber-700",
-        "Closed" | "Inactive" =>
-            "bg-black/[0.03] text-gray-500",
+        "Active" | "Running" | "Success" | "Open" => "bg-emerald-500/[0.08] text-emerald-700",
+        "Suspended" | "Stopped" | "Error" => "bg-red-500/[0.08] text-red-600",
+        "Pending" | "Unknown" => "bg-amber-500/[0.08] text-amber-700",
+        "Closed" | "Inactive" => "bg-black/[0.03] text-gray-500",
         _ => "bg-blue-500/[0.08] text-blue-700",
     };
     rsx! {
@@ -4299,7 +4290,6 @@ fn AdminEmail() -> Element {
     }
 }
 
-
 #[component]
 fn AdminAuditLog() -> Element {
     let logs = use_resource(move || async move { server_get_audit_log(50).await });
@@ -6823,7 +6813,8 @@ fn DnsRecordPanel(
     let mut add_error = use_signal(|| None::<String>);
     let mut adding = use_signal(|| false);
 
-    let on_add_record = move |_: FormEvent| {
+    let on_add_record = move |evt: FormEvent| {
+        evt.prevent_default();
         adding.set(true);
         add_error.set(None);
         let name = rec_name();

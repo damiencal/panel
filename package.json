@@ -1,5 +1,13 @@
 {
+  "scripts": {
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
+    "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.ts --headed",
+    "test:e2e:report": "playwright show-report playwright-report"
+  },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.2.1"
+    "@playwright/test": "^1.52.0",
+    "@tailwindcss/cli": "^4.2.1",
+    "tsx": "^4.19.0"
   }
 }

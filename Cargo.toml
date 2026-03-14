@@ -117,6 +117,7 @@ dioxus-fullstack-core = { version = "0.7", optional = true }
 uuid = { version = "1.0", features = ["v4", "serde", "js"] }
 js-sys = "0.3"
 gloo-timers = { version = "0.3", features = ["futures"] }
+wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
     "Window",
     "Storage",
@@ -129,6 +130,9 @@ web-sys = { version = "0.3", features = [
     "HtmlAnchorElement",
     "HtmlElement",
     "Document",
+    "Request",
+    "RequestInit",
+    "Response",
 ] }
 
 [dev-dependencies]

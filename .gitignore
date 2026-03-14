@@ -19,6 +19,7 @@ target/
 
 # Panel config (contains secrets — copy panel.toml.example and fill in values)
 panel.toml
+panel.toml.devtest
 
 # Database
 *.db
@@ -57,3 +58,11 @@ dist_dioxus/
 # SQLx
 sqlx-data.json
 .sqlx/
+
+# External repos
+coolify/
+
+# Playwright
+playwright-report/
+test-results/
+tests/e2e/.auth/
