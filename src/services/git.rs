@@ -223,8 +223,7 @@ pub async fn add_and_commit(
     validate_work_dir(dir)?;
     validate_commit_message(message)?;
     // Defense-in-depth: validate author identity to prevent header injection via env vars
-    crate::utils::validators::validate_email(author_email)
-        .map_err(|e| e.to_string())?;
+    crate::utils::validators::validate_email(author_email).map_err(|e| e.to_string())?;
     if author_name.is_empty()
         || author_name.len() > 128
         || author_name.chars().any(|c| c.is_control())

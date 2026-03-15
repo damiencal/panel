@@ -233,19 +233,19 @@ pub async fn server_get_quota_warnings(
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
-    crate::auth::guards::require_admin(&claims)
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
 
     if threshold_pct == 0 || threshold_pct > 100 {
-        return Err(ServerFnError::new("threshold_pct must be between 1 and 100"));
+        return Err(ServerFnError::new(
+            "threshold_pct must be between 1 and 100",
+        ));
     }
 
     // Refresh disk usage from the filesystem before querying.
     crate::services::janitor::refresh_all_disk_usage(pool).await;
 
-    let warnings =
-        crate::services::janitor::get_quota_warnings(pool, threshold_pct).await;
+    let warnings = crate::services::janitor::get_quota_warnings(pool, threshold_pct).await;
 
     Ok(warnings
         .into_iter()

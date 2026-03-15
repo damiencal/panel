@@ -57,16 +57,16 @@ pub async fn server_create_site(domain: String, site_type: SiteType) -> Result<i
         .await
         .map_err(ServerFnError::new)?;
 
-    let site_id = match crate::db::sites::create(pool, claims.sub, domain.clone(), doc_root, site_type)
-        .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            // Roll back the quota counter since site creation failed.
-            let _ = crate::db::quotas::increment_sites(pool, claims.sub, -1).await;
-            return Err(ServerFnError::new(e.to_string()));
-        }
-    };
+    let site_id =
+        match crate::db::sites::create(pool, claims.sub, domain.clone(), doc_root, site_type).await
+        {
+            Ok(id) => id,
+            Err(e) => {
+                // Roll back the quota counter since site creation failed.
+                let _ = crate::db::quotas::increment_sites(pool, claims.sub, -1).await;
+                return Err(ServerFnError::new(e.to_string()));
+            }
+        };
 
     audit_log(
         claims.sub,
@@ -912,8 +912,7 @@ pub async fn server_enforce_quota_suspensions() -> Result<String, ServerFnError>
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
-    crate::auth::guards::require_admin(&claims)
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
 
     let mut suspended = 0u32;
@@ -942,20 +941,10 @@ pub async fn server_enforce_quota_suspensions() -> Result<String, ServerFnError>
 
         for site in user_sites {
             if over_limit && site.status == SiteStatus::Active {
-                let _ = crate::db::sites::update_status(
-                    pool,
-                    site.id,
-                    SiteStatus::Suspended,
-                )
-                .await;
+                let _ = crate::db::sites::update_status(pool, site.id, SiteStatus::Suspended).await;
                 suspended += 1;
             } else if below_safe && site.status == SiteStatus::Suspended {
-                let _ = crate::db::sites::update_status(
-                    pool,
-                    site.id,
-                    SiteStatus::Active,
-                )
-                .await;
+                let _ = crate::db::sites::update_status(pool, site.id, SiteStatus::Active).await;
                 restored += 1;
             }
         }

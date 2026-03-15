@@ -243,6 +243,14 @@ pub async fn server_set_mailbox_rate_limits(
     crate::auth::guards::check_ownership(&claims, domain.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    // IDOR guard: verify the mailbox actually belongs to the verified domain.
+    let mailbox = crate::db::email::get_mailbox(pool, mailbox_id)
+        .await
+        .map_err(|_| ServerFnError::new("Mailbox not found"))?;
+    if mailbox.domain_id != domain_id {
+        return Err(ServerFnError::new("Mailbox does not belong to the specified domain"));
+    }
+
     if limit_per_hour < 0 || limit_per_day < 0 {
         return Err(ServerFnError::new(
             "Limits must be non-negative (0 = unlimited)",

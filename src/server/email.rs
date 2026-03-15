@@ -199,16 +199,15 @@ pub async fn server_create_mailbox(
         .map_err(|_| ServerFnError::new("Failed to hash password"))?
         .to_string();
 
-    let id = match crate::db::email::create_mailbox(pool, domain_id, local_part, password_hash)
-        .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            // Roll back the quota increment since we never created the mailbox.
-            let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, -1).await;
-            return Err(ServerFnError::new(e.to_string()));
-        }
-    };
+    let id =
+        match crate::db::email::create_mailbox(pool, domain_id, local_part, password_hash).await {
+            Ok(id) => id,
+            Err(e) => {
+                // Roll back the quota increment since we never created the mailbox.
+                let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, -1).await;
+                return Err(ServerFnError::new(e.to_string()));
+            }
+        };
 
     // Quota already incremented by check_and_increment_email_accounts; no separate call needed.
 

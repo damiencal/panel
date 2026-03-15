@@ -29,27 +29,20 @@ pub async fn update_status(
     task_id: i64,
     status: TaskStatus,
 ) -> Result<(), sqlx::Error> {
-    let completed_at = matches!(status, TaskStatus::Completed | TaskStatus::Failed)
-        .then(Utc::now);
+    let completed_at = matches!(status, TaskStatus::Completed | TaskStatus::Failed).then(Utc::now);
 
-    sqlx::query(
-        "UPDATE background_tasks SET status = ?, completed_at = ? WHERE id = ?",
-    )
-    .bind(status)
-    .bind(completed_at)
-    .bind(task_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE background_tasks SET status = ?, completed_at = ? WHERE id = ?")
+        .bind(status)
+        .bind(completed_at)
+        .bind(task_id)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
 
 /// Append a log line to the task's output buffer.
-pub async fn append_log(
-    pool: &SqlitePool,
-    task_id: i64,
-    line: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn append_log(pool: &SqlitePool, task_id: i64, line: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE background_tasks
          SET log_output = COALESCE(log_output || char(10), '') || ?

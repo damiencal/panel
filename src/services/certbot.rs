@@ -259,16 +259,16 @@ impl CertbotService {
         .await?;
 
         let expiry_line = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        let expires_at = expiry_line
-            .strip_prefix("notAfter=")
-            .and_then(|s| {
-                let s = s.trim().trim_end_matches(" GMT").trim();
-                // Try space-padded day (%e) first, then zero-padded (%d).
-                chrono::NaiveDateTime::parse_from_str(s, "%b %e %H:%M:%S %Y")
-                    .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%b %d %H:%M:%S %Y"))
-                    .ok()
-                    .map(|dt| chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc))
-            });
+        let expires_at = expiry_line.strip_prefix("notAfter=").and_then(|s| {
+            let s = s.trim().trim_end_matches(" GMT").trim();
+            // Try space-padded day (%e) first, then zero-padded (%d).
+            chrono::NaiveDateTime::parse_from_str(s, "%b %e %H:%M:%S %Y")
+                .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%b %d %H:%M:%S %Y"))
+                .ok()
+                .map(|dt| {
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
+                })
+        });
 
         Ok(CertificateInfo {
             domain: domain.to_string(),

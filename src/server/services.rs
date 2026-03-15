@@ -152,9 +152,17 @@ pub async fn server_issue_ssl_certificate(
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
+    let pool = get_pool()?;
 
     crate::utils::validators::validate_domain(&domain).map_err(ServerFnError::new)?;
     crate::utils::validators::validate_email(&email).map_err(ServerFnError::new)?;
+
+    // Ownership guard: verify the caller owns a site with this domain, or is an admin.
+    let site = crate::db::sites::get_by_domain(pool, &domain)
+        .await
+        .map_err(|_| ServerFnError::new("Domain not found or not managed by this panel"))?;
+    crate::auth::guards::check_ownership(&claims, site.owner_id, None)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     let certbot = crate::services::certbot::CertbotService::default();
     let cert_info = certbot

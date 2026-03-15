@@ -58,15 +58,14 @@ pub async fn server_create_database(
         .await
         .map_err(ServerFnError::new)?;
 
-    let db_id = match crate::db::databases::create(pool, claims.sub, name.clone(), database_type)
-        .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
-            return Err(ServerFnError::new(e.to_string()));
-        }
-    };
+    let db_id =
+        match crate::db::databases::create(pool, claims.sub, name.clone(), database_type).await {
+            Ok(id) => id,
+            Err(e) => {
+                let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
+                return Err(ServerFnError::new(e.to_string()));
+            }
+        };
 
     // Provision the actual database on the database server
     if database_type == DatabaseType::MariaDB {
@@ -74,7 +73,10 @@ pub async fn server_create_database(
             // Roll back both the SQLite record and the quota counter.
             let _ = crate::db::databases::delete(pool, db_id).await;
             let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
-            return Err(ServerFnError::new(format!("MySQL provisioning failed: {}", e)));
+            return Err(ServerFnError::new(format!(
+                "MySQL provisioning failed: {}",
+                e
+            )));
         }
     }
 

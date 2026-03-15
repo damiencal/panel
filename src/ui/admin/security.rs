@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
+use crate::lucide::Icon;
 use dioxus::prelude::*;
 use panel::server::*;
-use crate::lucide::Icon;
 
-use crate::{BackupStatCard, fmt_bytes_backup};
+use crate::{fmt_bytes_backup, BackupStatCard};
 
 #[component]
 pub fn AdminFirewall() -> Element {

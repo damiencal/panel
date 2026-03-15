@@ -92,8 +92,11 @@ impl MariaDbService {
         crate::utils::validators::validate_db_name(db_name)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
-        let sql = format!("CREATE DATABASE IF NOT EXISTS `{}`;
-", db_name);
+        let sql = format!(
+            "CREATE DATABASE IF NOT EXISTS `{}`;
+",
+            db_name
+        );
         // Pipe SQL via stdin so the statement is never visible in `ps aux`
         shell::exec_stdin("mysql", &[], sql.as_bytes()).await?;
         info!("Database '{}' created", db_name);
@@ -105,8 +108,11 @@ impl MariaDbService {
         crate::utils::validators::validate_db_name(db_name)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
-        let sql = format!("DROP DATABASE IF EXISTS `{}`;
-", db_name);
+        let sql = format!(
+            "DROP DATABASE IF EXISTS `{}`;
+",
+            db_name
+        );
         // Pipe SQL via stdin so the statement is never visible in `ps aux`
         shell::exec_stdin("mysql", &[], sql.as_bytes()).await?;
         info!("Database '{}' dropped", db_name);
@@ -147,8 +153,11 @@ impl MariaDbService {
         crate::utils::validators::validate_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
-        let sql = format!("DROP USER IF EXISTS '{}'@'localhost';
-", username);
+        let sql = format!(
+            "DROP USER IF EXISTS '{}'@'localhost';
+",
+            username
+        );
         // Pipe SQL via stdin so the statement is never visible in `ps aux`
         shell::exec_stdin("mysql", &[], sql.as_bytes()).await?;
         info!("User '{}' dropped", username);

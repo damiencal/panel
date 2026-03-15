@@ -154,7 +154,9 @@ pub fn validate_ip_address(ip: &str) -> bool {
     if let Some((addr_part, zone_id)) = ip.rsplit_once('%') {
         return !zone_id.is_empty()
             && zone_id.len() <= 16
-            && zone_id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            && zone_id
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
             && addr_part.parse::<std::net::IpAddr>().is_ok();
     }
     false

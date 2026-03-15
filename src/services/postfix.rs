@@ -516,10 +516,14 @@ impl PostfixService {
     ) -> Result<(), super::ServiceError> {
         // Defense-in-depth: reject paths containing newlines or null bytes
         if cert_path.contains('\n') || cert_path.contains('\0') {
-            return Err(super::ServiceError::CommandFailed("Invalid cert path".into()));
+            return Err(super::ServiceError::CommandFailed(
+                "Invalid cert path".into(),
+            ));
         }
         if key_path.contains('\n') || key_path.contains('\0') {
-            return Err(super::ServiceError::CommandFailed("Invalid key path".into()));
+            return Err(super::ServiceError::CommandFailed(
+                "Invalid key path".into(),
+            ));
         }
         // File lock prevents TOCTOU race on concurrent main.cf updates
         let _lock = super::filelock::FileLock::exclusive(POSTFIX_MAIN_CF)?;

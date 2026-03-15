@@ -22,9 +22,7 @@ pub async fn server_get_task(task_id: i64) -> Result<BackgroundTask, ServerFnErr
         .map_err(|_| ServerFnError::new("Task not found"))?;
 
     // Scope non-admin reads to tasks they triggered.
-    if claims.role != crate::models::user::Role::Admin
-        && task.triggered_by != Some(claims.sub)
-    {
+    if claims.role != crate::models::user::Role::Admin && task.triggered_by != Some(claims.sub) {
         return Err(ServerFnError::new("Access denied"));
     }
 
@@ -38,8 +36,7 @@ pub async fn server_list_tasks(limit: i64) -> Result<Vec<BackgroundTask>, Server
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
-    crate::auth::guards::require_admin(&claims)
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
 
     if !(1..=200).contains(&limit) {
@@ -63,8 +60,7 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
-    crate::auth::guards::require_admin(&claims)
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
 
     // Allowlist: only permit known safe task types.
@@ -92,13 +88,11 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
     let pool_clone = pool.clone();
     let task_type_clone = task_type.clone();
     tokio::spawn(async move {
-        let _ =
-            crate::db::tasks::update_status(&pool_clone, task_id, TaskStatus::Running).await;
+        let _ = crate::db::tasks::update_status(&pool_clone, task_id, TaskStatus::Running).await;
 
         let (result_msg, final_status) = match task_type_clone.as_str() {
             "disk_refresh" => {
-                let updated =
-                    crate::services::janitor::refresh_all_disk_usage(&pool_clone).await;
+                let updated = crate::services::janitor::refresh_all_disk_usage(&pool_clone).await;
                 (
                     format!("Refreshed disk usage for {updated} user(s)."),
                     TaskStatus::Completed,
@@ -111,7 +105,15 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
                 .await;
                 let names = rotated.join(", ");
                 (
-                    format!("Rotated {} log file(s){}", rotated.len(), if names.is_empty() { String::new() } else { format!(": {names}") }),
+                    format!(
+                        "Rotated {} log file(s){}",
+                        rotated.len(),
+                        if names.is_empty() {
+                            String::new()
+                        } else {
+                            format!(": {names}")
+                        }
+                    ),
                     TaskStatus::Completed,
                 )
             }
@@ -131,10 +133,8 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
             ),
         };
 
-        let _ =
-            crate::db::tasks::append_log(&pool_clone, task_id, &result_msg).await;
-        let _ =
-            crate::db::tasks::update_status(&pool_clone, task_id, final_status).await;
+        let _ = crate::db::tasks::append_log(&pool_clone, task_id, &result_msg).await;
+        let _ = crate::db::tasks::update_status(&pool_clone, task_id, final_status).await;
     });
 
     Ok(task_id)

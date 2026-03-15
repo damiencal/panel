@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
-use dioxus::prelude::*;
-use panel::server::*;
-use panel::models::service::{ServiceAction, ServiceCommand, ServiceStatus, ServiceType};
 use crate::lucide::Icon;
+use dioxus::prelude::*;
+use panel::models::service::{ServiceAction, ServiceCommand, ServiceStatus, ServiceType};
+use panel::server::*;
 
 use crate::StatusBadge;
 

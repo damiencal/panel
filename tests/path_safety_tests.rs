@@ -13,10 +13,8 @@ use tempfile::TempDir;
 /// Create a temp directory that acts as a site doc_root with a known file inside.
 fn make_doc_root() -> TempDir {
     let dir = tempfile::tempdir().expect("Failed to create tempdir");
-    fs::write(dir.path().join("index.html"), b"<html/>")
-        .expect("Failed to write test file");
-    fs::create_dir(dir.path().join("subdir"))
-        .expect("Failed to create subdir");
+    fs::write(dir.path().join("index.html"), b"<html/>").expect("Failed to write test file");
+    fs::create_dir(dir.path().join("subdir")).expect("Failed to create subdir");
     fs::write(dir.path().join("subdir").join("page.php"), b"<?php ?>")
         .expect("Failed to write nested file");
     dir
@@ -36,7 +34,11 @@ fn confined_path_root_slash_returns_root() {
 fn confined_path_empty_rel_returns_root() {
     let dir = make_doc_root();
     let result = resolve_confined_path(dir.path().to_str().unwrap(), "");
-    assert!(result.is_ok(), "Empty path should resolve to root: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Empty path should resolve to root: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -51,7 +53,11 @@ fn confined_path_existing_file() {
 fn confined_path_nested_existing_file() {
     let dir = make_doc_root();
     let result = resolve_confined_path(dir.path().to_str().unwrap(), "/subdir/page.php");
-    assert!(result.is_ok(), "Nested existing file should resolve: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Nested existing file should resolve: {:?}",
+        result
+    );
     assert!(result.unwrap().ends_with("page.php"));
 }
 
@@ -89,8 +95,7 @@ fn confined_path_rejects_dotdot_at_root() {
 #[test]
 fn confined_path_rejects_dotdot_in_middle() {
     let dir = make_doc_root();
-    let result =
-        resolve_confined_path(dir.path().to_str().unwrap(), "/subdir/../../../etc/passwd");
+    let result = resolve_confined_path(dir.path().to_str().unwrap(), "/subdir/../../../etc/passwd");
     assert!(result.is_err(), "Mid-path traversal must be rejected");
 }
 
@@ -141,13 +146,9 @@ fn confined_path_rejects_symlink_escape() {
 
     // Place a symlink inside the doc_root pointing to the secret dir
     let link_path = dir.path().join("escape_link");
-    std::os::unix::fs::symlink(secret_dir.path(), &link_path)
-        .expect("Failed to create symlink");
+    std::os::unix::fs::symlink(secret_dir.path(), &link_path).expect("Failed to create symlink");
 
-    let result = resolve_confined_path(
-        dir.path().to_str().unwrap(),
-        "/escape_link/secret.txt",
-    );
+    let result = resolve_confined_path(dir.path().to_str().unwrap(), "/escape_link/secret.txt");
     assert!(
         result.is_err(),
         "Symlink escape must be rejected: {:?}",
@@ -165,10 +166,7 @@ fn confined_path_allows_internal_symlink() {
     std::os::unix::fs::symlink(dir.path().join("index.html"), &link_path)
         .expect("Failed to create symlink");
 
-    let result = resolve_confined_path(
-        dir.path().to_str().unwrap(),
-        "/link_to_index.html",
-    );
+    let result = resolve_confined_path(dir.path().to_str().unwrap(), "/link_to_index.html");
     assert!(
         result.is_ok(),
         "Internal symlink must be allowed: {:?}",
@@ -180,17 +178,29 @@ fn confined_path_allows_internal_symlink() {
 
 #[test]
 fn safe_path_valid() {
-    assert!(validate_safe_path("/home/user/sites/example.com/index.html", "/home/user/sites/example.com").is_ok());
+    assert!(validate_safe_path(
+        "/home/user/sites/example.com/index.html",
+        "/home/user/sites/example.com"
+    )
+    .is_ok());
 }
 
 #[test]
 fn safe_path_rejects_dotdot() {
-    assert!(validate_safe_path("/home/user/sites/example.com/../../etc/passwd", "/home/user/sites/example.com").is_err());
+    assert!(validate_safe_path(
+        "/home/user/sites/example.com/../../etc/passwd",
+        "/home/user/sites/example.com"
+    )
+    .is_err());
 }
 
 #[test]
 fn safe_path_rejects_null_byte() {
-    assert!(validate_safe_path("/home/user/sites/example.com/file\0.txt", "/home/user/sites").is_err());
+    assert!(validate_safe_path(
+        "/home/user/sites/example.com/file\0.txt",
+        "/home/user/sites"
+    )
+    .is_err());
 }
 
 #[test]
@@ -256,7 +266,9 @@ fn ip_valid_ipv4() {
 
 #[test]
 fn ip_valid_ipv6_full() {
-    assert!(validate_ip_address("2001:0db8:85a3:0000:0000:8a2e:0370:7334"));
+    assert!(validate_ip_address(
+        "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    ));
 }
 
 #[test]

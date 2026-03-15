@@ -195,10 +195,7 @@ pub async fn check_can_create_database(pool: &SqlitePool, user_id: i64) -> Resul
 /// On success the `databases_used` counter has already been incremented.  If the
 /// subsequent database provisioning fails the caller is responsible for rolling back
 /// with `increment_databases(pool, user_id, -1)`.
-pub async fn check_and_increment_databases(
-    pool: &SqlitePool,
-    user_id: i64,
-) -> Result<(), String> {
+pub async fn check_and_increment_databases(pool: &SqlitePool, user_id: i64) -> Result<(), String> {
     let mut tx = pool
         .begin()
         .await
@@ -243,10 +240,7 @@ pub async fn check_and_increment_databases(
 }
 
 /// Check whether a user may create an additional email account (mailbox).
-pub async fn check_can_create_email_account(
-    pool: &SqlitePool,
-    user_id: i64,
-) -> Result<(), String> {
+pub async fn check_can_create_email_account(pool: &SqlitePool, user_id: i64) -> Result<(), String> {
     let quota = match get_quota(pool, user_id).await {
         Ok(q) => q,
         Err(sqlx::Error::RowNotFound) => return Ok(()),

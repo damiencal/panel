@@ -157,13 +157,11 @@ impl PureFtpdService {
         shell::exec("mkdir", &["-p", home_dir]).await?;
 
         // Always pipe password via stdin so it is never exposed in the process list
-        let hash_output = shell::exec_stdin(
-            "openssl",
-            &["passwd", "-6", "-stdin"],
-            password.as_bytes(),
-        )
-        .await?;
-        let password_hash = String::from_utf8_lossy(&hash_output.stdout).trim().to_string();
+        let hash_output =
+            shell::exec_stdin("openssl", &["passwd", "-6", "-stdin"], password.as_bytes()).await?;
+        let password_hash = String::from_utf8_lossy(&hash_output.stdout)
+            .trim()
+            .to_string();
 
         let passwd_args = format!(
             "{}:{}:{}:{}::{}::::::::::::::\n",

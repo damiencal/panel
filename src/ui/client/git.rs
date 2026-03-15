@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
+use crate::lucide::Icon;
 use dioxus::prelude::*;
 use panel::server::*;
-use crate::lucide::Icon;
 
 #[component]
 pub fn ClientGit() -> Element {
