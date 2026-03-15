@@ -1,0 +1,50 @@
+# =============================================================================
+# Sandbox panel configuration
+# All secrets here are test-only and intentionally public.
+# =============================================================================
+
+[server]
+host = "127.0.0.1"
+port = 8080
+# 64-char test-only secret key (NEVER use in production)
+secret_key = "sandbox-test-key-do-not-use-in-production-aabbccddee112233445566"
+
+[database]
+url = "sqlite:/opt/panel/panel.db"
+
+[openlitespeed]
+config_dir = "/usr/local/lsws/conf"
+vhost_dir = "/usr/local/lsws/conf/vhosts"
+lsphp_bin = "/usr/local/lsws/lsphp83/bin/lsphp"
+
+[certbot]
+path = "/usr/bin/certbot"
+webroot = "/usr/local/lsws/html"
+
+[phpmyadmin]
+enabled = true
+install_path = "/usr/share/phpmyadmin"
+url_base_path = "/phpmyadmin"
+
+[cloudflare]
+# Empty token → DNS provider calls are skipped in sandbox
+api_token = "SANDBOX_FAKE_CF_TOKEN"
+
+[mariadb]
+bind_address = "127.0.0.1"
+port = 3306
+max_connections = 100
+
+[postfix]
+hostname = "mail.panel.test"
+virtual_mailbox_base = "/var/mail/vhosts"
+
+[dovecot]
+mail_location = "maildir:/var/mail/vhosts/%d/%n"
+users_file = "/etc/dovecot/users"
+
+[ftp]
+passive_port_min = 30000
+passive_port_max = 50000
+max_clients = 50
+tls_required = false
