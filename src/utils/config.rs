@@ -21,6 +21,8 @@ pub struct PanelConfig {
     pub dovecot: DovecotConfig,
     #[serde(default)]
     pub ftp: FtpConfig,
+    #[serde(default)]
+    pub audit: AuditConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,6 +129,21 @@ impl Default for FtpConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditConfig {
+    /// Number of days to retain audit log entries. Defaults to 30.
+    /// Compliance environments (PCI-DSS, HIPAA) typically require 90–365 days.
+    pub log_retention_days: u32,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            log_retention_days: 30,
+        }
+    }
+}
+
 impl Default for CloudflareConfig {
     fn default() -> Self {
         Self {
@@ -176,6 +193,7 @@ impl Default for PanelConfig {
             postfix: PostfixConfig::default(),
             dovecot: DovecotConfig::default(),
             ftp: FtpConfig::default(),
+            audit: AuditConfig::default(),
         }
     }
 }

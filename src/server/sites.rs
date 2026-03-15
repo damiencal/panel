@@ -48,18 +48,25 @@ pub async fn server_create_site(domain: String, site_type: SiteType) -> Result<i
 
     crate::utils::validators::validate_domain(&domain).map_err(ServerFnError::new)?;
 
-    crate::db::quotas::check_can_create_site(pool, claims.sub)
+    let doc_root = format!("/home/{}/sites/{}", claims.username, domain);
+
+    // check_and_increment_sites performs the quota check and counter increment
+    // atomically inside a single SQLite transaction, eliminating the TOCTOU race
+    // that exists when check and increment are separate operations.
+    crate::db::quotas::check_and_increment_sites(pool, claims.sub)
         .await
         .map_err(ServerFnError::new)?;
 
-    let doc_root = format!("/home/{}/sites/{}", claims.username, domain);
-
-    let site_id = crate::db::sites::create(pool, claims.sub, domain.clone(), doc_root, site_type)
+    let site_id = match crate::db::sites::create(pool, claims.sub, domain.clone(), doc_root, site_type)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    // Update usage counter
-    let _ = crate::db::quotas::increment_sites(pool, claims.sub, 1).await;
+    {
+        Ok(id) => id,
+        Err(e) => {
+            // Roll back the quota counter since site creation failed.
+            let _ = crate::db::quotas::increment_sites(pool, claims.sub, -1).await;
+            return Err(ServerFnError::new(e.to_string()));
+        }
+    };
 
     audit_log(
         claims.sub,

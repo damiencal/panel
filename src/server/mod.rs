@@ -54,9 +54,6 @@ pub use users::*;
 #[cfg(feature = "server")]
 pub(crate) mod helpers {
     use dioxus::prelude::ServerFnError;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-    use std::time::Instant;
 
     // ─── Lazy Server Initialization ───
 
@@ -100,11 +97,13 @@ pub(crate) mod helpers {
                 let policy_pool = crate::db::get_pool_ref().clone();
                 crate::services::postfix_policy::start(policy_pool);
 
-                // Spawn background task for cleaning up old audit logs (runs every 24 hours)
+                // Spawn background task for cleaning up old audit logs (runs every 24 hours).
+                // Retention period is configurable via panel.toml [audit] log_retention_days.
                 let audit_pool = crate::db::get_pool_ref().clone();
+                let retention_days = config.audit.log_retention_days as i64;
                 tokio::spawn(async move {
                     loop {
-                        if let Err(e) = crate::db::audit::cleanup_old_logs(&audit_pool, 30).await {
+                        if let Err(e) = crate::db::audit::cleanup_old_logs(&audit_pool, retention_days).await {
                             tracing::error!("Error cleaning up old audit logs: {}", e);
                         } else {
                             tracing::info!("Successfully ran cleanup of old audit logs");
@@ -113,43 +112,59 @@ pub(crate) mod helpers {
                     }
                 });
 
+                // Spawn background task for proactive SSL certificate expiry scanning.
+                // Logs a warning 14 days before expiry so operators can investigate
+                // before certbot's own renewal timer fires (matches Coolify's production threshold).
+                tokio::spawn(async move {
+                    loop {
+                        // First sleep so startup noise is avoided; scans run once per day.
+                        tokio::time::sleep(tokio::time::Duration::from_secs(86400)).await;
+                        let certbot = crate::services::certbot::CertbotService::default();
+                        match certbot.list_certificates().await {
+                            Ok(domains) => {
+                                for domain in &domains {
+                                    match certbot.days_until_expiry(domain).await {
+                                        Ok(days) if days <= 14 => {
+                                            tracing::warn!(
+                                                domain = %domain,
+                                                days_remaining = days,
+                                                "SSL certificate expiring soon — certbot systemd timer should renew automatically"
+                                            );
+                                            if let Ok(pool) = crate::db::pool() {
+                                                let _ = crate::db::audit::log_action(
+                                                    pool,
+                                                    0,
+                                                    "ssl_expiry_warning".to_string(),
+                                                    Some("site".to_string()),
+                                                    None,
+                                                    Some(domain.clone()),
+                                                    None,
+                                                    "Warning".to_string(),
+                                                    Some(format!("Certificate expires in {} day(s)", days)),
+                                                    None,
+                                                    None,
+                                                )
+                                                .await;
+                                            }
+                                        }
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            tracing::debug!(domain = %domain, "Could not check SSL expiry: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                tracing::debug!("SSL cert expiry scan skipped: {}", e);
+                            }
+                        }
+                    }
+                });
+
                 Ok(())
             })
             .await
             .map(|_| ())
-    }
-
-    // ─── In-Memory Rate Limiter ───
-
-    static RATE_LIMITER: std::sync::OnceLock<Mutex<RateLimiter>> = std::sync::OnceLock::new();
-
-    struct RateLimiter {
-        attempts: HashMap<String, Vec<Instant>>,
-    }
-
-    impl RateLimiter {
-        fn new() -> Self {
-            Self {
-                attempts: HashMap::new(),
-            }
-        }
-
-        fn record(&mut self, key: &str) {
-            self.attempts
-                .entry(key.to_string())
-                .or_default()
-                .push(Instant::now());
-        }
-    }
-
-    fn rate_limiter() -> &'static Mutex<RateLimiter> {
-        RATE_LIMITER.get_or_init(|| Mutex::new(RateLimiter::new()))
-    }
-
-    /// Record a failed auth attempt.
-    pub fn record_failed_attempt(key: &str) {
-        let mut rl = rate_limiter().lock().unwrap();
-        rl.record(key);
     }
 
     // ─── Auth & DB Helpers ───
@@ -246,6 +261,48 @@ pub(crate) mod helpers {
                 status.to_string(),
                 error_msg.map(String::from),
                 None,
+                None,
+            )
+            .await
+            {
+                tracing::error!("Audit log write failed: {}", e);
+            }
+        } else {
+            tracing::error!("Audit log skipped: database pool unavailable");
+        }
+    }
+
+    /// Log an audit action including the client IP address.
+    /// Use this variant in auth paths where the originating IP is meaningful
+    /// (login successes, failures, suspicious requests).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn audit_log_with_ip(
+        user_id: i64,
+        action: &str,
+        target_type: Option<&str>,
+        target_id: Option<i64>,
+        target_name: Option<&str>,
+        ip_address: &str,
+        status: &str,
+        error_msg: Option<&str>,
+    ) {
+        if let Ok(pool) = get_pool() {
+            let ip = if ip_address.is_empty() || ip_address == "unknown" {
+                None
+            } else {
+                Some(ip_address.to_string())
+            };
+            if let Err(e) = crate::db::audit::log_action(
+                pool,
+                user_id,
+                action.to_string(),
+                target_type.map(String::from),
+                target_id,
+                target_name.map(String::from),
+                None,
+                status.to_string(),
+                error_msg.map(String::from),
+                ip,
                 None,
             )
             .await

@@ -185,8 +185,13 @@ impl OpenLiteSpeedService {
             "Restricted",
         )?;
         let config_path = format!("{}/vhconf.conf", vhost_dir);
-
-        fs::write(&config_path, vhost_config)
+        // Atomic write: write to a .tmp file then rename to prevent a partially
+        // written config from being read by OLS if the process is killed mid-write.
+        let tmp_path = format!("{}.tmp", config_path);
+        fs::write(&tmp_path, vhost_config)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp_path, &config_path)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -242,7 +247,13 @@ impl OpenLiteSpeedService {
             basic_auth_realm,
         )?;
         let config_path = format!("{}/{}/vhconf.conf", OLS_VHOST_DIR, domain);
-        fs::write(&config_path, vhost_config)
+        // Atomic write: write to a .tmp file then rename (POSIX rename is atomic)
+        // so a partially written config never corrupts the live vhost.
+        let tmp_path = format!("{}.tmp", config_path);
+        fs::write(&tmp_path, &vhost_config)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp_path, &config_path)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
         info!(

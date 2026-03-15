@@ -53,11 +53,9 @@ pub async fn server_create_ftp_account(
         ));
     }
 
-    if password.len() < 8 {
-        return Err(ServerFnError::new(
-            "FTP password must be at least 8 characters",
-        ));
-    }
+    // FTP credentials are exposed over a network protocol, so apply the same
+    // strength policy as panel account passwords (12+ chars, mixed case, digit, special).
+    crate::utils::validators::validate_password(&password).map_err(ServerFnError::new)?;
 
     let quota_mb = quota_size_mb.unwrap_or(1024).max(1);
 
@@ -142,9 +140,8 @@ pub async fn server_change_ftp_password(
     let claims = verify_auth()?;
     let pool = get_pool()?;
 
-    if new_password.len() < 8 {
-        return Err(ServerFnError::new("Password must be at least 8 characters"));
-    }
+    // Apply the same strength policy as panel account passwords.
+    crate::utils::validators::validate_password(&new_password).map_err(ServerFnError::new)?;
 
     let account = crate::db::ftp::get(pool, account_id)
         .await

@@ -133,6 +133,7 @@ impl CertbotService {
             cert_path,
             key_path,
             issuer: "Let's Encrypt".to_string(),
+            expires_at: None,
         })
     }
 
@@ -184,6 +185,7 @@ impl CertbotService {
             cert_path,
             key_path,
             issuer: "Let's Encrypt".to_string(),
+            expires_at: None,
         })
     }
 
@@ -249,21 +251,44 @@ impl CertbotService {
             )));
         }
 
-        // Get certificate expiry via openssl
+        // Get certificate expiry via openssl (e.g. "notAfter=May 14 12:00:00 2026 GMT")
         let output = shell::exec(
             "openssl",
             &["x509", "-in", &cert_path, "-noout", "-enddate"],
         )
         .await?;
 
-        let _expiry = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let expiry_line = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let expires_at = expiry_line
+            .strip_prefix("notAfter=")
+            .and_then(|s| {
+                let s = s.trim().trim_end_matches(" GMT").trim();
+                // Try space-padded day (%e) first, then zero-padded (%d).
+                chrono::NaiveDateTime::parse_from_str(s, "%b %e %H:%M:%S %Y")
+                    .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%b %d %H:%M:%S %Y"))
+                    .ok()
+                    .map(|dt| chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc))
+            });
 
         Ok(CertificateInfo {
             domain: domain.to_string(),
             cert_path,
             key_path,
             issuer: "Let's Encrypt".to_string(),
+            expires_at,
         })
+    }
+
+    /// Returns the number of days until the certificate for `domain` expires.
+    /// A negative value means the certificate has already expired.
+    pub async fn days_until_expiry(&self, domain: &str) -> Result<i64, ServiceError> {
+        let info = self.get_certificate_info(domain).await?;
+        match info.expires_at {
+            Some(expiry) => Ok((expiry - chrono::Utc::now()).num_days()),
+            None => Err(ServiceError::CommandFailed(
+                "Unable to determine certificate expiry date".to_string(),
+            )),
+        }
     }
 
     /// List all managed certificates.
@@ -297,4 +322,8 @@ pub struct CertificateInfo {
     pub cert_path: String,
     pub key_path: String,
     pub issuer: String,
+    /// Certificate expiry date, populated by `get_certificate_info`.
+    /// `None` when the cert was just issued (call `get_certificate_info` or
+    /// `days_until_expiry` to resolve it).
+    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }

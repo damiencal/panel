@@ -21,6 +21,13 @@ fn enforce_login_rate_limit(ip: &str, username: &str) -> Result<(), ServerFnErro
     let now = Instant::now();
     let window = Duration::from_secs(300); // 5 minutes
 
+    // Opportunistically prune fully-expired entries to prevent unbounded memory growth.
+    // Runs under the already-held Mutex so no extra locking is needed.
+    limits.retain(|_, v| {
+        v.retain(|&t| now.duration_since(t) < window);
+        !v.is_empty()
+    });
+
     // Rate limit by IP (max 10 attempts per 5 mins)
     let ip_key = format!("ip:{}", ip);
     let ip_attempts = limits.entry(ip_key).or_default();
@@ -99,16 +106,37 @@ pub async fn server_login(
     let pool = get_pool()?;
 
     // Find user
-    let user = crate::db::users::get_by_username(pool, &username)
-        .await
-        .map_err(|_| {
-            record_failed_attempt(&username);
-            ServerFnError::new("Invalid credentials")
-        })?;
+    let user = match crate::db::users::get_by_username(pool, &username).await {
+        Ok(u) => u,
+        Err(_) => {
+            audit_log_with_ip(
+                0,
+                "login",
+                Some("user"),
+                None,
+                Some(&username),
+                &client_ip,
+                "Failure",
+                Some("Unknown username"),
+            )
+            .await;
+            return Err(ServerFnError::new("Invalid credentials"));
+        }
+    };
 
     // Check account status
     if user.status != crate::models::user::AccountStatus::Active {
-        record_failed_attempt(&username);
+        audit_log_with_ip(
+            user.id,
+            "login",
+            Some("user"),
+            Some(user.id),
+            Some(&user.username),
+            &client_ip,
+            "Failure",
+            Some("Account suspended or pending"),
+        )
+        .await;
         return Err(ServerFnError::new("Account is suspended or pending"));
     }
 
@@ -116,12 +144,23 @@ pub async fn server_login(
     let parsed_hash = PasswordHash::new(&user.password_hash)
         .map_err(|_| ServerFnError::new("Invalid credentials"))?;
 
-    Argon2::default()
+    if Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
-        .map_err(|_| {
-            record_failed_attempt(&username);
-            ServerFnError::new("Invalid credentials")
-        })?;
+        .is_err()
+    {
+        audit_log_with_ip(
+            user.id,
+            "login",
+            Some("user"),
+            Some(user.id),
+            Some(&user.username),
+            &client_ip,
+            "Failure",
+            Some("Invalid password"),
+        )
+        .await;
+        return Err(ServerFnError::new("Invalid credentials"));
+    }
 
     // Verify TOTP if enabled
     if user.totp_enabled {
@@ -130,10 +169,20 @@ pub async fn server_login(
             .totp_secret
             .as_ref()
             .ok_or_else(|| ServerFnError::new("2FA configuration error"))?;
-        crate::auth::verify_totp(secret, &code).map_err(|_| {
-            record_failed_attempt(&username);
-            ServerFnError::new("Invalid 2FA code")
-        })?;
+        if crate::auth::verify_totp(secret, &code).is_err() {
+            audit_log_with_ip(
+                user.id,
+                "login",
+                Some("user"),
+                Some(user.id),
+                Some(&user.username),
+                &client_ip,
+                "Failure",
+                Some("Invalid 2FA code"),
+            )
+            .await;
+            return Err(ServerFnError::new("Invalid 2FA code"));
+        }
     }
 
     // Create JWT token
@@ -149,12 +198,13 @@ pub async fn server_login(
     // Set JWT as HttpOnly cookie (not exposed to JS)
     set_auth_cookie(&auth_token.access_token, auth_token.expires_in);
 
-    audit_log(
+    audit_log_with_ip(
         user.id,
         "login",
         Some("user"),
         Some(user.id),
         Some(&user.username),
+        &client_ip,
         "Success",
         None,
     )

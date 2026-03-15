@@ -219,6 +219,60 @@ pub async fn check_can_create_email_account(
     Ok(())
 }
 
+/// Check whether a user may create an additional site **and** atomically increment
+/// the counter if allowed.  Both the read and the write happen inside a single
+/// SQLite transaction, which eliminates the TOCTOU race present in the separate
+/// check-then-increment pattern used elsewhere.
+///
+/// On success the `sites_used` counter has already been incremented.  If the
+/// subsequent site-creation call fails the caller is responsible for rolling back
+/// with `increment_sites(pool, user_id, -1)`.
+pub async fn check_and_increment_sites(pool: &SqlitePool, user_id: i64) -> Result<(), String> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("Transaction error: {e}"))?;
+
+    // Read quota and current usage within the same write transaction so that
+    // SQLite's serialised writer lock prevents two concurrent requests from
+    // both passing the quota check before either increments the counter.
+    let row: Option<(i32, i32)> = sqlx::query_as(
+        "SELECT q.max_sites, COALESCE(u.sites_used, 0)
+         FROM resource_quotas q
+         LEFT JOIN resource_usage u ON u.user_id = q.user_id
+         WHERE q.user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to check quota: {e}"))?;
+
+    if let Some((max_sites, sites_used)) = row {
+        if max_sites > 0 && sites_used >= max_sites {
+            return Err(format!(
+                "Site limit reached ({}/{} used). Please contact support to increase your limit.",
+                sites_used, max_sites
+            ));
+        }
+    }
+    // No quota row ⇒ no limit — proceed.
+
+    sqlx::query(
+        "UPDATE resource_usage SET sites_used = sites_used + 1, updated_at = ? WHERE user_id = ?",
+    )
+    .bind(Utc::now())
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to increment site count: {e}"))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Commit failed: {e}"))?;
+
+    Ok(())
+}
+
 /// Returns the percentage (0–100) of a resource limit that has been used.
 /// Returns 0 if the limit is 0 or negative (unlimited).
 pub fn usage_percent(used: i32, limit: i32) -> u32 {
