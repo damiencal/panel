@@ -1,3 +1,4 @@
+-- disable-transaction
 -- Extend the role CHECK constraint to include 'Developer'.
 -- SQLite requires a full table swap to modify a CHECK constraint.
 
