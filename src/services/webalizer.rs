@@ -36,6 +36,13 @@ pub async fn generate(
         return Err(ServiceError::NotInstalled);
     }
 
+    crate::utils::validators::validate_domain(domain)
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    crate::utils::validators::validate_safe_path(access_log, "/usr/local/lsws/logs/")
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    crate::utils::validators::validate_safe_path(output_dir, "/var/www/")
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+
     if !Path::new(access_log).exists() {
         return Err(ServiceError::IoError(format!(
             "Access log not found: {access_log}"

@@ -75,7 +75,11 @@ ShowHostsStats=PHBL
         fs::create_dir_all(AWSTATS_CONF_DIR)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        fs::write(&conf_path, contents)
+        let tmp_conf = format!("{}.tmp.{}", conf_path, std::process::id());
+        fs::write(&tmp_conf, contents)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp_conf, &conf_path)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
     }
@@ -122,6 +126,13 @@ pub async fn generate(
     if !is_installed().await {
         return Err(ServiceError::NotInstalled);
     }
+
+    crate::utils::validators::validate_domain(domain)
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    crate::utils::validators::validate_safe_path(access_log, "/usr/local/lsws/logs/")
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+    crate::utils::validators::validate_safe_path(output_dir, "/var/www/")
+        .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
     if !Path::new(access_log).exists() {
         return Err(ServiceError::IoError(format!(

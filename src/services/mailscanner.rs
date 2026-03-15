@@ -97,7 +97,11 @@ impl MailScannerService {
             .collect::<Vec<_>>()
             .join("\n");
 
-        fs::write(MS_CONFIG, updated)
+        let tmp = format!("{}.tmp.{}", MS_CONFIG, std::process::id());
+        fs::write(&tmp, updated)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp, MS_CONFIG)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 

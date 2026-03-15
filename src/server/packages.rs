@@ -44,6 +44,34 @@ pub async fn server_create_package(
     let claims = verify_auth()?;
     crate::auth::guards::require_reseller(&claims)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Input validation
+    let name = name.trim().to_string();
+    if name.is_empty() || name.len() > 128 {
+        return Err(ServerFnError::new(
+            "Package name must be 1\u{2013}128 characters",
+        ));
+    }
+    if description.as_deref().map(|d| d.len()).unwrap_or(0) > 1024 {
+        return Err(ServerFnError::new(
+            "Description too long (max 1024 characters)",
+        ));
+    }
+    if max_sites < 0
+        || max_databases < 0
+        || max_email_accounts < 0
+        || max_ftp_accounts < 0
+        || max_subdomains < 0
+        || max_addon_domains < 0
+    {
+        return Err(ServerFnError::new("Quota limits cannot be negative"));
+    }
+    if disk_limit_mb < 0 || bandwidth_limit_mb < 0 {
+        return Err(ServerFnError::new(
+            "Disk/bandwidth limits cannot be negative",
+        ));
+    }
+
     let pool = get_pool()?;
 
     let pkg_id = crate::db::packages::create(
@@ -92,6 +120,14 @@ pub async fn server_deactivate_package(package_id: i64) -> Result<(), ServerFnEr
         .map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
 
+    // IDOR guard: verify the caller owns this package.
+    let pkg = crate::db::packages::get(pool, package_id)
+        .await
+        .map_err(|_| ServerFnError::new("Package not found"))?;
+    if pkg.created_by != claims.sub && claims.role != crate::models::user::Role::Admin {
+        return Err(ServerFnError::new("Access denied"));
+    }
+
     crate::db::packages::deactivate(pool, package_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
@@ -120,6 +156,14 @@ pub async fn server_delete_package(package_id: i64) -> Result<(), ServerFnError>
     crate::auth::guards::require_reseller(&claims)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
+
+    // IDOR guard: verify the caller owns this package.
+    let pkg = crate::db::packages::get(pool, package_id)
+        .await
+        .map_err(|_| ServerFnError::new("Package not found"))?;
+    if pkg.created_by != claims.sub && claims.role != crate::models::user::Role::Admin {
+        return Err(ServerFnError::new("Access denied"));
+    }
 
     crate::db::packages::delete(pool, package_id)
         .await

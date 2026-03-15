@@ -57,6 +57,12 @@ pub async fn server_create_ftp_account(
     // strength policy as panel account passwords (12+ chars, mixed case, digit, special).
     crate::utils::validators::validate_password(&password).map_err(ServerFnError::new)?;
 
+    // Validate home_dir at the server layer before any DB write to prevent
+    // malformed paths being stored (service layer will reject them too, but
+    // an early rejection avoids orphan DB records).
+    crate::utils::validators::validate_safe_path(&home_dir, "/home/")
+        .map_err(ServerFnError::new)?;
+
     let quota_mb = quota_size_mb.unwrap_or(1024).max(1);
 
     // Determine system uid/gid from the owning user
@@ -92,12 +98,14 @@ pub async fn server_create_ftp_account(
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Provision in Pure-FTPd (best-effort — log error but don't roll back DB record)
+    // Provision in Pure-FTPd; roll back the DB record on failure so we don't
+    // leave an orphan row with a potentially-malformed home_dir.
     let ftpd = crate::services::pureftpd::PureFtpdService;
     if let Err(e) = ftpd
         .create_user(&username, &password, &home_dir, uid, gid)
         .await
     {
+        let _ = crate::db::ftp::delete(pool, account_id).await;
         audit_log(
             claims.sub,
             "create_ftp_account",
@@ -244,17 +252,15 @@ pub async fn server_get_ftp_stats() -> Result<FtpUsageStats, ServerFnError> {
     let ftpd = crate::services::pureftpd::PureFtpdService;
     if let Ok(entries) = ftpd.parse_transfer_log(500).await {
         for entry in &entries {
-            // Resolve account_id from username.
-            let acct_id = crate::db::ftp::get_by_username(pool, &entry.username)
-                .await
-                .ok()
-                .map(|a| a.id);
-
-            // Only ingest records that belong to this user's accounts.
-            if let Some(aid) = acct_id {
+            // Only ingest records that belong to this user's accounts — do not
+            // pollute stats tables with entries from other owners.
+            if let Ok(acct) = crate::db::ftp::get_by_username(pool, &entry.username).await {
+                if acct.owner_id != claims.sub {
+                    continue;
+                }
                 let _ = crate::db::ftp::insert_session_stat(
                     pool,
-                    Some(aid),
+                    Some(acct.id),
                     &entry.username,
                     entry.remote_host.as_deref(),
                     &entry.direction,

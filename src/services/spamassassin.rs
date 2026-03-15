@@ -89,7 +89,11 @@ impl SpamAssassinService {
         }
         cfg.push_str("use_bayes 1\nauto_learn 1\n");
 
-        fs::write(SA_CONFIG, cfg)
+        let tmp = format!("{}.tmp.{}", SA_CONFIG, std::process::id());
+        fs::write(&tmp, cfg)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp, SA_CONFIG)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
         info!("SpamAssassin config written to {SA_CONFIG}");
@@ -119,7 +123,11 @@ impl SpamAssassinService {
             cleaned
         };
 
-        fs::write(main_cf, new_content)
+        let tmp_main = format!("{}.tmp.{}", main_cf, std::process::id());
+        fs::write(&tmp_main, new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp_main, main_cf)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -134,7 +142,11 @@ spamassassin unix  -       n       n       -       -       pipe
   user=debian-spamd argv=/usr/bin/spamc -f -e /usr/sbin/sendmail -oi -f ${sender} ${recipient}
 "#;
             let updated = format!("{master_content}{filter_entry}");
-            fs::write(master_cf, updated)
+            let tmp_master = format!("{}.tmp.{}", master_cf, std::process::id());
+            fs::write(&tmp_master, updated)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&tmp_master, master_cf)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }

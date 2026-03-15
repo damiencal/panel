@@ -240,7 +240,9 @@ impl PanelConfig {
     /// Save configuration to TOML file.
     pub async fn save(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         let content = toml::to_string_pretty(self)?;
-        fs::write(path, content).await?;
+        let tmp = format!("{}.tmp.{}", path, std::process::id());
+        fs::write(&tmp, &content).await?;
+        fs::rename(&tmp, path).await?;
         Ok(())
     }
 }

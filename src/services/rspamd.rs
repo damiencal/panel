@@ -162,7 +162,11 @@ impl RspamdService {
             cleaned
         };
 
-        fs::write(main_cf, new_content)
+        let tmp = format!("{}.tmp.{}", main_cf, std::process::id());
+        fs::write(&tmp, new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp, main_cf)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 

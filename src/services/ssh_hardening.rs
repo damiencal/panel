@@ -114,9 +114,9 @@ impl SshHardeningService {
         if !test.status.success() {
             // Remove the dropin to avoid breaking SSH
             fs::remove_file(SSHD_HARDENED_DROPIN).await.ok();
-            return Err(ServiceError::CommandFailed(format!(
-                "sshd config test failed"
-            )));
+            return Err(ServiceError::CommandFailed(
+                "sshd config test failed".to_string(),
+            ));
         }
 
         // Config is valid — now safe to write the banner and reload.

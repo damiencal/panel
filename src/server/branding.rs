@@ -80,6 +80,34 @@ pub async fn server_save_branding(input: BrandingInput) -> Result<i64, ServerFnE
         ));
     }
 
+    // Validate panel_name length
+    let panel_name = input.panel_name.trim().to_string();
+    if panel_name.is_empty() || panel_name.len() > 128 {
+        return Err(ServerFnError::new("Panel name must be 1–128 characters"));
+    }
+
+    // Validate footer_text length
+    if input.footer_text.as_deref().unwrap_or("").len() > 512 {
+        return Err(ServerFnError::new(
+            "Footer text too long (max 512 characters)",
+        ));
+    }
+
+    // Validate logo_path is confined to /var/www/
+    if let Some(ref path) = input.logo_path {
+        if !path.is_empty() {
+            crate::utils::validators::validate_safe_path(path, "/var/www/")
+                .map_err(ServerFnError::new)?;
+        }
+    }
+
+    // Validate custom nameservers are valid domain names
+    for ns in [&input.custom_ns1, &input.custom_ns2].into_iter().flatten() {
+        if !ns.is_empty() {
+            crate::utils::validators::validate_domain(ns).map_err(ServerFnError::new)?;
+        }
+    }
+
     // Validate custom_domain if provided
     if let Some(ref domain) = input.custom_domain {
         if !domain.is_empty() {
@@ -100,7 +128,7 @@ pub async fn server_save_branding(input: BrandingInput) -> Result<i64, ServerFnE
     let id = crate::db::branding::upsert(
         pool,
         claims.sub,
-        input.panel_name.clone(),
+        panel_name.clone(),
         input.logo_path,
         input.accent_color,
         input.custom_domain,
@@ -117,7 +145,7 @@ pub async fn server_save_branding(input: BrandingInput) -> Result<i64, ServerFnE
         "save_branding",
         Some("branding"),
         Some(id),
-        Some(&input.panel_name),
+        Some(&panel_name),
         "Success",
         None,
     )
