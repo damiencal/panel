@@ -87,6 +87,11 @@ async fn sync_user_crontab(
 ) -> Result<(), String> {
     use tokio::process::Command;
 
+    // Defense-in-depth: re-validate username at this layer even though callers
+    // already do so, to guard against future refactors that bypass the caller checks.
+    crate::utils::validators::validate_username(username)
+        .map_err(|e| format!("Invalid username: {}", e))?;
+
     // 1. Read the existing crontab (exit 1 = no crontab yet; treat as empty).
     let existing = match Command::new("sudo")
         .args(["--non-interactive", "crontab", "-u", username, "-l"])

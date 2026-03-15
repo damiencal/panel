@@ -140,14 +140,24 @@ pub fn validate_passwd_field(value: &str, field_name: &str) -> Result<(), String
     Ok(())
 }
 
-/// Validate that a string is a plausible IPv4 or IPv6 address (no injection chars).
+/// Validate that a string is a valid IPv4 or IPv6 address.
+/// Uses the standard library parser to reject malformed addresses.
+/// IPv6 addresses with a zone ID (e.g. `fe80::1%eth0`) are also accepted.
 pub fn validate_ip_address(ip: &str) -> bool {
     if ip.is_empty() || ip.len() > 45 {
         return false;
     }
-    // Must only contain characters valid in IP addresses: digits, dots, colons, hex letters, brackets
-    ip.chars()
-        .all(|c| c.is_ascii_hexdigit() || matches!(c, '.' | ':' | '[' | ']' | '%'))
+    if ip.parse::<std::net::IpAddr>().is_ok() {
+        return true;
+    }
+    // Allow IPv6 with zone ID (e.g. fe80::1%eth0)
+    if let Some((addr_part, zone_id)) = ip.rsplit_once('%') {
+        return !zone_id.is_empty()
+            && zone_id.len() <= 16
+            && zone_id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            && addr_part.parse::<std::net::IpAddr>().is_ok();
+    }
+    false
 }
 
 #[cfg(test)]

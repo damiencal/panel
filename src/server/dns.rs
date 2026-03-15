@@ -195,6 +195,12 @@ pub async fn server_delete_dns_record(zone_id: i64, record_id: i64) -> Result<()
         .await
         .map_err(|_| ServerFnError::new("Record not found"))?;
 
+    // IDOR guard: ensure the record actually belongs to the requested zone,
+    // not to a different user's zone that the caller doesn't own.
+    if record.zone_id != zone_id {
+        return Err(ServerFnError::new("Record not found"));
+    }
+
     if let (Some(ref cf_zone_id), Some(ref cf_record_id)) = (&zone.cf_zone_id, &record.cf_record_id)
     {
         let cf =

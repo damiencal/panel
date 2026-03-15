@@ -22,10 +22,7 @@ use dioxus::prelude::*;
 ///    verifies it, then reconstructs the full path – so symlinks in parent
 ///    directories cannot escape containment.
 #[cfg(feature = "server")]
-pub fn resolve_confined_path(
-    doc_root: &str,
-    rel_path: &str,
-) -> Result<std::path::PathBuf, String> {
+pub fn resolve_confined_path(doc_root: &str, rel_path: &str) -> Result<std::path::PathBuf, String> {
     use std::path::Component;
 
     // 1. Reject injection characters
@@ -41,8 +38,8 @@ pub fn resolve_confined_path(
     }
 
     // 3. Canonicalize doc_root (resolves symlinks in the root itself)
-    let canonical_root = std::fs::canonicalize(doc_root)
-        .map_err(|_| "Site directory not accessible".to_string())?;
+    let canonical_root =
+        std::fs::canonicalize(doc_root).map_err(|_| "Site directory not accessible".to_string())?;
 
     // Build the absolute path by joining canonical_root with the stripped rel_path
     let stripped = rel_path.trim_start_matches('/');
@@ -54,8 +51,8 @@ pub fn resolve_confined_path(
 
     // 4 / 5. Resolve symlinks and re-verify containment
     let resolved = if joined.exists() {
-        let canonical = std::fs::canonicalize(&joined)
-            .map_err(|e| format!("Cannot resolve path: {}", e))?;
+        let canonical =
+            std::fs::canonicalize(&joined).map_err(|e| format!("Cannot resolve path: {}", e))?;
         if !canonical.starts_with(&canonical_root) {
             return Err("Access denied: path outside site directory".into());
         }
@@ -68,8 +65,8 @@ pub fn resolve_confined_path(
         if parent.as_os_str().is_empty() || !parent.exists() {
             return Err("Parent directory does not exist".into());
         }
-        let canonical_parent = std::fs::canonicalize(parent)
-            .map_err(|e| format!("Cannot resolve parent: {}", e))?;
+        let canonical_parent =
+            std::fs::canonicalize(parent).map_err(|e| format!("Cannot resolve parent: {}", e))?;
         if !canonical_parent.starts_with(&canonical_root) {
             return Err("Access denied: path outside site directory".into());
         }
@@ -140,8 +137,7 @@ pub async fn server_fm_list_dir(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_path.is_dir() {
         return Err(ServerFnError::new("Not a directory"));
@@ -198,10 +194,7 @@ pub async fn server_fm_list_dir(
 
 /// Create a new directory inside the site's doc_root.
 #[server]
-pub async fn server_fm_create_dir(
-    site_id: i64,
-    rel_path: String,
-) -> Result<(), ServerFnError> {
+pub async fn server_fm_create_dir(site_id: i64, rel_path: String) -> Result<(), ServerFnError> {
     use super::helpers::*;
 
     ensure_init().await.map_err(ServerFnError::new)?;
@@ -215,8 +208,7 @@ pub async fn server_fm_create_dir(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if abs_path.exists() {
         return Err(ServerFnError::new("Path already exists"));
@@ -275,8 +267,7 @@ pub async fn server_fm_rename(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_src =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_src = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_src.exists() {
         return Err(ServerFnError::new("Source not found"));
@@ -328,9 +319,7 @@ pub async fn server_fm_delete(site_id: i64, rel_path: String) -> Result<(), Serv
     use super::helpers::*;
 
     if rel_path == "/" || rel_path.is_empty() {
-        return Err(ServerFnError::new(
-            "Cannot delete the site root directory",
-        ));
+        return Err(ServerFnError::new("Cannot delete the site root directory"));
     }
 
     ensure_init().await.map_err(ServerFnError::new)?;
@@ -344,8 +333,7 @@ pub async fn server_fm_delete(site_id: i64, rel_path: String) -> Result<(), Serv
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_path.exists() {
         return Err(ServerFnError::new("File or directory not found"));
@@ -395,10 +383,8 @@ pub async fn server_fm_move(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_src =
-        resolve_confined_path(&site.doc_root, &src_path).map_err(ServerFnError::new)?;
-    let abs_dst =
-        resolve_confined_path(&site.doc_root, &dst_path).map_err(ServerFnError::new)?;
+    let abs_src = resolve_confined_path(&site.doc_root, &src_path).map_err(ServerFnError::new)?;
+    let abs_dst = resolve_confined_path(&site.doc_root, &dst_path).map_err(ServerFnError::new)?;
 
     if !abs_src.exists() {
         return Err(ServerFnError::new("Source not found"));
@@ -458,8 +444,7 @@ pub async fn server_fm_set_permissions(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_path.exists() {
         return Err(ServerFnError::new("File not found"));
@@ -503,8 +488,7 @@ pub async fn server_fm_extract_archive(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_path.is_file() {
         return Err(ServerFnError::new("Archive file not found"));
@@ -523,17 +507,70 @@ pub async fn server_fm_extract_archive(
     let dest_str = dest_dir.to_string_lossy().to_string();
 
     if filename.ends_with(".zip") {
+        // Zip-slip guard: list entries and reject any path component containing "..".
+        let list_out = crate::services::shell::exec("unzip", &["-Z1", &abs_str])
+            .await
+            .map_err(|e| ServerFnError::new(format!("Cannot inspect archive: {}", e)))?;
+        let listing = String::from_utf8_lossy(&list_out.stdout);
+        for entry in listing.lines() {
+            if std::path::Path::new(entry)
+                .components()
+                .any(|c| c == std::path::Component::ParentDir)
+            {
+                return Err(ServerFnError::new(
+                    "Archive contains path-traversal entries and cannot be extracted",
+                ));
+            }
+        }
         crate::services::shell::exec("unzip", &["-o", &abs_str, "-d", &dest_str])
             .await
             .map_err(|e| ServerFnError::new(format!("Extraction failed: {}", e)))?;
     } else if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
-        crate::services::shell::exec("tar", &["-xzf", &abs_str, "-C", &dest_str])
+        // Zip-slip guard: list entries and reject any path component containing "..".
+        let list_out = crate::services::shell::exec("tar", &["-tzf", &abs_str])
             .await
-            .map_err(|e| ServerFnError::new(format!("Extraction failed: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Cannot inspect archive: {}", e)))?;
+        let listing = String::from_utf8_lossy(&list_out.stdout);
+        for entry in listing.lines() {
+            if std::path::Path::new(entry)
+                .components()
+                .any(|c| c == std::path::Component::ParentDir)
+            {
+                return Err(ServerFnError::new(
+                    "Archive contains path-traversal entries and cannot be extracted",
+                ));
+            }
+        }
+        // --no-absolute-filenames prevents absolute-path entries from escaping dest_dir.
+        crate::services::shell::exec(
+            "tar",
+            &["-xzf", &abs_str, "-C", &dest_str, "--no-absolute-filenames"],
+        )
+        .await
+        .map_err(|e| ServerFnError::new(format!("Extraction failed: {}", e)))?;
     } else if filename.ends_with(".tar") {
-        crate::services::shell::exec("tar", &["-xf", &abs_str, "-C", &dest_str])
+        // Zip-slip guard: list entries and reject any path component containing "..".
+        let list_out = crate::services::shell::exec("tar", &["-tf", &abs_str])
             .await
-            .map_err(|e| ServerFnError::new(format!("Extraction failed: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Cannot inspect archive: {}", e)))?;
+        let listing = String::from_utf8_lossy(&list_out.stdout);
+        for entry in listing.lines() {
+            if std::path::Path::new(entry)
+                .components()
+                .any(|c| c == std::path::Component::ParentDir)
+            {
+                return Err(ServerFnError::new(
+                    "Archive contains path-traversal entries and cannot be extracted",
+                ));
+            }
+        }
+        // --no-absolute-filenames prevents absolute-path entries from escaping dest_dir.
+        crate::services::shell::exec(
+            "tar",
+            &["-xf", &abs_str, "-C", &dest_str, "--no-absolute-filenames"],
+        )
+        .await
+        .map_err(|e| ServerFnError::new(format!("Extraction failed: {}", e)))?;
     } else {
         return Err(ServerFnError::new(
             "Unsupported archive format (supported: .zip, .tar.gz, .tgz, .tar)",
@@ -577,17 +614,14 @@ pub async fn server_fm_read_text_file(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     let meta = tokio::fs::metadata(&abs_path)
         .await
         .map_err(|_| ServerFnError::new("File not found"))?;
 
     if meta.is_dir() {
-        return Err(ServerFnError::new(
-            "Cannot read a directory as a text file",
-        ));
+        return Err(ServerFnError::new("Cannot read a directory as a text file"));
     }
     if meta.len() > MAX_EDIT_BYTES {
         return Err(ServerFnError::new(
@@ -645,8 +679,7 @@ pub async fn server_fm_write_text_file(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     let parent = abs_path
         .parent()
@@ -662,7 +695,10 @@ pub async fn server_fm_write_text_file(
 
     // Preserve original permissions if file exists
     if abs_path.exists() {
-        if let Ok(perm) = tokio::fs::metadata(&abs_path).await.map(|m| m.permissions()) {
+        if let Ok(perm) = tokio::fs::metadata(&abs_path)
+            .await
+            .map(|m| m.permissions())
+        {
             let _ = tokio::fs::set_permissions(&temp_path, perm).await;
         }
     }
@@ -708,8 +744,7 @@ pub async fn server_fm_create_download_token(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
-    let abs_path =
-        resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+    let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
 
     if !abs_path.is_file() {
         return Err(ServerFnError::new("File not found"));
@@ -725,7 +760,13 @@ pub async fn server_fm_create_download_token(
     let token = uuid::Uuid::new_v4().simple().to_string();
     let expires_at = chrono::Utc::now().timestamp() + 600; // 10 minutes
 
-    register_file_download_token(token.clone(), claims.sub, abs_str, filename.clone(), expires_at);
+    register_file_download_token(
+        token.clone(),
+        claims.sub,
+        abs_str,
+        filename.clone(),
+        expires_at,
+    );
 
     Ok(FileDownloadToken {
         download_url: format!("/api/files/download/{}", token),

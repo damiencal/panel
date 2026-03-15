@@ -2,6 +2,20 @@
 use crate::models::git::{GitBranch, GitCommit, SiteGitRepoPublic};
 use dioxus::prelude::*;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Strip absolute filesystem paths and home-directory prefixes from git
+/// output before sending it to the client.  This prevents information
+/// disclosure of the server's directory layout (e.g. `/home/john/sites/…`).
+#[cfg(feature = "server")]
+fn scrub_git_output(output: &str, doc_root: &str) -> String {
+    // Replace the exact doc_root first (longest, most specific match).
+    let s = output.replace(doc_root, "[repo]");
+    // Replace any remaining /home/<user> prefixes.
+    let re_home = regex::Regex::new(r"/home/[^/\s]+").expect("static regex");
+    re_home.replace_all(&s, "[home]").into_owned()
+}
+
 // ─── Query ───────────────────────────────────────────────────────────────────
 
 /// Return the git-repo record for a site (private key stripped).
@@ -241,7 +255,7 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
     )
     .await;
 
-    Ok(output)
+    Ok(scrub_git_output(&output, &site.doc_root))
 }
 
 // ─── Commit ──────────────────────────────────────────────────────────────────
@@ -400,7 +414,8 @@ pub async fn server_git_commit_and_push(
     )
     .await;
 
-    Ok(format!("{commit_out}\n{push_out}").trim().to_string())
+    let raw = format!("{commit_out}\n{push_out}");
+    Ok(scrub_git_output(raw.trim(), &site.doc_root))
 }
 
 // ─── Status ──────────────────────────────────────────────────────────────────
