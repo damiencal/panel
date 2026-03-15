@@ -248,7 +248,9 @@ pub async fn server_set_mailbox_rate_limits(
         .await
         .map_err(|_| ServerFnError::new("Mailbox not found"))?;
     if mailbox.domain_id != domain_id {
-        return Err(ServerFnError::new("Mailbox does not belong to the specified domain"));
+        return Err(ServerFnError::new(
+            "Mailbox does not belong to the specified domain",
+        ));
     }
 
     if limit_per_hour < 0 || limit_per_day < 0 {

@@ -135,6 +135,22 @@ impl MariaDbService {
         crate::utils::validators::validate_db_name(db_name)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
+        // Secondary layer: explicitly reject SQL metacharacters here, independent
+        // of the validators above, so any future validator relaxation cannot
+        // silently re-open injection via the format!()-built DDL statement.
+        for (label, value) in &[("username", username), ("db_name", db_name)] {
+            if value.contains(['\'', '"', '`', ';', '\\', '\n', '\r', '\0']) {
+                return Err(ServiceError::CommandFailed(format!(
+                    "{label} contains disallowed characters"
+                )));
+            }
+        }
+        if password.contains(['\'', '"', ';', '\\', '\n', '\r', '\0']) {
+            return Err(ServiceError::CommandFailed(
+                "password contains disallowed characters".to_string(),
+            ));
+        }
+
         // Pipe SQL via stdin so the password is never visible in `ps aux`
         let sql = format!(
             "CREATE USER IF NOT EXISTS '{}'@'localhost' IDENTIFIED BY '{}';\n\
@@ -170,6 +186,15 @@ impl MariaDbService {
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_db_name(db_name)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+
+        // Secondary metachar guard (see create_user for rationale).
+        for (label, value) in &[("username", username), ("db_name", db_name)] {
+            if value.contains(['\'', '"', '`', ';', '\\', '\n', '\r', '\0']) {
+                return Err(ServiceError::CommandFailed(format!(
+                    "{label} contains disallowed characters"
+                )));
+            }
+        }
 
         let sql = format!(
             "REVOKE ALL PRIVILEGES ON `{}`.* FROM '{}'@'localhost';\nFLUSH PRIVILEGES;\n",

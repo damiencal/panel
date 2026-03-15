@@ -25,7 +25,11 @@ pub async fn server_list_all_tickets() -> Result<Vec<Ticket>, ServerFnError> {
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
-    if claims.role == crate::models::user::Role::Client {
+    // Only Admin and Reseller may list all tickets; Client and Developer see only their own.
+    if !matches!(
+        claims.role,
+        crate::models::user::Role::Admin | crate::models::user::Role::Reseller
+    ) {
         return Err(ServerFnError::new("Access denied"));
     }
     let pool = get_pool()?;
@@ -88,8 +92,12 @@ pub async fn server_get_ticket(
         .await
         .map_err(|_| ServerFnError::new("Ticket not found"))?;
 
-    // Clients can only see their own tickets
-    if claims.role == crate::models::user::Role::Client && ticket.created_by != claims.sub {
+    // Clients and Developers can only see their own tickets.
+    if matches!(
+        claims.role,
+        crate::models::user::Role::Client | crate::models::user::Role::Developer
+    ) && ticket.created_by != claims.sub
+    {
         return Err(ServerFnError::new("Access denied"));
     }
 
@@ -117,8 +125,11 @@ pub async fn server_reply_to_ticket(
         .await
         .map_err(|_| ServerFnError::new("Ticket not found"))?;
 
-    // Clients can only reply to their own tickets, and can't send internal notes
-    if claims.role == crate::models::user::Role::Client {
+    // Clients and Developers can only reply to their own tickets and cannot post internal notes.
+    if matches!(
+        claims.role,
+        crate::models::user::Role::Client | crate::models::user::Role::Developer
+    ) {
         if ticket.created_by != claims.sub {
             return Err(ServerFnError::new("Access denied"));
         }
@@ -139,6 +150,17 @@ pub async fn server_reply_to_ticket(
     };
     let _ = crate::db::tickets::update_status(pool, ticket_id, new_status).await;
 
+    audit_log(
+        claims.sub,
+        "reply_to_ticket",
+        Some("ticket"),
+        Some(ticket_id),
+        Some(&ticket.subject),
+        "Success",
+        None,
+    )
+    .await;
+
     Ok(msg_id)
 }
 
@@ -155,7 +177,11 @@ pub async fn server_close_ticket(ticket_id: i64) -> Result<(), ServerFnError> {
         .await
         .map_err(|_| ServerFnError::new("Ticket not found"))?;
 
-    if claims.role == crate::models::user::Role::Client && ticket.created_by != claims.sub {
+    if matches!(
+        claims.role,
+        crate::models::user::Role::Client | crate::models::user::Role::Developer
+    ) && ticket.created_by != claims.sub
+    {
         return Err(ServerFnError::new("Access denied"));
     }
 

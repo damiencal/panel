@@ -154,6 +154,11 @@ pub async fn server_get_audit_log(limit: i64) -> Result<Vec<AuditLogEntry>, Serv
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if !(1..=1000).contains(&limit) {
+        return Err(ServerFnError::new("limit must be between 1 and 1000"));
+    }
+
     let pool = get_pool()?;
 
     // Use raw query since audit functions return SqliteRow

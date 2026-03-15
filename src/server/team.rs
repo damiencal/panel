@@ -351,18 +351,37 @@ pub async fn server_update_member_sites(
         }
     }
 
-    // Remove all existing grants then add the new set.
-    let existing = crate::db::team::get_developer_sites(pool, developer_id)
+    // Replace existing site grants atomically — use a transaction so a crash
+    // between the revoke and grant phases cannot leave the developer with zero
+    // site access until an admin manually repairs it.
+    let mut tx = pool
+        .begin()
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
-    for sid in existing {
-        let _ = crate::db::team::revoke_site_access(pool, developer_id, sid).await;
-    }
+
+    sqlx::query("DELETE FROM team_site_access WHERE developer_id = ?")
+        .bind(developer_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let now = chrono::Utc::now();
     for sid in &site_ids {
-        crate::db::team::grant_site_access(pool, developer_id, *sid)
-            .await
-            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        sqlx::query(
+            "INSERT OR IGNORE INTO team_site_access (developer_id, site_id, granted_at)
+             VALUES (?, ?, ?)",
+        )
+        .bind(developer_id)
+        .bind(sid)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
     }
+
+    tx.commit()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     audit_log(
         claims.sub,

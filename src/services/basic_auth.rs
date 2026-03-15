@@ -1,6 +1,6 @@
 /// HTTP Basic Authentication management service.
-/// Manages per-site htpasswd files using APR1-MD5 hashing (Apache-compatible).
-/// OpenLiteSpeed supports the Apache htpasswd format natively.
+/// Manages per-site htpasswd files using SHA-512 crypt hashing (`openssl passwd -6`).
+/// OpenLiteSpeed (≥1.7) supports SHA-512 crypt ($6$) hashes in htpasswd files natively.
 use super::{shell, ServiceError};
 use crate::utils::validators;
 use std::path::Path;
@@ -26,7 +26,9 @@ pub fn custom_cert_paths(domain: &str) -> (String, String) {
     (cert_path, key_path)
 }
 
-/// Hash a password using APR1-MD5 via `openssl passwd -apr1`.
+/// Hash a password using SHA-512 crypt via `openssl passwd -6`.
+/// SHA-512 crypt provides a significantly higher work factor than the legacy
+/// APR1-MD5 format, making offline cracking orders of magnitude harder.
 /// The password is piped via stdin so it never appears in the process argument list.
 pub async fn hash_password(password: &str) -> Result<String, ServiceError> {
     // Defense-in-depth: reject passwords containing null bytes or newlines that
@@ -42,12 +44,8 @@ pub async fn hash_password(password: &str) -> Result<String, ServiceError> {
         ));
     }
 
-    let output = shell::exec_stdin(
-        "openssl",
-        &["passwd", "-apr1", "-stdin"],
-        password.as_bytes(),
-    )
-    .await?;
+    let output =
+        shell::exec_stdin("openssl", &["passwd", "-6", "-stdin"], password.as_bytes()).await?;
 
     let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if hash.is_empty() {
@@ -92,9 +90,16 @@ pub async fn write_htpasswd(domain: &str, users: &[(String, String)]) -> Result<
         content.push_str(&format!("{}:{}\n", username, hash));
     }
 
-    fs::write(&path, &content)
+    // Atomic write: write to a temp file then rename into place so a crash
+    // mid-write never leaves a zero-byte or partial htpasswd file.
+    let tmp_path = format!("{}.tmp.{}", path, std::process::id());
+    fs::write(&tmp_path, &content)
         .await
         .map_err(|e| ServiceError::IoError(e.to_string()))?;
+    if let Err(e) = fs::rename(&tmp_path, &path).await {
+        let _ = fs::remove_file(&tmp_path).await;
+        return Err(ServiceError::IoError(e.to_string()));
+    }
 
     info!("Wrote htpasswd for {}: {} users", domain, users.len());
     Ok(())
