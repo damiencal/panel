@@ -168,7 +168,11 @@ impl PostfixService {
         let entry = format!("{} OK\n", domain);
         if !content.contains(&entry) {
             content.push_str(&entry);
-            fs::write(VIRTUAL_DOMAINS_FILE, content)
+            let domains_tmp = format!("{}.tmp", VIRTUAL_DOMAINS_FILE);
+            fs::write(&domains_tmp, &content)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&domains_tmp, VIRTUAL_DOMAINS_FILE)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
@@ -196,7 +200,11 @@ impl PostfixService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(VIRTUAL_DOMAINS_FILE, new_content)
+        let domains_tmp = format!("{}.tmp", VIRTUAL_DOMAINS_FILE);
+        fs::write(&domains_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&domains_tmp, VIRTUAL_DOMAINS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -228,7 +236,11 @@ impl PostfixService {
         let entry = format!("{} {}", email, maildir_path);
         if !content.contains(email) {
             content.push_str(&entry);
-            fs::write(VIRTUAL_MAILBOX_FILE, content)
+            let mailbox_tmp = format!("{}.tmp", VIRTUAL_MAILBOX_FILE);
+            fs::write(&mailbox_tmp, &content)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&mailbox_tmp, VIRTUAL_MAILBOX_FILE)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
@@ -267,7 +279,11 @@ impl PostfixService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(VIRTUAL_MAILBOX_FILE, new_content)
+        let mailbox_tmp = format!("{}.tmp", VIRTUAL_MAILBOX_FILE);
+        fs::write(&mailbox_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&mailbox_tmp, VIRTUAL_MAILBOX_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -293,7 +309,11 @@ impl PostfixService {
         let entry = format!("{} {}\n", source, destination);
         if !content.contains(&entry) {
             content.push_str(&entry);
-            fs::write(VIRTUAL_ALIAS_FILE, content)
+            let alias_tmp = format!("{}.tmp", VIRTUAL_ALIAS_FILE);
+            fs::write(&alias_tmp, &content)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&alias_tmp, VIRTUAL_ALIAS_FILE)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
@@ -307,6 +327,9 @@ impl PostfixService {
         // Defense-in-depth: validate email at service layer
         crate::utils::validators::validate_email(source)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
+
+        let _lock = super::filelock::FileLock::exclusive(VIRTUAL_ALIAS_FILE)?;
+
         let content = fs::read_to_string(VIRTUAL_ALIAS_FILE)
             .await
             .unwrap_or_default();
@@ -317,7 +340,11 @@ impl PostfixService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(VIRTUAL_ALIAS_FILE, new_content)
+        let alias_tmp = format!("{}.tmp", VIRTUAL_ALIAS_FILE);
+        fs::write(&alias_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&alias_tmp, VIRTUAL_ALIAS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -356,7 +383,11 @@ impl PostfixService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(VIRTUAL_MAILBOX_FILE, new_content)
+        let mbox_tmp = format!("{}.tmp", VIRTUAL_MAILBOX_FILE);
+        fs::write(&mbox_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&mbox_tmp, VIRTUAL_MAILBOX_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -377,7 +408,11 @@ impl PostfixService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(VIRTUAL_ALIAS_FILE, new_content)
+        let alias_tmp = format!("{}.tmp", VIRTUAL_ALIAS_FILE);
+        fs::write(&alias_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&alias_tmp, VIRTUAL_ALIAS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -515,7 +550,11 @@ impl PostfixService {
             updated.push_str(&format!("smtpd_tls_key_file = {}\n", key_path));
         }
 
-        tokio::fs::write(POSTFIX_MAIN_CF, updated)
+        let main_cf_tmp = format!("{}.tmp", POSTFIX_MAIN_CF);
+        tokio::fs::write(&main_cf_tmp, &updated)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&main_cf_tmp, POSTFIX_MAIN_CF)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))
     }
@@ -530,6 +569,7 @@ impl PostfixService {
         domain: &str,
         destination: Option<&str>,
     ) -> Result<(), super::ServiceError> {
+        let _lock = super::filelock::FileLock::exclusive(VIRTUAL_ALIAS_FILE)?;
         let content = tokio::fs::read_to_string(VIRTUAL_ALIAS_FILE)
             .await
             .unwrap_or_default();
@@ -547,7 +587,11 @@ impl PostfixService {
             new_content.push_str(&format!("{} {}\n", catch_all_prefix, dest));
         }
 
-        tokio::fs::write(VIRTUAL_ALIAS_FILE, new_content)
+        let alias_tmp = format!("{}.tmp", VIRTUAL_ALIAS_FILE);
+        tokio::fs::write(&alias_tmp, &new_content)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&alias_tmp, VIRTUAL_ALIAS_FILE)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
 
@@ -558,6 +602,7 @@ impl PostfixService {
 
     /// Enable or disable `recipient_delimiter = +` in Postfix main.cf.
     pub async fn set_plus_addressing(&self, enabled: bool) -> Result<(), super::ServiceError> {
+        let _lock = super::filelock::FileLock::exclusive(POSTFIX_MAIN_CF)?;
         let main_cf = tokio::fs::read_to_string(POSTFIX_MAIN_CF)
             .await
             .unwrap_or_default();
@@ -580,7 +625,11 @@ impl PostfixService {
             updated.push_str("recipient_delimiter = +\n");
         }
 
-        tokio::fs::write(POSTFIX_MAIN_CF, updated)
+        let main_cf_tmp = format!("{}.tmp", POSTFIX_MAIN_CF);
+        tokio::fs::write(&main_cf_tmp, &updated)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&main_cf_tmp, POSTFIX_MAIN_CF)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
 
@@ -598,16 +647,21 @@ impl PostfixService {
         &self,
         forwarders: &[(String, String)], // (pattern, forward_to)
     ) -> Result<(), super::ServiceError> {
-        // Write regexp file.
+        // Write regexp file atomically.
         let mut content = String::new();
         for (pattern, dest) in forwarders {
             content.push_str(&format!("/{}/  {}\n", pattern, dest));
         }
-        tokio::fs::write(Self::VIRTUAL_REGEX_FILE, &content)
+        let regex_tmp = format!("{}.tmp", Self::VIRTUAL_REGEX_FILE);
+        tokio::fs::write(&regex_tmp, &content)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&regex_tmp, Self::VIRTUAL_REGEX_FILE)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
 
-        // Ensure main.cf references the regexp map.
+        // Ensure main.cf references the regexp map (with file lock).
+        let _lock = super::filelock::FileLock::exclusive(POSTFIX_MAIN_CF)?;
         let main_cf = tokio::fs::read_to_string(POSTFIX_MAIN_CF)
             .await
             .unwrap_or_default();
@@ -625,7 +679,11 @@ impl PostfixService {
             }
         }
 
-        tokio::fs::write(POSTFIX_MAIN_CF, updated)
+        let main_cf_tmp = format!("{}.tmp", POSTFIX_MAIN_CF);
+        tokio::fs::write(&main_cf_tmp, &updated)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&main_cf_tmp, POSTFIX_MAIN_CF)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
 
@@ -662,7 +720,11 @@ impl PostfixService {
         updated.push_str("smtpd_milters = inet:localhost:8891\n");
         updated.push_str("non_smtpd_milters = $smtpd_milters\n");
 
-        tokio::fs::write(POSTFIX_MAIN_CF, updated)
+        let main_cf_tmp = format!("{}.tmp", POSTFIX_MAIN_CF);
+        tokio::fs::write(&main_cf_tmp, &updated)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&main_cf_tmp, POSTFIX_MAIN_CF)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
 

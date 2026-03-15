@@ -54,22 +54,31 @@ pub async fn server_create_database(
 
     crate::utils::validators::validate_db_name(&name).map_err(ServerFnError::new)?;
 
-    crate::db::quotas::check_can_create_database(pool, claims.sub)
+    crate::db::quotas::check_and_increment_databases(pool, claims.sub)
         .await
         .map_err(ServerFnError::new)?;
 
-    let db_id = crate::db::databases::create(pool, claims.sub, name.clone(), database_type)
+    let db_id = match crate::db::databases::create(pool, claims.sub, name.clone(), database_type)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    {
+        Ok(id) => id,
+        Err(e) => {
+            let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
+            return Err(ServerFnError::new(e.to_string()));
+        }
+    };
 
     // Provision the actual database on the database server
     if database_type == DatabaseType::MariaDB {
-        provision_mysql_database(pool, db_id, &name, &claims.username)
-            .await
-            .map_err(|e| ServerFnError::new(format!("MySQL provisioning failed: {}", e)))?;
+        if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username).await {
+            // Roll back both the SQLite record and the quota counter.
+            let _ = crate::db::databases::delete(pool, db_id).await;
+            let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
+            return Err(ServerFnError::new(format!("MySQL provisioning failed: {}", e)));
+        }
     }
 
-    let _ = crate::db::quotas::increment_databases(pool, claims.sub, 1).await;
+    // Quota already incremented by check_and_increment_databases.
 
     audit_log(
         claims.sub,
@@ -450,32 +459,19 @@ fn generate_phpmyadmin_token(
     Ok(format!("{}.{}", payload_b64, sig_b64))
 }
 
-/// Generate a random password for MySQL users.
+/// Generate a cryptographically secure random password for MySQL users.
+/// Uses the OS CSPRNG (/dev/urandom on Linux) directly; panics if the OS
+/// cannot produce random bytes — a situation that indicates a serious system
+/// failure where creating a database account would be unsafe anyway.
 #[cfg(feature = "server")]
 fn generate_random_password() -> String {
     use base64::Engine;
-    let bytes: Vec<u8> = (0..24)
-        .map(|_| {
-            let mut buf = [0u8; 1];
-            if std::fs::File::open("/dev/urandom")
-                .and_then(|mut f| {
-                    use std::io::Read;
-                    f.read_exact(&mut buf)
-                })
-                .is_ok()
-            {
-                buf[0]
-            } else {
-                // Fallback
-                (std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .subsec_nanos()
-                    % 256) as u8
-            }
-        })
-        .collect();
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&bytes)
+    use std::io::Read;
+    let mut buf = [0u8; 24];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut buf))
+        .expect("Failed to read from /dev/urandom — OS CSPRNG is unavailable");
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf)
 }
 
 /// Parse tab-separated `variable_name\tvalue` output from mysql -N -B.

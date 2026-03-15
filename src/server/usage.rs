@@ -4,6 +4,7 @@ use crate::models::billing::MetricType;
 use crate::models::billing::{DailyAggregate, MonthlySnapshot, UsageStats};
 use crate::models::quota::QuotaStatus;
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Get the current quota utilisation for the caller (or a specific user for admins).
 #[server]
@@ -206,4 +207,54 @@ pub async fn server_record_bandwidth_event(
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     Ok(())
+}
+
+/// Per-user disk quota warning summary (admin only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuotaWarningInfo {
+    pub user_id: i64,
+    pub username: String,
+    pub disk_used_mb: i64,
+    pub disk_limit_mb: i64,
+    pub pct_used: f32,
+}
+
+/// Return all users whose disk usage has crossed `threshold_pct` percent of their
+/// quota limit. This also refreshes real disk usage from the filesystem first,
+/// so the results are always fresh.
+///
+/// Inspired by Coolify's `ServerStorageCheckJob`: proactively warn admins before
+/// users hit 100% and corrupt databases / lose email.
+#[server]
+pub async fn server_get_quota_warnings(
+    threshold_pct: u8,
+) -> Result<Vec<QuotaWarningInfo>, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    crate::auth::guards::require_admin(&claims)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let pool = get_pool()?;
+
+    if threshold_pct == 0 || threshold_pct > 100 {
+        return Err(ServerFnError::new("threshold_pct must be between 1 and 100"));
+    }
+
+    // Refresh disk usage from the filesystem before querying.
+    crate::services::janitor::refresh_all_disk_usage(pool).await;
+
+    let warnings =
+        crate::services::janitor::get_quota_warnings(pool, threshold_pct).await;
+
+    Ok(warnings
+        .into_iter()
+        .map(|w| QuotaWarningInfo {
+            user_id: w.user_id,
+            username: w.username,
+            disk_used_mb: w.disk_used_mb,
+            disk_limit_mb: w.disk_limit_mb,
+            pct_used: w.pct_used,
+        })
+        .collect())
 }

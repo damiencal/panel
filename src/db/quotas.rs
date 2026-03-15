@@ -188,6 +188,60 @@ pub async fn check_can_create_database(pool: &SqlitePool, user_id: i64) -> Resul
     Ok(())
 }
 
+/// Check whether a user may create an additional database **and** atomically increment
+/// the counter if allowed.  Eliminates the TOCTOU race present in the separate
+/// check-then-increment pattern used elsewhere.
+///
+/// On success the `databases_used` counter has already been incremented.  If the
+/// subsequent database provisioning fails the caller is responsible for rolling back
+/// with `increment_databases(pool, user_id, -1)`.
+pub async fn check_and_increment_databases(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<(), String> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("Transaction error: {e}"))?;
+
+    let row: Option<(i32, i32)> = sqlx::query_as(
+        "SELECT q.max_databases, COALESCE(u.databases_used, 0)
+         FROM resource_quotas q
+         LEFT JOIN resource_usage u ON u.user_id = q.user_id
+         WHERE q.user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to check quota: {e}"))?;
+
+    if let Some((max_databases, databases_used)) = row {
+        if max_databases > 0 && databases_used >= max_databases {
+            return Err(format!(
+                "Database limit reached ({}/{} used). Please contact support to increase your limit.",
+                databases_used, max_databases
+            ));
+        }
+    }
+
+    sqlx::query(
+        "UPDATE resource_usage
+         SET databases_used = databases_used + 1, updated_at = ?
+         WHERE user_id = ?",
+    )
+    .bind(Utc::now())
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to increment database count: {e}"))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Commit failed: {e}"))?;
+
+    Ok(())
+}
+
 /// Check whether a user may create an additional email account (mailbox).
 pub async fn check_can_create_email_account(
     pool: &SqlitePool,
@@ -265,6 +319,60 @@ pub async fn check_and_increment_sites(pool: &SqlitePool, user_id: i64) -> Resul
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("Failed to increment site count: {e}"))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Commit failed: {e}"))?;
+
+    Ok(())
+}
+
+/// Check whether a user may create an additional email account **and** atomically increment
+/// the counter if allowed.  Eliminates the TOCTOU race present in the separate
+/// check-then-increment pattern.
+///
+/// On success the `email_accounts_used` counter has already been incremented.  If the
+/// subsequent mailbox creation fails the caller is responsible for rolling back
+/// with `increment_email_accounts(pool, user_id, -1)`.
+pub async fn check_and_increment_email_accounts(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<(), String> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| format!("Transaction error: {e}"))?;
+
+    let row: Option<(i32, i32)> = sqlx::query_as(
+        "SELECT q.max_email_accounts, COALESCE(u.email_accounts_used, 0)
+         FROM resource_quotas q
+         LEFT JOIN resource_usage u ON u.user_id = q.user_id
+         WHERE q.user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to check quota: {e}"))?;
+
+    if let Some((max_accounts, accounts_used)) = row {
+        if max_accounts > 0 && accounts_used >= max_accounts {
+            return Err(format!(
+                "Email account limit reached ({}/{} used). Please contact support to increase your limit.",
+                accounts_used, max_accounts
+            ));
+        }
+    }
+
+    sqlx::query(
+        "UPDATE resource_usage
+         SET email_accounts_used = email_accounts_used + 1, updated_at = ?
+         WHERE user_id = ?",
+    )
+    .bind(Utc::now())
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to increment email account count: {e}"))?;
 
     tx.commit()
         .await

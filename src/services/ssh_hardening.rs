@@ -49,6 +49,28 @@ impl SshHardeningService {
                 .push("WARNING: Root login is set to 'yes' — this is a security risk.".to_string());
         }
 
+        // Validate user-supplied string fields for newline injection before they
+        // are interpolated into the sshd config file.
+        for user in &config.allowed_users {
+            if user.chars().any(|c| c == '\n' || c == '\r') {
+                return Err(ServiceError::CommandFailed(
+                    "AllowUsers entry contains invalid characters".to_string(),
+                ));
+            }
+        }
+        for (field_name, field_val) in &[
+            ("Ciphers", config.ciphers.as_str()),
+            ("MACs", config.macs.as_str()),
+            ("KexAlgorithms", config.kex_algorithms.as_str()),
+            ("PermitRootLogin", config.permit_root_login.as_str()),
+        ] {
+            if field_val.chars().any(|c| c == '\n' || c == '\r') {
+                return Err(ServiceError::CommandFailed(format!(
+                    "{field_name} contains invalid characters"
+                )));
+            }
+        }
+
         // Backup original config if no backup exists yet
         if !std::path::Path::new(SSHD_CONFIG_BACKUP).exists() {
             if let Ok(original) = fs::read_to_string(SSHD_CONFIG).await {
@@ -66,15 +88,21 @@ impl SshHardeningService {
 
         let content = render_sshd_dropin(config);
 
-        fs::write(SSHD_HARDENED_DROPIN, &content)
+        // Write atomically: write to a tmp file first, then rename into place
+        // only after sshd -t confirms the merged config is valid.
+        // This prevents a partial/broken file from ever being the live config.
+        let dropin_tmp = format!("{SSHD_HARDENED_DROPIN}.tmp");
+        fs::write(&dropin_tmp, &content)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
-        // Write /etc/issue.net banner text if enabled
-        if config.banner_enabled {
-            let banner = "Authorized access only. All activity may be monitored and reported.\n";
-            fs::write("/etc/issue.net", banner).await.ok();
-        }
+        // Rename into final position so sshd -t can evaluate it.
+        fs::rename(&dropin_tmp, SSHD_HARDENED_DROPIN)
+            .await
+            .map_err(|e| {
+                let _ = std::fs::remove_file(&dropin_tmp);
+                ServiceError::IoError(e.to_string())
+            })?;
 
         // Test and reload SSHD
         let test = tokio::process::Command::new("sshd")
@@ -84,12 +112,17 @@ impl SshHardeningService {
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
         if !test.status.success() {
-            let err = String::from_utf8_lossy(&test.stderr).to_string();
             // Remove the dropin to avoid breaking SSH
             fs::remove_file(SSHD_HARDENED_DROPIN).await.ok();
             return Err(ServiceError::CommandFailed(format!(
-                "sshd config test failed: {err}"
+                "sshd config test failed"
             )));
+        }
+
+        // Config is valid — now safe to write the banner and reload.
+        if config.banner_enabled {
+            let banner = "Authorized access only. All activity may be monitored and reported.\n";
+            fs::write("/etc/issue.net", banner).await.ok();
         }
 
         // Reload SSHD

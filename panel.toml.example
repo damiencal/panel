@@ -50,3 +50,11 @@ tls_required = true
 # 30 is sufficient for most deployments; compliance environments (PCI-DSS,
 # HIPAA) typically require 90–365 days.
 log_retention_days = 30
+
+[request_security]
+# Optional allowlist for protected panel requests (`/_dioxus/*` and `/api/*`).
+# Leave empty to allow any client IP, or use exact IPs / CIDR ranges.
+allowed_ips = []
+# Global per-IP throttle for protected requests. Set to 0 to disable.
+rate_limit_requests = 600
+rate_limit_window_secs = 60

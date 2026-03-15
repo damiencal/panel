@@ -23,6 +23,8 @@ pub struct PanelConfig {
     pub ftp: FtpConfig,
     #[serde(default)]
     pub audit: AuditConfig,
+    #[serde(default)]
+    pub request_security: RequestSecurityConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +92,18 @@ pub struct FtpConfig {
     pub tls_required: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RequestSecurityConfig {
+    /// Optional client IP allowlist for panel API/server-function requests.
+    /// Empty means allow all client IPs.
+    pub allowed_ips: Vec<String>,
+    /// Maximum number of protected requests accepted per IP within the window.
+    /// Set to 0 to disable request throttling.
+    pub rate_limit_requests: u32,
+    /// Rolling window, in seconds, for `rate_limit_requests`.
+    pub rate_limit_window_secs: u64,
+}
+
 impl Default for MariaDbConfig {
     fn default() -> Self {
         Self {
@@ -125,6 +139,16 @@ impl Default for FtpConfig {
             passive_port_max: 50000,
             max_clients: 50,
             tls_required: false,
+        }
+    }
+}
+
+impl Default for RequestSecurityConfig {
+    fn default() -> Self {
+        Self {
+            allowed_ips: Vec::new(),
+            rate_limit_requests: 600,
+            rate_limit_window_secs: 60,
         }
     }
 }
@@ -194,6 +218,7 @@ impl Default for PanelConfig {
             dovecot: DovecotConfig::default(),
             ftp: FtpConfig::default(),
             audit: AuditConfig::default(),
+            request_security: RequestSecurityConfig::default(),
         }
     }
 }

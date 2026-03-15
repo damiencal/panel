@@ -110,7 +110,18 @@ pub async fn server_create_user(
         package_id,
     )
     .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
+    .map_err(|e| {
+        // Map UNIQUE constraint errors to user-friendly messages that don't
+        // expose internal schema details (table/column names).
+        let msg = e.to_string();
+        if msg.contains("users.username") {
+            ServerFnError::new("Username is already taken")
+        } else if msg.contains("users.email") {
+            ServerFnError::new("Email address is already in use")
+        } else {
+            ServerFnError::new("Failed to create user")
+        }
+    })?;
 
     // Initialize resource usage tracking
     let _ = crate::db::quotas::init_usage(pool, user_id).await;
@@ -383,6 +394,14 @@ pub async fn server_end_impersonation() -> Result<crate::models::auth::LoginResp
     if admin.role != Role::Admin {
         return Err(ServerFnError::new(
             "Impersonation origin account is not an admin",
+        ));
+    }
+
+    // Reject end-impersonation if the admin account was suspended while the
+    // impersonation session was active — they should not receive a fresh JWT.
+    if admin.status != crate::models::user::AccountStatus::Active {
+        return Err(ServerFnError::new(
+            "Original admin account is suspended or pending",
         ));
     }
 

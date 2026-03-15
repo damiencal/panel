@@ -1,5 +1,5 @@
 /// System-level operations and service discovery.
-use crate::models::service::{ServiceInfo, ServiceStatus, ServiceType};
+use crate::models::service::{ServiceHealthState, ServiceInfo, ServiceStatus, ServiceType};
 use std::path::Path;
 use tokio::process::Command;
 
@@ -18,10 +18,13 @@ pub async fn get_all_services_status() -> Vec<ServiceInfo> {
 
     for service_type in service_types {
         if let Ok(status) = get_service_status(service_type).await {
+            let port = get_service_port(service_type);
+            let health_state = probe_service_health(status, port).await;
             services.push(ServiceInfo {
                 service_type,
                 status,
-                port: get_service_port(service_type),
+                health_state,
+                port,
                 version: get_service_version(service_type).await.ok(),
                 uptime_seconds: None,
                 last_error: None,
@@ -30,6 +33,30 @@ pub async fn get_all_services_status() -> Vec<ServiceInfo> {
     }
 
     services
+}
+
+/// Probe a service's port to distinguish a running-but-not-serving process from
+/// a fully operational one. This catches services that are alive in pgrep but
+/// whose port is not yet (or no longer) accepting connections.
+async fn probe_service_health(status: ServiceStatus, port: Option<u16>) -> ServiceHealthState {
+    use tokio::net::TcpStream;
+    use tokio::time::{timeout, Duration};
+
+    match status {
+        ServiceStatus::Running => match port {
+            Some(p) => {
+                let addr = format!("127.0.0.1:{}", p);
+                match timeout(Duration::from_millis(500), TcpStream::connect(&addr)).await {
+                    Ok(Ok(_)) => ServiceHealthState::FullyOperational,
+                    _ => ServiceHealthState::ProcessUpPortClosed,
+                }
+            }
+            // No port to probe (e.g., PHP runs inside OLS, Certbot is a one-shot tool).
+            None => ServiceHealthState::FullyOperational,
+        },
+        ServiceStatus::Stopped | ServiceStatus::Error => ServiceHealthState::Down,
+        ServiceStatus::Unknown => ServiceHealthState::Unknown,
+    }
 }
 
 /// Get the status of a specific service.

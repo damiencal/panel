@@ -53,6 +53,14 @@ fn validate_destination(dest: &str) -> Result<(), &'static str> {
     if dest.contains('\0') || dest.contains('\n') || dest.contains('\r') {
         return Err("Destination contains invalid characters");
     }
+    // Reject path traversal sequences.  shellexpand::tilde() will NOT remove
+    // ".." components, so we must reject them before expanding the path.
+    let norm_path = std::path::Path::new(dest);
+    for component in norm_path.components() {
+        if component == std::path::Component::ParentDir {
+            return Err("Destination path must not contain '..' components");
+        }
+    }
     Ok(())
 }
 
@@ -437,7 +445,7 @@ async fn backup_site(
     let pool = crate::db::pool().map_err(|e| e.to_string())?;
     let site_id = sched.site_id.unwrap();
 
-    let doc_root: String = sqlx::query_scalar("SELECT document_root FROM sites WHERE id = ?")
+    let doc_root: String = sqlx::query_scalar("SELECT doc_root FROM sites WHERE id = ?")
         .bind(site_id)
         .fetch_one(pool)
         .await

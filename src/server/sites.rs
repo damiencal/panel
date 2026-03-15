@@ -893,3 +893,86 @@ pub async fn server_remove_basic_auth_user(
 
     Ok(())
 }
+
+/// Enforce quota-based site suspensions and restorations (admin only).
+///
+/// Inspired by Coolify's `ServerLimitCheckJob`: instead of silently breaking a
+/// user's site when they exceed their disk quota, this function performs a
+/// soft suspend:
+///
+/// - Users whose `disk_used_mb >= disk_limit_mb` have all Active sites set to
+///   `Suspended` in the database (OLS stops serving them on next grace check).
+/// - Users whose `disk_used_mb < disk_limit_mb * 0.90` (safe zone) have any
+///   previously quota-suspended sites restored to `Active`.
+///
+/// Returns a summary string with counts of suspensions and restorations.
+#[server]
+pub async fn server_enforce_quota_suspensions() -> Result<String, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    crate::auth::guards::require_admin(&claims)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let pool = get_pool()?;
+
+    let mut suspended = 0u32;
+    let mut restored = 0u32;
+
+    // Fetch all users that have a positive (enforced) disk limit.
+    let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
+        "SELECT u.id, ru.disk_used_mb, rq.disk_limit_mb
+         FROM users u
+         JOIN resource_usage   ru ON ru.user_id = u.id
+         JOIN resource_quotas  rq ON rq.user_id = u.id
+         WHERE rq.disk_limit_mb > 0",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    for (user_id, disk_used_mb, disk_limit_mb) in rows {
+        let over_limit = disk_used_mb >= disk_limit_mb;
+        // Use a 10 % hysteresis band to prevent flapping at the boundary.
+        let below_safe = (disk_used_mb as f64) < (disk_limit_mb as f64 * 0.90);
+
+        let user_sites = crate::db::sites::list_for_owner(pool, user_id)
+            .await
+            .unwrap_or_default();
+
+        for site in user_sites {
+            if over_limit && site.status == SiteStatus::Active {
+                let _ = crate::db::sites::update_status(
+                    pool,
+                    site.id,
+                    SiteStatus::Suspended,
+                )
+                .await;
+                suspended += 1;
+            } else if below_safe && site.status == SiteStatus::Suspended {
+                let _ = crate::db::sites::update_status(
+                    pool,
+                    site.id,
+                    SiteStatus::Active,
+                )
+                .await;
+                restored += 1;
+            }
+        }
+    }
+
+    audit_log(
+        claims.sub,
+        "enforce_quota_suspensions",
+        None,
+        None,
+        None,
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(format!(
+        "Suspended {suspended} site(s), restored {restored} site(s)."
+    ))
+}

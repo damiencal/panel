@@ -13,6 +13,7 @@ pub mod packages;
 pub mod quotas;
 pub mod sites;
 pub mod stats;
+pub mod tasks;
 pub mod team;
 pub mod tickets;
 pub mod usage;

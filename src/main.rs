@@ -14,6 +14,12 @@ use dioxus::prelude::*;
 use panel::models::user::Role;
 use panel::server::*;
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_arch = "wasm32"))]
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 /// Shared auth state for UI routing only — NOT a security boundary.
 /// The actual JWT lives in an HttpOnly cookie inaccessible to JavaScript.
@@ -43,6 +49,14 @@ fn main() {
 
         dioxus::serve(|| async {
             use dioxus::server::axum;
+            let panel_config = match panel::utils::PanelConfig::load(Some("panel.toml")).await {
+                Ok(config) => config,
+                Err(error) => {
+                    tracing::error!(%error, "Failed to load panel.toml for request security; using defaults");
+                    panel::utils::PanelConfig::default()
+                }
+            };
+            let request_guard = RequestAccessLayer::new(panel_config.request_security);
             let router = dioxus::server::router(App)
                 .route(
                     "/phpmyadmin/{*path}",
@@ -60,6 +74,10 @@ fn main() {
                     "/api/files/upload",
                     axum::routing::post(file_upload_handler),
                 )
+                .layer(axum::middleware::from_fn_with_state(
+                    request_guard,
+                    request_access_middleware,
+                ))
                 .layer(axum::middleware::from_fn(security_headers_middleware));
             Ok(router)
         });
@@ -67,6 +85,104 @@ fn main() {
 
     #[cfg(target_arch = "wasm32")]
     dioxus::launch(App);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone)]
+struct RequestAccessLayer {
+    allowed_ips: Arc<Vec<String>>,
+    rate_limit_requests: usize,
+    rate_limit_window: Duration,
+    requests_by_ip: Arc<Mutex<HashMap<String, Vec<Instant>>>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl RequestAccessLayer {
+    fn new(config: panel::utils::config::RequestSecurityConfig) -> Self {
+        Self {
+            allowed_ips: Arc::new(config.allowed_ips),
+            rate_limit_requests: config.rate_limit_requests as usize,
+            rate_limit_window: Duration::from_secs(config.rate_limit_window_secs),
+            requests_by_ip: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn enforce_rate_limit(&self, client_ip: &str) -> Result<(), u64> {
+        if self.rate_limit_requests == 0 || self.rate_limit_window.is_zero() {
+            return Ok(());
+        }
+
+        let now = Instant::now();
+        let mut requests = self.requests_by_ip.lock().unwrap();
+
+        requests.retain(|_, timestamps| {
+            timestamps.retain(|timestamp| now.duration_since(*timestamp) < self.rate_limit_window);
+            !timestamps.is_empty()
+        });
+
+        let ip_requests = requests.entry(client_ip.to_string()).or_default();
+        ip_requests.retain(|timestamp| now.duration_since(*timestamp) < self.rate_limit_window);
+
+        if ip_requests.len() >= self.rate_limit_requests {
+            let oldest = ip_requests.first().copied().unwrap_or(now);
+            let retry_after = self
+                .rate_limit_window
+                .saturating_sub(now.duration_since(oldest))
+                .as_secs()
+                .max(1);
+            return Err(retry_after);
+        }
+
+        ip_requests.push(now);
+        Ok(())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_protected_request_path(path: &str) -> bool {
+    path.starts_with("/_dioxus/") || path.starts_with("/api/")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn request_access_middleware(
+    dioxus::server::axum::extract::State(state): dioxus::server::axum::extract::State<
+        RequestAccessLayer,
+    >,
+    req: dioxus::server::axum::extract::Request,
+    next: dioxus::server::axum::middleware::Next,
+) -> dioxus::server::axum::response::Response {
+    use dioxus::server::axum::response::IntoResponse;
+    use dioxus::server::http::{HeaderValue, StatusCode};
+
+    let path = req.uri().path().to_string();
+    if !is_protected_request_path(&path) {
+        return next.run(req).await;
+    }
+
+    let client_ip = panel::auth::guards::extract_client_ip_from_headers(req.headers())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    if !state.allowed_ips.is_empty()
+        && panel::auth::guards::check_ip_allowlist(&client_ip, state.allowed_ips.as_ref()).is_err()
+    {
+        tracing::warn!(path = %path, client_ip = %client_ip, "Blocked protected request from disallowed IP");
+        return (StatusCode::FORBIDDEN, "Access denied from this IP address").into_response();
+    }
+
+    if let Err(retry_after) = state.enforce_rate_limit(&client_ip) {
+        tracing::warn!(path = %path, client_ip = %client_ip, retry_after_secs = retry_after, "Rate limited protected request");
+        let mut response = (
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many requests. Please try again later.",
+        )
+            .into_response();
+        if let Ok(value) = HeaderValue::from_str(&retry_after.to_string()) {
+            response.headers_mut().insert("retry-after", value);
+        }
+        return response;
+    }
+
+    next.run(req).await
 }
 
 /// Axum middleware that adds security response headers to every request.

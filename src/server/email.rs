@@ -175,7 +175,21 @@ pub async fn server_create_mailbox(
     crate::auth::guards::check_ownership(&claims, domain.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    crate::db::quotas::check_can_create_email_account(pool, claims.sub)
+    // Validate password strength — blank or trivial passwords are rejected.
+    crate::utils::validators::validate_password(&password).map_err(ServerFnError::new)?;
+
+    // Validate local_part: only RFC 5321-safe characters, no @ or path separators.
+    {
+        let lp_re = regex::Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}$")
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        if !lp_re.is_match(&local_part) {
+            return Err(ServerFnError::new(
+                "Invalid mailbox local part. Use only letters, digits, and standard email special characters."
+            ));
+        }
+    }
+
+    crate::db::quotas::check_and_increment_email_accounts(pool, claims.sub)
         .await
         .map_err(ServerFnError::new)?;
 
@@ -185,11 +199,18 @@ pub async fn server_create_mailbox(
         .map_err(|_| ServerFnError::new("Failed to hash password"))?
         .to_string();
 
-    let id = crate::db::email::create_mailbox(pool, domain_id, local_part, password_hash)
+    let id = match crate::db::email::create_mailbox(pool, domain_id, local_part, password_hash)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    {
+        Ok(id) => id,
+        Err(e) => {
+            // Roll back the quota increment since we never created the mailbox.
+            let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, -1).await;
+            return Err(ServerFnError::new(e.to_string()));
+        }
+    };
 
-    let _ = crate::db::quotas::increment_email_accounts(pool, claims.sub, 1).await;
+    // Quota already incremented by check_and_increment_email_accounts; no separate call needed.
 
     audit_log(
         claims.sub,
@@ -220,6 +241,15 @@ pub async fn server_delete_mailbox(domain_id: i64, mailbox_id: i64) -> Result<()
 
     crate::auth::guards::check_ownership(&claims, domain.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Verify the mailbox belongs to this domain before deleting it,
+    // preventing cross-domain IDOR attacks.
+    let mailbox = crate::db::email::get_mailbox(pool, mailbox_id)
+        .await
+        .map_err(|_| ServerFnError::new("Mailbox not found"))?;
+    if mailbox.domain_id != domain_id {
+        return Err(ServerFnError::new("Mailbox not found"));
+    }
 
     crate::db::email::delete_mailbox(pool, mailbox_id)
         .await
@@ -447,6 +477,11 @@ pub async fn server_create_regex_forwarder(
     if pattern.is_empty() {
         return Err(ServerFnError::new("Pattern must not be empty"));
     }
+    // Validate the regex syntax before persisting — an invalid POSIX pattern
+    // would break postmap and silently disrupt all regex-based routing.
+    if let Err(e) = regex::Regex::new(&pattern) {
+        return Err(ServerFnError::new(format!("Invalid regex pattern: {}", e)));
+    }
     crate::utils::validators::validate_email(&forward_to).map_err(ServerFnError::new)?;
 
     let id =
@@ -489,6 +524,14 @@ pub async fn server_delete_regex_forwarder(
 
     crate::auth::guards::check_ownership(&claims, domain.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Verify the forwarder belongs to this domain before deleting it.
+    let forwarder = crate::db::email::get_regex_forwarder(pool, forwarder_id)
+        .await
+        .map_err(|_| ServerFnError::new("Regex forwarder not found"))?;
+    if forwarder.domain_id != domain_id {
+        return Err(ServerFnError::new("Regex forwarder not found"));
+    }
 
     crate::db::email::delete_regex_forwarder(pool, forwarder_id)
         .await

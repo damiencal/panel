@@ -11,6 +11,7 @@ pub mod dkim;
 pub mod dovecot;
 pub mod git;
 pub mod goaccess;
+pub mod janitor;
 pub mod mail_queue;
 pub mod mailscanner;
 pub mod mariadb;

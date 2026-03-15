@@ -58,31 +58,8 @@ fn get_client_ip() -> String {
     #[cfg(feature = "server")]
     if let Some(ctx) = dioxus_fullstack_core::FullstackContext::current() {
         let parts = ctx.parts_mut();
-
-        // Extract IP from forwarding headers, but validate it's a plausible IP
-        // to prevent rate-limit bypass via spoofed headers.
-        let fwd: Option<String> = parts
-            .headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.split(',').next().unwrap_or("").trim().to_string());
-
-        if let Some(ref ip) = fwd {
-            if crate::utils::validators::validate_ip_address(ip) {
-                return ip.clone();
-            }
-        }
-
-        let real: Option<String> = parts
-            .headers
-            .get("x-real-ip")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-
-        if let Some(ref ip) = real {
-            if crate::utils::validators::validate_ip_address(ip) {
-                return ip.clone();
-            }
+        if let Some(ip) = crate::auth::guards::extract_client_ip_from_headers(&parts.headers) {
+            return ip;
         }
     }
     "unknown".to_string()

@@ -190,7 +190,11 @@ impl DovecotService {
 
         content.push_str(&entry);
 
-        fs::write(DOVECOT_USERS_FILE, content)
+        let users_tmp = format!("{}.tmp", DOVECOT_USERS_FILE);
+        fs::write(&users_tmp, &content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&users_tmp, DOVECOT_USERS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -224,7 +228,11 @@ impl DovecotService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(DOVECOT_USERS_FILE, new_content)
+        let users_tmp = format!("{}.tmp", DOVECOT_USERS_FILE);
+        fs::write(&users_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&users_tmp, DOVECOT_USERS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -276,7 +284,11 @@ impl DovecotService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(DOVECOT_USERS_FILE, new_content)
+        let users_tmp = format!("{}.tmp", DOVECOT_USERS_FILE);
+        fs::write(&users_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&users_tmp, DOVECOT_USERS_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -447,12 +459,18 @@ impl DovecotService {
         key_path: &str,
     ) -> Result<(), super::ServiceError> {
         let ssl_conf_path = format!("{}/10-ssl.conf", DOVECOT_CONF_DIR);
+        let ssl_conf_tmp = format!("{}.tmp", ssl_conf_path);
         let content = format!(
             "ssl = required\nssl_cert = <{cert_path}\nssl_key = <{key_path}\n",
             cert_path = cert_path,
             key_path = key_path,
         );
-        tokio::fs::write(&ssl_conf_path, content)
+        // Write atomically: tmp file + rename so that a crash can never produce
+        // a partially-written ssl config that would break Dovecot.
+        tokio::fs::write(&ssl_conf_tmp, &content)
+            .await
+            .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
+        tokio::fs::rename(&ssl_conf_tmp, &ssl_conf_path)
             .await
             .map_err(|e| super::ServiceError::IoError(e.to_string()))?;
         // Reload Dovecot to pick up the new cert.

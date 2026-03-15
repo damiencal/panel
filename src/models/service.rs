@@ -38,6 +38,32 @@ impl std::fmt::Display for ServiceType {
     }
 }
 
+/// Distinguishes process-level liveness from port-level usability.
+/// A service process can be alive while the port is not yet accepting connections
+/// (e.g., still booting, mid-restart, or crashed after initialisation).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]
+pub enum ServiceHealthState {
+    /// Process is alive and the service port accepts connections (or no port to probe).
+    FullyOperational,
+    /// Process is alive but the port is not accepting connections.
+    ProcessUpPortClosed,
+    /// Process is not running.
+    Down,
+    /// Health could not be determined.
+    Unknown,
+}
+
+impl std::fmt::Display for ServiceHealthState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServiceHealthState::FullyOperational => write!(f, "Fully Operational"),
+            ServiceHealthState::ProcessUpPortClosed => write!(f, "Process Up / Port Closed"),
+            ServiceHealthState::Down => write!(f, "Down"),
+            ServiceHealthState::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
 /// Service operational status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]
 pub enum ServiceStatus {
@@ -63,6 +89,8 @@ impl std::fmt::Display for ServiceStatus {
 pub struct ServiceInfo {
     pub service_type: ServiceType,
     pub status: ServiceStatus,
+    /// Fine-grained health: differentiates "process running" from "process running AND port responding".
+    pub health_state: ServiceHealthState,
     pub port: Option<u16>,
     pub version: Option<String>,
     pub uptime_seconds: Option<u64>,

@@ -163,7 +163,11 @@ Socket              inet:8891@localhost
 PidFile             /run/opendkim/opendkim.pid
 UserID              opendkim
 "#;
-        fs::write(OPENDKIM_CONF, conf)
+        let conf_tmp = format!("{}.tmp", OPENDKIM_CONF);
+        fs::write(&conf_tmp, conf)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&conf_tmp, OPENDKIM_CONF)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))
     }
@@ -186,7 +190,11 @@ UserID              opendkim
             .collect();
         new_content.push_str(&entry);
 
-        fs::write(OPENDKIM_SIGNING_TABLE, new_content)
+        let signing_tmp = format!("{}.tmp", OPENDKIM_SIGNING_TABLE);
+        fs::write(&signing_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&signing_tmp, OPENDKIM_SIGNING_TABLE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))
     }
@@ -204,7 +212,11 @@ UserID              opendkim
             .map(|l| format!("{}\n", l))
             .collect();
 
-        fs::write(OPENDKIM_SIGNING_TABLE, new_content)
+        let signing_tmp = format!("{}.tmp", OPENDKIM_SIGNING_TABLE);
+        fs::write(&signing_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&signing_tmp, OPENDKIM_SIGNING_TABLE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))
     }
@@ -232,7 +244,11 @@ UserID              opendkim
             .collect();
         new_content.push_str(&entry);
 
-        fs::write(OPENDKIM_KEY_TABLE, new_content)
+        let key_tmp = format!("{}.tmp", OPENDKIM_KEY_TABLE);
+        fs::write(&key_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&key_tmp, OPENDKIM_KEY_TABLE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))
     }
@@ -255,7 +271,11 @@ UserID              opendkim
             .map(|l| format!("{}\n", l))
             .collect();
 
-        fs::write(OPENDKIM_KEY_TABLE, new_content)
+        let key_tmp = format!("{}.tmp", OPENDKIM_KEY_TABLE);
+        fs::write(&key_tmp, &new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&key_tmp, OPENDKIM_KEY_TABLE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))
     }

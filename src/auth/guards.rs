@@ -1,10 +1,64 @@
 /// Role-based access control guards for server functions.
 use crate::models::auth::{AuthError, JwtClaims};
 use crate::models::user::Role;
+use http::HeaderMap;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 /// Require authentication. Returns the current user's JWT claims.
 pub fn require_auth(_claims: &JwtClaims) -> Result<(), AuthError> {
     Ok(())
+}
+
+/// Extract the most useful client IP from forwarded headers.
+///
+/// Returns `None` when no plausible header is present.
+pub fn extract_client_ip_from_headers(headers: &HeaderMap) -> Option<String> {
+    let forwarded = headers
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| crate::utils::validators::validate_ip_address(value));
+
+    if let Some(ip) = forwarded {
+        return Some(ip.to_string());
+    }
+
+    headers
+        .get("x-real-ip")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| crate::utils::validators::validate_ip_address(value))
+        .map(ToString::to_string)
+}
+
+/// Check whether a client IP is allowed by a list of exact IPs or CIDR ranges.
+///
+/// Empty allowlists allow all IPs. `0.0.0.0`, `::`, `0.0.0.0/0`, and `::/0`
+/// are treated as explicit allow-all entries for parity with mature control-plane
+/// products such as Coolify.
+pub fn check_ip_allowlist(client_ip: &str, allowed_ips: &[String]) -> Result<(), AuthError> {
+    if allowed_ips.is_empty() {
+        return Ok(());
+    }
+
+    let client_ip: IpAddr = client_ip.parse().map_err(|_| AuthError::AccessDenied)?;
+
+    if allowed_ips
+        .iter()
+        .any(|entry| matches!(entry.trim(), "0.0.0.0" | "::" | "0.0.0.0/0" | "::/0" | "*"))
+    {
+        return Ok(());
+    }
+
+    if allowed_ips
+        .iter()
+        .any(|entry| ip_matches_allowlist_entry(client_ip, entry.trim()))
+    {
+        Ok(())
+    } else {
+        Err(AuthError::AccessDenied)
+    }
 }
 
 /// Require Admin role.
@@ -89,6 +143,68 @@ pub fn admin_guard(route: &dioxus_router::prelude::RouteState) -> bool {
     true
 }
 
+fn ip_matches_allowlist_entry(client_ip: IpAddr, entry: &str) -> bool {
+    if entry.is_empty() {
+        return false;
+    }
+
+    if let Ok(exact_ip) = entry.parse::<IpAddr>() {
+        return exact_ip == client_ip;
+    }
+
+    let Some((network, prefix_len)) = entry.split_once('/') else {
+        return false;
+    };
+
+    let Ok(network_ip) = network.parse::<IpAddr>() else {
+        return false;
+    };
+
+    match (client_ip, network_ip) {
+        (IpAddr::V4(client), IpAddr::V4(network)) => {
+            let Ok(prefix_len) = prefix_len.parse::<u8>() else {
+                return false;
+            };
+            ipv4_in_cidr(client, network, prefix_len)
+        }
+        (IpAddr::V6(client), IpAddr::V6(network)) => {
+            let Ok(prefix_len) = prefix_len.parse::<u8>() else {
+                return false;
+            };
+            ipv6_in_cidr(client, network, prefix_len)
+        }
+        _ => false,
+    }
+}
+
+fn ipv4_in_cidr(client: Ipv4Addr, network: Ipv4Addr, prefix_len: u8) -> bool {
+    if prefix_len > 32 {
+        return false;
+    }
+
+    let mask = if prefix_len == 0 {
+        0
+    } else {
+        u32::MAX << (32 - u32::from(prefix_len))
+    };
+
+    (u32::from(client) & mask) == (u32::from(network) & mask)
+}
+
+fn ipv6_in_cidr(client: Ipv6Addr, network: Ipv6Addr, prefix_len: u8) -> bool {
+    if prefix_len > 128 {
+        return false;
+    }
+
+    let mask = if prefix_len == 0 {
+        0
+    } else {
+        u128::MAX << (128 - u32::from(prefix_len))
+    };
+
+    (u128::from(client) & mask) == (u128::from(network) & mask)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,5 +261,37 @@ mod tests {
         assert!(require_reseller(&admin).is_ok());
         assert!(require_reseller(&reseller).is_ok());
         assert!(require_reseller(&client).is_err());
+    }
+
+    #[test]
+    fn test_empty_allowlist_allows_any_ip() {
+        assert!(check_ip_allowlist("203.0.113.10", &[]).is_ok());
+    }
+
+    #[test]
+    fn test_exact_ip_allowlist_match() {
+        let allowed = vec!["203.0.113.10".to_string()];
+        assert!(check_ip_allowlist("203.0.113.10", &allowed).is_ok());
+        assert!(check_ip_allowlist("203.0.113.11", &allowed).is_err());
+    }
+
+    #[test]
+    fn test_ipv4_cidr_allowlist_match() {
+        let allowed = vec!["10.10.0.0/16".to_string()];
+        assert!(check_ip_allowlist("10.10.42.5", &allowed).is_ok());
+        assert!(check_ip_allowlist("10.11.42.5", &allowed).is_err());
+    }
+
+    #[test]
+    fn test_ipv6_cidr_allowlist_match() {
+        let allowed = vec!["2001:db8::/32".to_string()];
+        assert!(check_ip_allowlist("2001:db8::1", &allowed).is_ok());
+        assert!(check_ip_allowlist("2001:dead::1", &allowed).is_err());
+    }
+
+    #[test]
+    fn test_allow_all_shortcuts() {
+        let allowed = vec!["0.0.0.0/0".to_string()];
+        assert!(check_ip_allowlist("198.51.100.25", &allowed).is_ok());
     }
 }
