@@ -52,6 +52,8 @@ jobs:
           # This catches broken SQL, missing semicolons, or order conflicts
           # before they reach a live server.
           DATABASE_URL="sqlite:/tmp/panel_migrate_test.db" \
+            sqlx database create
+          DATABASE_URL="sqlite:/tmp/panel_migrate_test.db" \
             sqlx migrate run --source migrations
           echo "All migrations applied successfully"
           rm -f /tmp/panel_migrate_test.db
