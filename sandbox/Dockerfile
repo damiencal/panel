@@ -79,6 +79,8 @@ COPY --from=builder /src/target/dx/panel/release/panel-server ${PANEL_DIR}/panel
 
 # ── Copy sandbox configuration and scripts ────────────────────────────────────
 COPY sandbox/panel.toml                  ${PANEL_DIR}/panel.toml
+# Backup copy — entrypoint.sh restores this after install.sh may overwrite the live config
+COPY sandbox/panel.toml                  ${PANEL_DIR}/panel.toml.sandbox
 COPY sandbox/entrypoint.sh               /entrypoint.sh
 COPY sandbox/scripts/                    /opt/panel/scripts/
 COPY sandbox/seed/                       /opt/panel/seed/

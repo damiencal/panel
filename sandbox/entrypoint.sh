@@ -79,7 +79,13 @@ else
     echo "[entrypoint] WordPress already installed."
 fi
 
-# ─── 7. Start panel binary ───────────────────────────────────────────────────
+# ─── 7. Restore sandbox panel config ────────────────────────────────────────
+# install.sh writes its own panel.toml (127.0.0.1:3030) which would break
+# Docker port-forwarding.  Always restore the sandbox-correct version.
+echo "[entrypoint] Restoring sandbox panel.toml (host=0.0.0.0, port=8080)..."
+cp "${PANEL_DIR}/panel.toml.sandbox" "${PANEL_DIR}/panel.toml"
+
+# ─── 8. Start panel binary ───────────────────────────────────────────────────
 echo "[entrypoint] Starting panel on :8080..."
 cd "${PANEL_DIR}"
 PANEL_CONFIG="${PANEL_DIR}/panel.toml" \
@@ -87,7 +93,7 @@ PANEL_CONFIG="${PANEL_DIR}/panel.toml" \
 PANEL_PID=$!
 echo "[entrypoint] panel PID=${PANEL_PID}"
 
-# ─── 8. Wait for panel to be healthy ─────────────────────────────────────────
+# ─── 9. Wait for panel to be healthy ─────────────────────────────────────────
 echo "[entrypoint] Waiting for panel health endpoint..."
 for i in $(seq 1 60); do
     if curl -sf http://127.0.0.1:8080/ >/dev/null 2>&1; then
@@ -100,10 +106,10 @@ done
 echo "[entrypoint] Sandbox ready. Panel running at http://localhost:8080"
 echo "[entrypoint] WordPress: http://wp.panel.test (resolve via /etc/hosts)"
 
-# ─── 9. Write readiness file (polled by wait-for-services.sh) ────────────────
+# ─── 10. Write readiness file (polled by wait-for-services.sh) ───────────────
 touch "${PANEL_DIR}/.ready"
 
-# ─── 10. Keep container alive ────────────────────────────────────────────────
+# ─── 11. Keep container alive ────────────────────────────────────────────────
 tail -f "${LOG}" &
 # Forward SIGTERM to panel
 trap "kill ${PANEL_PID} 2>/dev/null; exit 0" SIGTERM SIGINT

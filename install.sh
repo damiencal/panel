@@ -1031,6 +1031,14 @@ download_panel_binary() {
 
 build_panel() {
     if [[ "$INSTALL_MODE" == "binary" ]]; then
+        # Skip the GitHub download when the binary was already placed by the
+        # Docker build stage (or a previous install).  This avoids a slow /
+        # failing network round-trip inside the sandbox container.
+        if [[ -x "$INSTALL_DIR/panel" ]]; then
+            print_info "Panel binary already present at $INSTALL_DIR/panel — skipping download."
+            INSTALLED_VERSION="(pre-installed)"
+            return
+        fi
         download_panel_binary
         return
     fi

@@ -4,7 +4,7 @@
 # =============================================================================
 
 [server]
-host = "127.0.0.1"
+host = "0.0.0.0"
 port = 8080
 # 64-char test-only secret key (NEVER use in production)
 secret_key = "sandbox-test-key-do-not-use-in-production-aabbccddee112233445566"
