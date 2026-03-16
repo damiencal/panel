@@ -72,6 +72,10 @@ jobs:
         run: bash sandbox/scripts/wait-for-services.sh
         timeout-minutes: 10
 
+      - name: Dump sandbox logs on failure
+        if: failure()
+        run: docker exec panel-sandbox cat /opt/panel/sandbox.log || true
+
       - name: Run Playwright E2E tests
         run: npx playwright test --config tests/e2e/playwright.config.ts
         env:
