@@ -1,0 +1,101 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      # Cache sandbox Docker image layers to avoid re-running the full install
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-sandbox-${{ hashFiles('sandbox/Dockerfile', 'sandbox/entrypoint.sh', 'install.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-sandbox-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: sandbox/Dockerfile
+          push: false
+          load: true
+          tags: panel-sandbox:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # Prevent cache from growing unbounded
+      - name: Rotate cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+        if: always()
+
+      - name: Start sandbox container
+        run: |
+          docker compose -f sandbox/docker-compose.test.yml up -d
+        env:
+          COMPOSE_PROJECT_NAME: panel_e2e
+
+      - name: Wait for sandbox services to be ready
+        run: bash sandbox/scripts/wait-for-services.sh
+        timeout-minutes: 10
+
+      - name: Run Playwright E2E tests
+        run: npx playwright test --config tests/e2e/playwright.config.ts
+        env:
+          CI: true
+          BASE_URL: http://localhost:8080
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop sandbox container
+        if: always()
+        run: docker compose -f sandbox/docker-compose.test.yml down -v
+        env:
+          COMPOSE_PROJECT_NAME: panel_e2e

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Pre-commit hook: mirrors the checks run in CI.
+# Install once with:  git config core.hooksPath .githooks
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+fail() { echo -e "${RED}✗ $*${RESET}" >&2; exit 1; }
+pass() { echo -e "${GREEN}✓ $*${RESET}"; }
+
+echo -e "${BOLD}Running pre-commit checks…${RESET}"
+
+# 1. Formatting
+echo "  cargo fmt --check"
+cargo fmt -- --check || fail "Formatting errors found. Run 'cargo fmt' and re-stage."
+pass "cargo fmt"
+
+# 2. Lint (same flags as CI)
+echo "  cargo clippy"
+cargo clippy --features server -- -D warnings \
+  || fail "Clippy errors found. Fix the issues above and re-stage."
+pass "cargo clippy"
+
+echo -e "${BOLD}All checks passed.${RESET}"

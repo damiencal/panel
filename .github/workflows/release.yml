@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            archive: panel-x86_64-linux.tar.gz
+          - target: aarch64-unknown-linux-gnu
+            archive: panel-aarch64-linux.tar.gz
+            cross: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }},wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config
+
+      - name: Install cross (aarch64)
+        if: matrix.cross == true
+        run: cargo install cross --locked
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
+
+      - name: Install Tailwind CSS CLI
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          sudo mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
+      - name: Build Tailwind CSS
+        run: tailwindcss -i input.css -o assets/tailwind.css --minify
+
+      - name: Build release (x86_64)
+        if: matrix.cross != true
+        run: dx build --release --platform web
+
+      - name: Build release (aarch64 cross-compile)
+        if: matrix.cross == true
+        env:
+          # Tell openssl-sys / pkg-config to allow cross-compilation lookups
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
+        run: |
+          # Build the WASM client (always targets wasm32, runs on the host)
+          dx build --release --platform web
+          # Build the server binary for aarch64 using cross.
+          # Cross.toml pre-build hooks install libssl-dev:arm64 inside the container.
+          cross build --release --features server --target ${{ matrix.target }}
+
+      - name: Prepare release artifact (x86_64)
+        if: matrix.cross != true
+        run: |
+          STAGING="panel-release"
+          mkdir -p "$STAGING"
+          cp target/dx/panel/release/web/panel "$STAGING/panel"
+          cp -r target/dx/panel/release/web/public "$STAGING/public"
+          cp -r templates "$STAGING/templates"
+          cp panel.toml "$STAGING/panel.toml"
+          cp panel.service "$STAGING/panel.service"
+          cp install.sh "$STAGING/install.sh"
+          chmod +x "$STAGING/install.sh"
+          tar -czf ${{ matrix.archive }} -C "$STAGING" .
+
+      - name: Prepare release artifact (aarch64)
+        if: matrix.cross == true
+        run: |
+          STAGING="panel-release"
+          mkdir -p "$STAGING"
+          cp target/${{ matrix.target }}/release/panel "$STAGING/panel"
+          cp -r target/dx/panel/release/web/public "$STAGING/public"
+          cp -r templates "$STAGING/templates"
+          cp panel.toml "$STAGING/panel.toml"
+          cp panel.service "$STAGING/panel.service"
+          cp install.sh "$STAGING/install.sh"
+          chmod +x "$STAGING/install.sh"
+          tar -czf ${{ matrix.archive }} -C "$STAGING" .
+
+      - name: Binary smoke test
+        if: matrix.cross != true
+        run: |
+          # Verify the binary is a valid ELF executable and has no missing
+          # shared library dependencies before we ship it.
+          file panel-release/panel
+          ldd  panel-release/panel
+          # Confirm ldd reports no "not found" entries
+          if ldd panel-release/panel 2>&1 | grep -q 'not found'; then
+            echo "ERROR: binary has unresolved shared library dependencies" >&2
+            ldd panel-release/panel >&2
+            exit 1
+          fi
+          echo "Binary smoke test passed"
+
+      - name: Generate SHA-256 checksum
+        run: sha256sum ${{ matrix.archive }} > ${{ matrix.archive }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: |
+            ${{ matrix.archive }}
+            ${{ matrix.archive }}.sha256
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.sha256

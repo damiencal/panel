@@ -1,0 +1,13 @@
+[package]
+name = "panel"
+
+[application]
+asset_dir = "assets"
+default_platform = "web"
+
+[web.app]
+title = "Hosting Panel"
+
+[server]
+port = 8080
+address = "0.0.0.0"

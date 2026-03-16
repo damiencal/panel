@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Check & Test
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (server)
+        run: cargo clippy --features server --target x86_64-unknown-linux-gnu -- -D warnings
+
+      - name: Clippy (wasm)
+        run: cargo clippy --no-default-features --features web --target wasm32-unknown-unknown -- -D warnings
+
+      - name: Run tests
+        run: cargo test --features server
+
+      - name: Migration integrity check
+        run: |
+          # Install sqlx-cli with only the SQLite driver to keep install fast
+          cargo install sqlx-cli --no-default-features --features sqlite --locked
+          # Apply every migration from scratch against a temp database file.
+          # This catches broken SQL, missing semicolons, or order conflicts
+          # before they reach a live server.
+          DATABASE_URL="sqlite:/tmp/panel_migrate_test.db" \
+            sqlx database create
+          DATABASE_URL="sqlite:/tmp/panel_migrate_test.db" \
+            sqlx migrate run --source migrations
+          echo "All migrations applied successfully"
+          rm -f /tmp/panel_migrate_test.db
+
+  build:
+    name: Build (release smoke test)
+    runs-on: ubuntu-24.04
+    needs: check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
+
+      - name: Install Tailwind CSS CLI
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          sudo mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
+      - name: Build Tailwind CSS
+        run: tailwindcss -i input.css -o assets/tailwind.css --minify
+
+      - name: Build release
+        run: dx build --release --platform web
+
+  build-arm:
+    name: Build ARM64 server binary
+    runs-on: ubuntu-24.04
+    needs: check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: aarch64
+
+      - name: Install cross
+        run: cargo install cross --locked
+
+      - name: Build ARM64 server binary
+        run: cross build --features server --target aarch64-unknown-linux-gnu --release

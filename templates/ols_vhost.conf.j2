@@ -1,0 +1,114 @@
+docRoot                {{ doc_root }}/public
+vhName                 {{ vhost_name }}
+vhDomain               {{ domain }}
+adminEmails            admin@{{ domain }}
+enableScript           1
+restrained             0
+allowSymbolLink        1
+enableWebsocket        1
+enableIpGeo            0
+
+<context />
+  <location                   />
+  <allowBrowse                0
+  <handlerType>static</handlerType>
+  <indexFiles>index.html, index.php, index.htm</indexFiles>
+  {% if php_enabled %}
+  <cgi>
+    <handler>
+      <suffix>php</suffix>
+      <handlerType>lsapi</handlerType>
+      <handlerPath>/usr/local/lsws/lsphp83/bin/lsphp</handlerPath>
+    </handler>
+  </cgi>
+  {% endif %}
+  <cgi>
+    <handler>
+      <suffix>html</suffix>
+      <handlerType>static</handlerType>
+    </handler>
+  </cgi>
+</context>
+
+<context /images/>
+  <location                   images/
+  <allowBrowse                1
+  <handlerType>static</handlerType>
+</context>
+
+<context /static/>
+  <location                   static/
+  <allowBrowse                1
+  <handlerType>static</handlerType>
+</context>
+
+<context /api/>
+  <location                   api/
+  <allowBrowse                0
+  <handlerType>static</handlerType>
+  {% if php_enabled %}
+  <cgi>
+    <handler>
+      <suffix>php</suffix>
+      <handlerType>lsapi</handlerType>
+      <handlerPath>/usr/local/lsws/lsphp83/bin/lsphp</handlerPath>
+    </handler>
+  </cgi>
+  {% endif %}
+</context>
+
+<staticContext>
+  <suffix>jpg, gif, png, bmp, css, js, ico, jpeg, swf, flv, mp3, mp4, webp, svg, woff, woff2, ttf, eot, otf</suffix>
+  <location                   /
+  <enableBr                   1
+  <enableGzip               1
+  <gzipCompLevel            5
+  <cacheExpire              30d
+</staticContext>
+
+<expires>
+  <enableExpires             1
+  {% if php_enabled %}
+  <expiresByType>
+    <type>text/html</type>
+    <expireSeconds>3600</expireSeconds>
+  </expiresByType>
+  {{ endif }}
+  <expiresByType>
+    <type>image/*</type>
+    <expireSeconds>2592000</expireSeconds>
+  </expiresByType>
+  <expiresByType>
+    <type>text/css</type>
+    <expireSeconds>2592000</expireSeconds>
+  </expiresByType>
+  <expiresByType>
+    <type>application/javascript</type>
+    <expireSeconds>2592000</expireSeconds>
+  </expiresByType>
+</expires>
+
+<errorPages>
+  <errorPage404>404.html</errorPage404>
+  <errorPage500>500.html</errorPage500>
+</errorPages>
+
+<rewrite>
+  <enable>1</enable>
+  <base>/</base>
+  <autoLoad>0</autoLoad>
+  <rules>
+    <rule>
+      <name>block-hidden</name>
+      <enable>1</enable>
+      <regex>^\.|^\..*|.*~$</regex>
+      <rewriteFile></rewriteFile>
+    </rule>
+  </rules>
+</rewrite>
+
+{% if enable_htaccess %}
+<htaccess>
+  <enableHtaccess>1</enableHtaccess>
+</htaccess>
+{% endif %}
