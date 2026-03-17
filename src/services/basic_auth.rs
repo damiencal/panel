@@ -97,7 +97,13 @@ pub async fn write_htpasswd(domain: &str, users: &[(String, String)]) -> Result<
         .await
         .map_err(|e| ServiceError::IoError(e.to_string()))?;
     if let Err(e) = fs::rename(&tmp_path, &path).await {
-        let _ = fs::remove_file(&tmp_path).await;
+        if let Err(del_err) = fs::remove_file(&tmp_path).await {
+            tracing::warn!(
+                "Failed to clean up temp htpasswd file {}: {}",
+                tmp_path,
+                del_err
+            );
+        }
         return Err(ServiceError::IoError(e.to_string()));
     }
 

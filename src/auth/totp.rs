@@ -137,7 +137,7 @@ pub fn verify_totp(secret: &str, code: &str) -> Result<(), AuthError> {
         let mut used = USED_TOTP_CODES
             .get_or_init(|| Mutex::new(HashMap::new()))
             .lock()
-            .unwrap();
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let now = Instant::now();
         // Opportunistically prune expired entries on each call to bound memory use.

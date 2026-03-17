@@ -103,14 +103,22 @@ impl RspamdService {
             spam_threshold = spam_threshold,
             greylist = spam_threshold + 2.0,
         );
-        fs::write(format!("{RSPAMD_LOCAL_CFG}/actions.conf"), actions)
+        let actions_path = format!("{RSPAMD_LOCAL_CFG}/actions.conf");
+        let actions_tmp = format!("{actions_path}.tmp.{}", std::process::id());
+        fs::write(&actions_tmp, actions)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
-
-        // milter_headers.conf
+        fs::rename(&actions_tmp, &actions_path)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
         if add_header {
             let milter = "use = [\"x-spam-status\", \"x-spam-score\", \"x-spam-flag\"];\n";
-            fs::write(format!("{RSPAMD_LOCAL_CFG}/milter_headers.conf"), milter)
+            let milter_path = format!("{RSPAMD_LOCAL_CFG}/milter_headers.conf");
+            let milter_tmp = format!("{milter_path}.tmp.{}", std::process::id());
+            fs::write(&milter_tmp, milter)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&milter_tmp, &milter_path)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
@@ -125,7 +133,12 @@ impl RspamdService {
   servers = "127.0.0.1:3310";
 }
 "#;
-            fs::write(format!("{RSPAMD_LOCAL_CFG}/antivirus.conf"), av)
+            let av_path = format!("{RSPAMD_LOCAL_CFG}/antivirus.conf");
+            let av_tmp = format!("{av_path}.tmp.{}", std::process::id());
+            fs::write(&av_tmp, av)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&av_tmp, &av_path)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
@@ -145,11 +158,12 @@ impl RspamdService {
         let cleaned: String = content
             .lines()
             .filter(|l| {
-                !l.starts_with("milter_default_action")
-                    && !l.starts_with("milter_protocol")
-                    && !l.starts_with("smtpd_milters")
-                    && !l.starts_with("non_smtpd_milters")
-                    && !l.starts_with("content_filter = spamassassin")
+                let t = l.trim();
+                !(t.starts_with("milter_default_action")
+                    || t.starts_with("milter_protocol")
+                    || t.starts_with("smtpd_milters")
+                    || t.starts_with("non_smtpd_milters")
+                    || (t.starts_with("content_filter") && t.contains("spamassassin")))
             })
             .collect::<Vec<_>>()
             .join("\n");

@@ -408,11 +408,20 @@ impl OpenLiteSpeedService {
             }
         }
 
-        // Validate Basic Auth realm: no newlines or quotes that could escape the config block.
-        let safe_realm: String = basic_auth_realm
+        // Validate Basic Auth realm: reject any characters that could escape the config
+        // block or inject extra directives, rather than silently filtering them out
+        // (which would change the operator's intended realm name without warning).
+        if !basic_auth_realm
             .chars()
-            .filter(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '_'))
-            .collect();
+            .all(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '_'))
+        {
+            return Err(ServiceError::CommandFailed(
+                "Basic Auth realm contains invalid characters; \
+                 only alphanumeric, space, hyphen, and underscore are allowed"
+                    .to_string(),
+            ));
+        }
+        let safe_realm = basic_auth_realm;
 
         let vhost_name = format!("vhost_{}", domain.replace('.', "_"));
 

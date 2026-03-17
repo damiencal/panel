@@ -5,6 +5,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
+use std::time::Duration;
 
 static CF_CLIENT: OnceLock<CloudflareClient> = OnceLock::new();
 
@@ -104,8 +105,14 @@ const CF_API_BASE: &str = "https://api.cloudflare.com/client/v4";
 
 impl CloudflareClient {
     fn new(api_token: String, account_id: Option<String>) -> Self {
+        // Set an explicit timeout so panel server functions do not hang
+        // indefinitely if the Cloudflare API becomes unresponsive.
+        let http = Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
-            http: Client::new(),
+            http,
             api_token,
             account_id,
         }
@@ -116,6 +123,9 @@ impl CloudflareClient {
     /// Create a new zone in Cloudflare for `domain`.
     /// Returns the Cloudflare zone object including assigned nameservers.
     pub async fn create_zone(&self, domain: &str) -> Result<CfZone, CloudflareError> {
+        // Defense-in-depth: validate domain before sending to external API.
+        crate::utils::validators::validate_domain(domain)
+            .map_err(|e| CloudflareError::Api(format!("Invalid domain: {e}")))?;
         let body = CreateZoneRequest {
             name: domain,
             account: self.account_id.as_deref().map(|id| AccountRef { id }),

@@ -234,7 +234,7 @@ pub async fn server_update_site_ssl(
     #[cfg(feature = "server")]
     {
         let ols = crate::services::openlitespeed::OpenLiteSpeedService;
-        let _ = ols
+        if let Err(e) = ols
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
@@ -250,7 +250,14 @@ pub async fn server_update_site_ssl(
                 site.basic_auth_enabled,
                 &site.basic_auth_realm,
             )
-            .await;
+            .await
+        {
+            tracing::warn!(
+                "Failed to regenerate OLS vhost config for {}: {}",
+                site.domain,
+                e
+            );
+        }
     }
 
     audit_log(
@@ -496,7 +503,7 @@ pub async fn server_update_site_php_version(
     #[cfg(feature = "server")]
     {
         let ols = crate::services::openlitespeed::OpenLiteSpeedService;
-        let _ = ols
+        if let Err(e) = ols
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
@@ -512,7 +519,14 @@ pub async fn server_update_site_php_version(
                 site.basic_auth_enabled,
                 &site.basic_auth_realm,
             )
-            .await;
+            .await
+        {
+            tracing::warn!(
+                "Failed to regenerate OLS vhost config for {}: {}",
+                site.domain,
+                e
+            );
+        }
     }
 
     audit_log(
@@ -601,7 +615,7 @@ pub async fn server_issue_site_certificate(
 
         // Regenerate the vhost config so the SSL block is written immediately.
         let ols = crate::services::openlitespeed::OpenLiteSpeedService;
-        let _ = ols
+        if let Err(e) = ols
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
@@ -617,7 +631,14 @@ pub async fn server_issue_site_certificate(
                 site.basic_auth_enabled,
                 &site.basic_auth_realm,
             )
-            .await;
+            .await
+        {
+            tracing::warn!(
+                "Failed to regenerate OLS vhost config for {}: {}",
+                site.domain,
+                e
+            );
+        }
     }
 
     audit_log(
@@ -684,7 +705,7 @@ pub async fn server_set_custom_cert(
 
         // Regenerate the vhost config.
         let ols = crate::services::openlitespeed::OpenLiteSpeedService;
-        let _ = ols
+        if let Err(e) = ols
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
@@ -700,7 +721,14 @@ pub async fn server_set_custom_cert(
                 site.basic_auth_enabled,
                 &site.basic_auth_realm,
             )
-            .await;
+            .await
+        {
+            tracing::warn!(
+                "Failed to regenerate OLS vhost config for {}: {}",
+                site.domain,
+                e
+            );
+        }
     }
 
     audit_log(
@@ -760,7 +788,9 @@ pub async fn server_toggle_basic_auth(
     {
         if !enabled {
             // Remove the htpasswd file when Basic Auth is disabled.
-            let _ = crate::services::basic_auth::remove_htpasswd(&site.domain).await;
+            if let Err(e) = crate::services::basic_auth::remove_htpasswd(&site.domain).await {
+                tracing::warn!("Failed to remove htpasswd for {}: {}", site.domain, e);
+            }
         } else {
             // Regenerate the htpasswd file from the DB users.
             let users = crate::db::basic_auth::list_users(pool, site_id)
@@ -770,12 +800,16 @@ pub async fn server_toggle_basic_auth(
                 .into_iter()
                 .map(|u| (u.username, u.password_hash))
                 .collect();
-            let _ = crate::services::basic_auth::write_htpasswd(&site.domain, &entries).await;
+            if let Err(e) =
+                crate::services::basic_auth::write_htpasswd(&site.domain, &entries).await
+            {
+                tracing::warn!("Failed to write htpasswd for {}: {}", site.domain, e);
+            }
         }
 
         // Regenerate the vhost config to add or remove the realm block.
         let ols = crate::services::openlitespeed::OpenLiteSpeedService;
-        let _ = ols
+        if let Err(e) = ols
             .update_vhost_config(
                 &site.domain,
                 &site.doc_root,
@@ -791,7 +825,14 @@ pub async fn server_toggle_basic_auth(
                 enabled,
                 &safe_realm,
             )
-            .await;
+            .await
+        {
+            tracing::warn!(
+                "Failed to regenerate OLS vhost config for {}: {}",
+                site.domain,
+                e
+            );
+        }
     }
 
     audit_log(
@@ -1039,11 +1080,21 @@ pub async fn server_enforce_quota_suspensions() -> Result<String, ServerFnError>
 
         for site in user_sites {
             if over_limit && site.status == SiteStatus::Active {
-                let _ = crate::db::sites::update_status(pool, site.id, SiteStatus::Suspended).await;
-                suspended += 1;
+                if let Err(e) =
+                    crate::db::sites::update_status(pool, site.id, SiteStatus::Suspended).await
+                {
+                    tracing::warn!("Failed to suspend site {} for quota: {}", site.id, e);
+                } else {
+                    suspended += 1;
+                }
             } else if below_safe && site.status == SiteStatus::Suspended {
-                let _ = crate::db::sites::update_status(pool, site.id, SiteStatus::Active).await;
-                restored += 1;
+                if let Err(e) =
+                    crate::db::sites::update_status(pool, site.id, SiteStatus::Active).await
+                {
+                    tracing::warn!("Failed to restore site {} after quota: {}", site.id, e);
+                } else {
+                    restored += 1;
+                }
             }
         }
     }

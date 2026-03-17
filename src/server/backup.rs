@@ -481,7 +481,9 @@ async fn backup_site(
 
     // Resolve source path from the panel DB.
     let pool = crate::db::pool().map_err(|e| e.to_string())?;
-    let site_id = sched.site_id.unwrap();
+    let site_id = sched
+        .site_id
+        .ok_or_else(|| "Backup schedule missing site_id".to_string())?;
 
     let doc_root: String = sqlx::query_scalar("SELECT doc_root FROM sites WHERE id = ?")
         .bind(site_id)
@@ -543,7 +545,9 @@ async fn backup_mailbox(
     use tokio::process::Command;
 
     let pool = crate::db::pool().map_err(|e| e.to_string())?;
-    let mailbox_id = sched.mailbox_id.unwrap();
+    let mailbox_id = sched
+        .mailbox_id
+        .ok_or_else(|| "Backup schedule missing mailbox_id".to_string())?;
 
     // Resolve local_part + domain for the mailbox path.
     let row: (String, String) = sqlx::query_as(

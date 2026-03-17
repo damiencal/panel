@@ -113,7 +113,10 @@ impl SpamAssassinService {
         // Remove any previous content_filter line for spamassassin
         let cleaned: String = main_content
             .lines()
-            .filter(|l| !l.starts_with("content_filter = spamassassin"))
+            .filter(|l| {
+                let t = l.trim();
+                !(t.starts_with("content_filter") && t.contains("spamassassin"))
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -136,7 +139,12 @@ impl SpamAssassinService {
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
-        if enabled && !master_content.contains("spamassassin unix") {
+        if enabled
+            && !master_content.lines().any(|l| {
+                let t = l.trim();
+                t.starts_with("spamassassin unix") && !t.starts_with('#')
+            })
+        {
             let filter_entry = r#"
 spamassassin unix  -       n       n       -       -       pipe
   user=debian-spamd argv=/usr/bin/spamc -f -e /usr/sbin/sendmail -oi -f ${sender} ${recipient}

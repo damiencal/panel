@@ -1038,12 +1038,18 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
     std::fs::create_dir_all(&extract_dir)
         .map_err(|e| ServerFnError::new(format!("Failed to create extract dir: {e}")))?;
 
+    let archive_path_str = archive_path
+        .to_str()
+        .ok_or_else(|| ServerFnError::new("Archive path contains invalid UTF-8"))?;
+    let extract_dir_str = extract_dir
+        .to_str()
+        .ok_or_else(|| ServerFnError::new("Extract directory path contains invalid UTF-8"))?;
     let tar_status = Command::new("tar")
         .args([
             "-xzf",
-            archive_path.to_str().unwrap(),
+            archive_path_str,
             "-C",
-            extract_dir.to_str().unwrap(),
+            extract_dir_str,
             "--no-absolute-filenames", // block absolute-path entries (tar slip defence)
             "--no-overwrite-dir",      // prevent replacing existing directories
         ])

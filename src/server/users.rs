@@ -172,7 +172,13 @@ pub async fn server_create_user(
     })?;
 
     // Initialize resource usage tracking
-    let _ = crate::db::quotas::init_usage(pool, user_id).await;
+    if let Err(e) = crate::db::quotas::init_usage(pool, user_id).await {
+        tracing::warn!(
+            "Failed to initialize quota tracking for user {}: {}",
+            user_id,
+            e
+        );
+    }
 
     audit_log(
         claims.sub,
@@ -270,7 +276,7 @@ pub async fn server_delete_user(user_id: i64) -> Result<(), ServerFnError> {
     let ftpd = crate::services::pureftpd::PureFtpdService;
     for account in &ftp_accounts {
         if let Err(e) = ftpd.delete_user(&account.username).await {
-            tracing::warn!(
+            tracing::error!(
                 "Failed to remove FTP account '{}' from pureftpd during user {} deletion: {}",
                 account.username,
                 user_id,

@@ -262,13 +262,9 @@ pub async fn server_ufw_add_rule(
         created_at: None,
     };
 
-    UfwService
-        .add_rule(&rule)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    // Persist to DB
-    let _ = sqlx::query(
+    // Persist to DB first so the audit trail is always in sync with the
+    // live firewall state.  If the INSERT fails, we abort before touching UFW.
+    let row_id = sqlx::query(
         "INSERT INTO firewall_rules (action, direction, protocol, from_ip, to_port, comment, created_by)
          VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
@@ -280,7 +276,24 @@ pub async fn server_ufw_add_rule(
     .bind(&rule.comment)
     .bind(claims.sub)
     .execute(pool)
-    .await;
+    .await
+    .map_err(|e| ServerFnError::new(format!("Failed to persist firewall rule: {e}")))?
+    .last_insert_rowid();
+
+    // Apply to the system firewall.  On failure, remove the DB record so the
+    // audit trail doesn't show a rule that was never activated.
+    if let Err(e) = UfwService.add_rule(&rule).await {
+        if let Err(del_err) = sqlx::query("DELETE FROM firewall_rules WHERE id = ?")
+            .bind(row_id)
+            .execute(pool)
+            .await
+        {
+            tracing::error!(
+                "Failed to roll back firewall rule DB entry after UFW failure: {del_err}"
+            );
+        }
+        return Err(ServerFnError::new(e.to_string()));
+    }
 
     let target_name = format!(
         "{} port={} from={}",

@@ -161,7 +161,9 @@ impl SshHardeningService {
         // Config is valid — now safe to write the banner and reload.
         if config.banner_enabled {
             let banner = "Authorized access only. All activity may be monitored and reported.\n";
-            fs::write("/etc/issue.net", banner).await.ok();
+            if let Err(e) = fs::write("/etc/issue.net", banner).await {
+                tracing::warn!("Failed to write SSH warning banner to /etc/issue.net: {e}");
+            }
         }
 
         // Reload SSHD
@@ -203,12 +205,16 @@ impl SshHardeningService {
                 "No backup found to restore".to_string(),
             ));
         }
-        fs::remove_file(SSHD_HARDENED_DROPIN).await.ok();
-        tokio::process::Command::new("systemctl")
+        if let Err(e) = fs::remove_file(SSHD_HARDENED_DROPIN).await {
+            tracing::warn!("Could not remove SSH hardening drop-in during restore: {e}");
+        }
+        if let Err(e) = tokio::process::Command::new("systemctl")
             .args(["reload", "sshd"])
             .output()
             .await
-            .ok();
+        {
+            tracing::warn!("Failed to reload sshd after config restore: {e}");
+        }
         info!("SSH configuration restored from backup");
         Ok(())
     }

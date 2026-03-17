@@ -1037,7 +1037,9 @@ pub fn register_backup_token(
     filename: String,
     expires_at: i64,
 ) {
-    let mut store = backup_tokens_store().lock().unwrap();
+    let mut store = backup_tokens_store()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let now = chrono::Utc::now().timestamp();
     // Purge expired entries on every write.
     store.retain(|_, v| v.expires_at > now);
@@ -1058,7 +1060,9 @@ pub fn register_backup_token(
 /// and belongs to `user_id`.  The entry is removed on success.
 #[cfg(feature = "server")]
 pub fn consume_backup_token(token: &str, user_id: i64) -> Option<(String, String)> {
-    let mut store = backup_tokens_store().lock().unwrap();
+    let mut store = backup_tokens_store()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let now = chrono::Utc::now().timestamp();
     if let Some(entry) = store.get(token) {
         if entry.expires_at <= now {

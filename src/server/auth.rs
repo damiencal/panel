@@ -40,6 +40,12 @@ pub(crate) fn enforce_login_rate_limit(ip: &str, username: &str) -> Result<(), S
         v.retain(|&t| now.duration_since(t) < window);
         !v.is_empty()
     });
+    // Hard cap on tracked entries to guard against botnet exhaustion.
+    // After pruning, if the map is still over the limit, clear it entirely
+    // (extra safety valve: we accept a momentary rate-limit reset over OOM).
+    if limits.len() > 50_000 {
+        limits.clear();
+    }
 
     // Rate limit by IP (max 10 attempts per 5 mins).
     // Skip when IP is "unknown" — this happens when trust_proxy_headers = false (the default)
@@ -106,6 +112,15 @@ pub async fn server_login(
 
     ensure_init().await.map_err(ServerFnError::new)?;
 
+    // Reject obviously-invalid inputs early so they never reach Argon2
+    // or bloat the rate-limiter HashMap with huge keys.
+    if crate::utils::validators::validate_username(&username).is_err() {
+        return Err(ServerFnError::new("Invalid credentials"));
+    }
+    if password.len() > 1024 {
+        return Err(ServerFnError::new("Invalid credentials"));
+    }
+
     let client_ip = get_client_ip();
     enforce_login_rate_limit(&client_ip, &username)?;
 
@@ -143,7 +158,9 @@ pub async fn server_login(
             Some("Account suspended or pending"),
         )
         .await;
-        return Err(ServerFnError::new("Account is suspended or pending"));
+        // Return the same generic error as a wrong password to prevent
+        // account-status enumeration.
+        return Err(ServerFnError::new("Invalid credentials"));
     }
 
     // Verify password
@@ -352,6 +369,12 @@ pub async fn server_confirm_2fa(code: String) -> Result<(), ServerFnError> {
     // Rate-limit 2FA attempts to prevent brute-force of 6-digit TOTP codes
     let client_ip = get_client_ip();
     enforce_login_rate_limit(&client_ip, &claims.username)?;
+
+    // Validate TOTP code format: must be exactly 6 ASCII digits.
+    // Reject early to avoid passing arbitrary input to the TOTP verifier.
+    if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
+        return Err(ServerFnError::new("Invalid verification code"));
+    }
 
     // If 2FA is already enabled, reject the re-enrolment to prevent an attacker
     // with a stolen session from overwriting the victim's TOTP secret (which

@@ -227,8 +227,15 @@ impl MariaDbService {
             "REVOKE ALL PRIVILEGES ON `{}`.* FROM '{}'@'localhost';\nFLUSH PRIVILEGES;\n",
             db_name, username
         );
-        // Pipe SQL via stdin; ignore error if grants didn't exist
-        let _ = shell::exec_stdin("mysql", &[], sql.as_bytes()).await;
+        // Pipe SQL via stdin; grants may not exist yet — log but don't fail
+        if let Err(e) = shell::exec_stdin("mysql", &[], sql.as_bytes()).await {
+            tracing::warn!(
+                "Revoke grants for '{}' on '{}' failed (may not have existed): {}",
+                username,
+                db_name,
+                e
+            );
+        }
         Ok(())
     }
 
