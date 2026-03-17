@@ -95,14 +95,25 @@ pub async fn create_user(
          VALUES (?, ?, ?, ?, ?)",
     )
     .bind(db_id)
-    .bind(username)
+    .bind(&username)
     .bind(password_hash)
     .bind(privileges)
     .bind(Utc::now())
     .execute(pool)
     .await?;
 
-    Ok(result.last_insert_rowid())
+    let rowid = result.last_insert_rowid();
+    if rowid != 0 {
+        return Ok(rowid);
+    }
+    // Row already existed — return its actual ID.
+    let row: (i64,) =
+        sqlx::query_as("SELECT id FROM database_users WHERE database_id = ? AND username = ?")
+            .bind(db_id)
+            .bind(&username)
+            .fetch_one(pool)
+            .await?;
+    Ok(row.0)
 }
 
 /// Delete a database user.

@@ -73,22 +73,28 @@ pub async fn server_create_database(
         .await
         .map_err(ServerFnError::new)?;
 
-    let db_id =
-        match crate::db::databases::create(pool, claims.sub, name.clone(), database_type).await {
-            Ok(id) => id,
-            Err(e) => {
-                let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
-                // INFO-LEAK-01: map UNIQUE violations to a user-friendly message;
-                // log other errors server-side rather than exposing schema details.
-                let msg = e.to_string();
-                return Err(ServerFnError::new(if msg.contains("UNIQUE") {
-                    "A database with that name already exists".to_string()
-                } else {
-                    tracing::warn!("DB error in create_database: {e}");
-                    "Failed to create database".to_string()
-                }));
+    let db_id = match crate::db::databases::create(pool, claims.sub, name.clone(), database_type)
+        .await
+    {
+        Ok(id) => id,
+        Err(e) => {
+            if let Err(qe) = crate::db::quotas::increment_databases(pool, claims.sub, -1).await {
+                tracing::warn!(
+                    "Failed to roll back database quota for user {}: {qe}",
+                    claims.sub
+                );
             }
-        };
+            // INFO-LEAK-01: map UNIQUE violations to a user-friendly message;
+            // log other errors server-side rather than exposing schema details.
+            let msg = e.to_string();
+            return Err(ServerFnError::new(if msg.contains("UNIQUE") {
+                "A database with that name already exists".to_string()
+            } else {
+                tracing::warn!("DB error in create_database: {e}");
+                "Failed to create database".to_string()
+            }));
+        }
+    };
 
     // Provision the actual database on the database server
     if database_type == DatabaseType::MariaDB {
@@ -150,14 +156,21 @@ pub async fn server_delete_database(db_id: i64) -> Result<(), ServerFnError> {
 
     // Drop the actual database if applicable
     if db.database_type == DatabaseType::MariaDB {
-        let _ = drop_mysql_database(&db.name).await;
+        if let Err(e) = drop_mysql_database(&db.name).await {
+            tracing::warn!("Failed to drop MySQL database '{}': {e}", db.name);
+        }
     }
 
     crate::db::databases::delete(pool, db_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let _ = crate::db::quotas::increment_databases(pool, db.owner_id, -1).await;
+    if let Err(e) = crate::db::quotas::increment_databases(pool, db.owner_id, -1).await {
+        tracing::warn!(
+            "Failed to decrement database quota for user {}: {e}",
+            db.owner_id
+        );
+    }
 
     audit_log(
         claims.sub,
@@ -461,7 +474,7 @@ async fn provision_mysql_database(
 
     // Create the MySQL user if it doesn't exist (user is shared across all databases for this panel user)
     let mysql_user = format!("pma_{}", panel_username);
-    let password = generate_random_password();
+    let password = generate_random_password().map_err(|e| e.to_string())?;
 
     // Pipe CREATE USER SQL via stdin so the password is never visible in ps output.
     let create_user_sql = format!(
@@ -522,7 +535,7 @@ async fn get_or_create_mysql_session_password(
     _panel_user_id: i64,
     mysql_user: &str,
 ) -> Result<String, String> {
-    let password = generate_random_password();
+    let password = generate_random_password().map_err(|e| e.to_string())?;
 
     // Pipe credential SQL via stdin so the password is never visible in ps output.
     let alter_sql = format!(
@@ -594,18 +607,17 @@ fn generate_phpmyadmin_token(
 }
 
 /// Generate a cryptographically secure random password for MySQL users.
-/// Uses the OS CSPRNG (/dev/urandom on Linux) directly; panics if the OS
-/// cannot produce random bytes — a situation that indicates a serious system
-/// failure where creating a database account would be unsafe anyway.
+/// Uses the OS CSPRNG (/dev/urandom on Linux); returns an error if the OS
+/// cannot produce random bytes rather than panicking.
 #[cfg(feature = "server")]
-fn generate_random_password() -> String {
+fn generate_random_password() -> Result<String, String> {
     use base64::Engine;
     use std::io::Read;
     let mut buf = [0u8; 24];
     std::fs::File::open("/dev/urandom")
         .and_then(|mut f| f.read_exact(&mut buf))
-        .expect("Failed to read from /dev/urandom — OS CSPRNG is unavailable");
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf)
+        .map_err(|e| format!("OS CSPRNG unavailable (/dev/urandom): {e}"))?;
+    Ok(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf))
 }
 
 /// Parse tab-separated `variable_name\tvalue` output from mysql -N -B.
@@ -871,8 +883,10 @@ pub async fn server_delete_db_user(db_user_id: i64) -> Result<(), ServerFnError>
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     if db.database_type == DatabaseType::MariaDB {
-        // Best-effort: ignore errors (user may not exist in MySQL)
-        let _ = delete_mysql_user(&db_user.username).await;
+        // Best-effort: ignore errors if user may not exist in MySQL, but log unexpected failures
+        if let Err(e) = delete_mysql_user(&db_user.username).await {
+            tracing::warn!("Failed to delete MySQL user '{}': {e}", db_user.username);
+        }
     }
 
     crate::db::databases::delete_user(pool, db_user_id)

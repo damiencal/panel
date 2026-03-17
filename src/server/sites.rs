@@ -65,7 +65,12 @@ pub async fn server_create_site(domain: String, site_type: SiteType) -> Result<i
             Ok(id) => id,
             Err(e) => {
                 // Roll back the quota counter since site creation failed.
-                let _ = crate::db::quotas::increment_sites(pool, claims.sub, -1).await;
+                if let Err(qe) = crate::db::quotas::increment_sites(pool, claims.sub, -1).await {
+                    tracing::warn!(
+                        "Failed to roll back site quota for user {}: {qe}",
+                        claims.sub
+                    );
+                }
                 return Err(ServerFnError::new(e.to_string()));
             }
         };
@@ -162,7 +167,12 @@ pub async fn server_delete_site(site_id: i64) -> Result<(), ServerFnError> {
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let _ = crate::db::quotas::increment_sites(pool, site.owner_id, -1).await;
+    if let Err(e) = crate::db::quotas::increment_sites(pool, site.owner_id, -1).await {
+        tracing::warn!(
+            "Failed to decrement site quota for user {} after deletion: {e}",
+            site.owner_id
+        );
+    }
 
     audit_log(
         claims.sub,

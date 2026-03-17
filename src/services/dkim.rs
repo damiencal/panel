@@ -87,8 +87,10 @@ impl DkimService {
         let private_key_path = format!("{}/{}.private", key_dir, selector);
         shell::exec("chown", &["opendkim:opendkim", &private_key_path])
             .await
-            .ok();
-        shell::exec("chmod", &["600", &private_key_path]).await.ok();
+            .map_err(|e| ServiceError::CommandFailed(format!("chown on DKIM key failed: {e}")))?;
+        shell::exec("chmod", &["600", &private_key_path])
+            .await
+            .map_err(|e| ServiceError::CommandFailed(format!("chmod on DKIM key failed: {e}")))?;
 
         // Read the DNS TXT record.
         let txt_path = format!("{}/{}.txt", key_dir, selector);
@@ -130,7 +132,13 @@ impl DkimService {
 
         // Delete key files.
         let key_dir = format!("{}/{}", OPENDKIM_KEYS_DIR, domain);
-        let _ = fs::remove_dir_all(&key_dir).await;
+        if let Err(e) = fs::remove_dir_all(&key_dir).await {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(ServiceError::IoError(format!(
+                    "Failed to remove DKIM key directory {key_dir}: {e}"
+                )));
+            }
+        }
 
         shell::exec("systemctl", &["restart", "opendkim"]).await?;
         Ok(())

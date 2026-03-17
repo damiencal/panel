@@ -83,7 +83,9 @@ pub async fn server_create_package(
     // multiple identically-named plans appear in client drop-downs.
     let existing = crate::db::packages::count_by_name_and_creator(pool, &name, claims.sub)
         .await
-        .unwrap_or(0);
+        .map_err(|e| {
+            ServerFnError::new(format!("Failed to check for duplicate package name: {e}"))
+        })?;
     if existing > 0 {
         return Err(ServerFnError::new(
             "A package with that name already exists; choose a different name",
@@ -225,7 +227,7 @@ pub async fn server_delete_package(package_id: i64) -> Result<(), ServerFnError>
     .bind(package_id)
     .fetch_one(pool)
     .await
-    .unwrap_or(0);
+    .map_err(|e| ServerFnError::new(format!("Failed to count assigned users: {e}")))?;
     if assigned > 0 {
         return Err(ServerFnError::new(format!(
             "Cannot delete package: {assigned} user(s) are currently assigned to it. \

@@ -183,8 +183,24 @@ pub async fn server_add_dns_record(
     crate::auth::guards::check_ownership(&claims, zone.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Sync record to Cloudflare if zone is linked
-    let cf_record_id = if let Some(ref cf_zone_id) = zone.cf_zone_id {
+    // Insert DB record first (without CF record ID). This ensures we never
+    // create a Cloudflare record that isn't tracked in the panel DB.
+    let record_id = crate::db::dns::add_record(
+        pool,
+        zone_id,
+        name.clone(),
+        record_type,
+        value.clone(),
+        priority,
+        ttl,
+        None,
+    )
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Sync to Cloudflare. On failure, roll back the DB record so the panel
+    // doesn't show a record that was never activated in DNS.
+    if let Some(ref cf_zone_id) = zone.cf_zone_id {
         let cf =
             crate::services::cloudflare::client().map_err(|e| ServerFnError::new(e.to_string()))?;
 
@@ -199,29 +215,28 @@ pub async fn server_add_dns_record(
             .create_record(cf_zone_id, &type_str, &name, &value, ttl, prio)
             .await
         {
-            Ok(rec) => Some(rec.id),
+            Ok(rec) => {
+                if let Err(e) = crate::db::dns::set_cf_record_id(pool, record_id, &rec.id).await {
+                    tracing::warn!(
+                        record_id,
+                        cf_record_id = %rec.id,
+                        "Failed to store Cloudflare record ID in panel DB: {e}"
+                    );
+                }
+            }
             Err(e) => {
+                if let Err(rb) = crate::db::dns::delete_record(pool, record_id).await {
+                    tracing::error!(
+                        record_id,
+                        "Failed to roll back DNS record after Cloudflare failure: {rb}"
+                    );
+                }
                 return Err(ServerFnError::new(format!(
                     "Cloudflare record creation failed: {e}"
                 )));
             }
         }
-    } else {
-        None
     };
-
-    let record_id = crate::db::dns::add_record(
-        pool,
-        zone_id,
-        name,
-        record_type,
-        value,
-        priority,
-        ttl,
-        cf_record_id,
-    )
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     audit_log(
         claims.sub,

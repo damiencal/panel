@@ -1118,10 +1118,13 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
     // ── Step 7: restart the panel service after returning the response ────
     tokio::spawn(async {
         tokio::time::sleep(Duration::from_secs(2)).await;
-        let _ = Command::new("systemctl")
+        if let Err(e) = Command::new("systemctl")
             .args(["restart", "panel"])
             .status()
-            .await;
+            .await
+        {
+            tracing::error!("Failed to restart panel service after update: {e}");
+        }
     });
 
     Ok(PanelUpdateResult {

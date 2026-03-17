@@ -50,7 +50,11 @@ impl ModSecurityService {
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
             let conf = minimal_modsec_conf();
-            fs::write(MODSEC_MAIN_CONF, conf)
+            let tmp_modsec = format!("{}.panel_tmp", MODSEC_MAIN_CONF);
+            fs::write(&tmp_modsec, conf)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            fs::rename(&tmp_modsec, MODSEC_MAIN_CONF)
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }

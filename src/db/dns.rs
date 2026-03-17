@@ -158,15 +158,33 @@ pub async fn delete_record(pool: &SqlitePool, record_id: i64) -> Result<(), sqlx
     Ok(())
 }
 
+/// Update the Cloudflare record ID for a DNS record (used when inserting the DB
+/// row before the CF API call and then back-filling the CF record ID on success).
+pub async fn set_cf_record_id(
+    pool: &SqlitePool,
+    record_id: i64,
+    cf_record_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE dns_records SET cf_record_id = ?, updated_at = ? WHERE id = ?")
+        .bind(cf_record_id)
+        .bind(Utc::now())
+        .bind(record_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 /// Delete a DNS zone and all its records.
 pub async fn delete_zone(pool: &SqlitePool, zone_id: i64) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
     sqlx::query("DELETE FROM dns_records WHERE zone_id = ?")
         .bind(zone_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     sqlx::query("DELETE FROM dns_zones WHERE id = ?")
         .bind(zone_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }

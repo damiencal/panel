@@ -101,38 +101,44 @@ impl DovecotService {
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
         }
 
+        // Helper: atomic write via tmp+rename to avoid truncation on partial writes
+        async fn atomic_conf_write(path: &str, content: &str) -> Result<(), ServiceError> {
+            let tmp = format!("{}.tmp.{}", path, std::process::id());
+            tokio::fs::write(&tmp, content)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            tokio::fs::rename(&tmp, path)
+                .await
+                .map_err(|e| ServiceError::IoError(e.to_string()))
+        }
+
         // Write auth configuration
         let auth_conf = generate_auth_conf();
-        fs::write(format!("{}/10-auth.conf", DOVECOT_CONF_DIR), auth_conf)
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        atomic_conf_write(&format!("{}/10-auth.conf", DOVECOT_CONF_DIR), &auth_conf).await?;
 
         // Write mail location configuration
         let mail_conf = generate_mail_conf();
-        fs::write(format!("{}/10-mail.conf", DOVECOT_CONF_DIR), mail_conf)
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        atomic_conf_write(&format!("{}/10-mail.conf", DOVECOT_CONF_DIR), &mail_conf).await?;
 
         // Write SSL configuration
         let ssl_conf = generate_ssl_conf();
-        fs::write(format!("{}/10-ssl.conf", DOVECOT_CONF_DIR), ssl_conf)
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        atomic_conf_write(&format!("{}/10-ssl.conf", DOVECOT_CONF_DIR), &ssl_conf).await?;
 
         // Write master configuration (LMTP + auth socket for Postfix)
         let master_conf = generate_master_conf();
-        fs::write(format!("{}/10-master.conf", DOVECOT_CONF_DIR), master_conf)
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        atomic_conf_write(
+            &format!("{}/10-master.conf", DOVECOT_CONF_DIR),
+            &master_conf,
+        )
+        .await?;
 
         // Write passwd-file auth backend
         let passwd_conf = generate_passwd_file_conf();
-        fs::write(
-            format!("{}/auth-passwdfile.conf.ext", DOVECOT_CONF_DIR),
-            passwd_conf,
+        atomic_conf_write(
+            &format!("{}/auth-passwdfile.conf.ext", DOVECOT_CONF_DIR),
+            &passwd_conf,
         )
-        .await
-        .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        .await?;
 
         self.restart().await?;
         info!("Dovecot virtual hosting configured");
@@ -282,22 +288,27 @@ impl DovecotService {
 
         let new_content: String = content
             .lines()
-            .map(|line| {
+            .map(|line| -> Result<String, ServiceError> {
                 if line.starts_with(&format!("{}:", email)) {
                     // Replace the password field (second field)
                     let parts: Vec<&str> = line.splitn(3, ':').collect();
                     if parts.len() >= 3 {
-                        format!(
+                        Ok(format!(
                             "{}:{{SHA512-CRYPT}}{}:{}",
                             parts[0], password_hash, parts[2]
-                        )
+                        ))
                     } else {
-                        line.to_string()
+                        Err(ServiceError::CommandFailed(format!(
+                            "Malformed Dovecot passwd entry for '{email}': \
+                             expected at least 3 colon-separated fields"
+                        )))
                     }
                 } else {
-                    line.to_string()
+                    Ok(line.to_string())
                 }
             })
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
             .map(|line| format!("{}\n", line))
             .collect();
 

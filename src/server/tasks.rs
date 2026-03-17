@@ -84,7 +84,11 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
     let pool_clone = pool.clone();
     let task_type_clone = task_type.clone();
     tokio::spawn(async move {
-        let _ = crate::db::tasks::update_status(&pool_clone, task_id, TaskStatus::Running).await;
+        if let Err(e) =
+            crate::db::tasks::update_status(&pool_clone, task_id, TaskStatus::Running).await
+        {
+            tracing::error!("Failed to update task {} status to Running: {e}", task_id);
+        }
 
         let (result_msg, final_status) = match task_type_clone.as_str() {
             "disk_refresh" => {
@@ -129,8 +133,12 @@ pub async fn server_run_janitor(task_type: String) -> Result<i64, ServerFnError>
             ),
         };
 
-        let _ = crate::db::tasks::append_log(&pool_clone, task_id, &result_msg).await;
-        let _ = crate::db::tasks::update_status(&pool_clone, task_id, final_status).await;
+        if let Err(e) = crate::db::tasks::append_log(&pool_clone, task_id, &result_msg).await {
+            tracing::error!("Failed to append log for task {}: {e}", task_id);
+        }
+        if let Err(e) = crate::db::tasks::update_status(&pool_clone, task_id, final_status).await {
+            tracing::error!("Failed to update final status for task {}: {e}", task_id);
+        }
     });
 
     Ok(task_id)

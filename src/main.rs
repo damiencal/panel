@@ -119,7 +119,10 @@ impl RequestAccessLayer {
         const MAX_TRACKED_IPS: usize = 50_000;
 
         let now = Instant::now();
-        let mut requests = self.requests_by_ip.lock().unwrap();
+        let mut requests = self
+            .requests_by_ip
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
 
         requests.retain(|_, timestamps| {
             timestamps.retain(|timestamp| now.duration_since(*timestamp) < self.rate_limit_window);

@@ -955,7 +955,9 @@ pub fn register_file_download_token(
     filename: String,
     expires_at: i64,
 ) {
-    let mut store = file_download_store().lock().unwrap();
+    let mut store = file_download_store()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     let now = chrono::Utc::now().timestamp();
     store.retain(|_, v| v.expires_at > now); // purge expired entries
     store.insert(
@@ -974,7 +976,9 @@ pub fn register_file_download_token(
 /// different user.
 #[cfg(feature = "server")]
 pub fn consume_file_download_token(token: &str, user_id: i64) -> Option<(String, String)> {
-    let mut store = file_download_store().lock().unwrap();
+    let mut store = file_download_store()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     let now = chrono::Utc::now().timestamp();
 
     if let Some(entry) = store.get(token) {

@@ -151,7 +151,11 @@ pub async fn server_create_ftp_account(
         let ftp_count = match count_result {
             Ok(c) => c,
             Err(e) => {
-                let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                if let Err(rb) = sqlx::query("ROLLBACK").execute(&mut *conn).await {
+                    tracing::warn!(
+                        "Failed to rollback FTP quota transaction after count error: {rb}"
+                    );
+                }
                 return Err(ServerFnError::new(format!(
                     "Failed to check FTP quota: {}",
                     e
@@ -159,7 +163,9 @@ pub async fn server_create_ftp_account(
             }
         };
         if ftp_count >= MAX_FTP_ACCOUNTS_PER_USER {
-            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+            if let Err(rb) = sqlx::query("ROLLBACK").execute(&mut *conn).await {
+                tracing::warn!("Failed to rollback FTP quota transaction after limit check: {rb}");
+            }
             return Err(ServerFnError::new(format!(
                 "FTP account limit reached ({} accounts). Please contact support to increase your limit.",
                 MAX_FTP_ACCOUNTS_PER_USER
@@ -192,7 +198,9 @@ pub async fn server_create_ftp_account(
                 id
             }
             Err(e) => {
-                let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                if let Err(rb) = sqlx::query("ROLLBACK").execute(&mut *conn).await {
+                    tracing::warn!("Failed to rollback FTP insert transaction: {rb}");
+                }
                 return Err(ServerFnError::new(e.to_string()));
             }
         }
@@ -329,16 +337,22 @@ pub async fn server_delete_ftp_account(account_id: i64) -> Result<(), ServerFnEr
     crate::auth::guards::check_ownership(&claims, account.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Remove from Pure-FTPd first
-    let ftpd = crate::services::pureftpd::PureFtpdService;
-    ftpd.delete_user(&account.username)
-        .await
-        .map_err(|e| ServerFnError::new(format!("Pure-FTPd removal failed: {}", e)))?;
-
-    // Remove from panel DB
+    // Delete DB record first. If this fails the operation aborts cleanly and
+    // Pure-FTPd is untouched, so the account remains fully functional.
     crate::db::ftp::delete(pool, account_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Remove from Pure-FTPd. Best-effort: if this fails the passwd entry is a
+    // harmless stale entry with no panel record pointing to it.
+    let ftpd = crate::services::pureftpd::PureFtpdService;
+    if let Err(e) = ftpd.delete_user(&account.username).await {
+        tracing::warn!(
+            account_id,
+            username = %account.username,
+            "Pure-FTPd removal failed after DB delete; stale passwd entry may remain: {e}"
+        );
+    }
 
     audit_log(
         claims.sub,
@@ -377,7 +391,7 @@ pub async fn server_get_ftp_stats() -> Result<FtpUsageStats, ServerFnError> {
                 if acct.owner_id != claims.sub {
                     continue;
                 }
-                let _ = crate::db::ftp::insert_session_stat(
+                if let Err(e) = crate::db::ftp::insert_session_stat(
                     pool,
                     Some(acct.id),
                     &entry.username,
@@ -387,7 +401,13 @@ pub async fn server_get_ftp_stats() -> Result<FtpUsageStats, ServerFnError> {
                     entry.bytes_transferred,
                     entry.transfer_time_secs,
                 )
-                .await;
+                .await
+                {
+                    tracing::warn!(
+                        username = %entry.username,
+                        "Failed to persist FTP session stat: {e}"
+                    );
+                }
             }
         }
     }

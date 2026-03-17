@@ -407,6 +407,13 @@ pub async fn server_hold_queued_message(queue_id: String) -> Result<(), ServerFn
     let claims = verify_auth()?;
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    if queue_id.is_empty()
+        || queue_id.len() > 64
+        || !queue_id.chars().all(|c| c.is_ascii_alphanumeric())
+    {
+        return Err(ServerFnError::new("Invalid mail queue ID"));
+    }
+
     crate::services::mail_queue::hold_message(&queue_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
@@ -420,6 +427,13 @@ pub async fn server_release_queued_message(queue_id: String) -> Result<(), Serve
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if queue_id.is_empty()
+        || queue_id.len() > 64
+        || !queue_id.chars().all(|c| c.is_ascii_alphanumeric())
+    {
+        return Err(ServerFnError::new("Invalid mail queue ID"));
+    }
 
     crate::services::mail_queue::release_message(&queue_id)
         .await

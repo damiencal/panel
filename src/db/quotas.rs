@@ -221,7 +221,7 @@ pub async fn check_and_increment_databases(pool: &SqlitePool, user_id: i64) -> R
         }
     }
 
-    sqlx::query(
+    let updated = sqlx::query(
         "UPDATE resource_usage
          SET databases_used = databases_used + 1, updated_at = ?
          WHERE user_id = ?",
@@ -231,6 +231,14 @@ pub async fn check_and_increment_databases(pool: &SqlitePool, user_id: i64) -> R
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("Failed to increment database count: {e}"))?;
+
+    if updated.rows_affected() == 0 {
+        tx.rollback().await.ok();
+        return Err(format!(
+            "Usage tracking row missing for user {user_id} — \
+             run init_usage before allocating resources"
+        ));
+    }
 
     tx.commit()
         .await
@@ -305,7 +313,7 @@ pub async fn check_and_increment_sites(pool: &SqlitePool, user_id: i64) -> Resul
     }
     // No quota row ⇒ no limit — proceed.
 
-    sqlx::query(
+    let updated = sqlx::query(
         "UPDATE resource_usage SET sites_used = sites_used + 1, updated_at = ? WHERE user_id = ?",
     )
     .bind(Utc::now())
@@ -313,6 +321,14 @@ pub async fn check_and_increment_sites(pool: &SqlitePool, user_id: i64) -> Resul
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("Failed to increment site count: {e}"))?;
+
+    if updated.rows_affected() == 0 {
+        tx.rollback().await.ok();
+        return Err(format!(
+            "Usage tracking row missing for user {user_id} — \
+             run init_usage before allocating resources"
+        ));
+    }
 
     tx.commit()
         .await
@@ -357,7 +373,7 @@ pub async fn check_and_increment_email_accounts(
         }
     }
 
-    sqlx::query(
+    let updated = sqlx::query(
         "UPDATE resource_usage
          SET email_accounts_used = email_accounts_used + 1, updated_at = ?
          WHERE user_id = ?",
@@ -367,6 +383,14 @@ pub async fn check_and_increment_email_accounts(
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("Failed to increment email account count: {e}"))?;
+
+    if updated.rows_affected() == 0 {
+        tx.rollback().await.ok();
+        return Err(format!(
+            "Usage tracking row missing for user {user_id} — \
+             run init_usage before allocating resources"
+        ));
+    }
 
     tx.commit()
         .await

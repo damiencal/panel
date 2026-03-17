@@ -70,7 +70,9 @@ pub async fn server_attach_git_repo(
     crate::services::git::validate_branch(&branch).map_err(ServerFnError::new)?;
 
     // If there is already a record, detach it first (idempotent re-attach).
-    let _ = crate::db::git::detach(pool, site_id).await;
+    if let Err(e) = crate::db::git::detach(pool, site_id).await {
+        tracing::warn!("Failed to detach existing git record for site {site_id}: {e}");
+    }
 
     // Persist the new attachment before touching the filesystem.
     crate::db::git::attach(pool, site_id, &repo_url, &branch)
