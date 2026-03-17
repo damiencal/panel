@@ -201,8 +201,19 @@ impl Default for PanelConfig {
                 host: "0.0.0.0".to_string(),
                 port: 3030,
                 secret_key: std::env::var("PANEL_SECRET_KEY").unwrap_or_else(|_| {
-                    eprintln!("WARNING: PANEL_SECRET_KEY not set. Generate one with: openssl rand -base64 32");
-                    String::new()
+                    // Generate a random key so JWTs are not trivially forgeable with an
+                    // empty HMAC key. Sessions will not survive a process restart — operators
+                    // must set PANEL_SECRET_KEY to a permanent value for production use.
+                    use rand::RngCore;
+                    let mut key_bytes = [0u8; 32];
+                    rand::thread_rng().fill_bytes(&mut key_bytes);
+                    let key = hex::encode(key_bytes);
+                    eprintln!(
+                        "WARNING: PANEL_SECRET_KEY is not set. \
+                         A random key is being used — JWT sessions will be lost on restart. \
+                         Fix: set PANEL_SECRET_KEY=$(openssl rand -base64 32) in your environment."
+                    );
+                    key
                 }),
             },
             database: DatabaseConfig {

@@ -290,14 +290,20 @@ impl PureFtpdService {
                 if line.starts_with(&format!("{}:", username)) {
                     let parts: Vec<&str> = line.splitn(3, ':').collect();
                     if parts.len() >= 3 {
-                        format!("{}:{}:{}", parts[0], password_hash, parts[2])
+                        Ok(format!("{}:{}:{}", parts[0], password_hash, parts[2]))
                     } else {
-                        line.to_string()
+                        // A malformed entry would leave the old password silently in
+                        // place. Return an error instead so the caller can investigate.
+                        Err(ServiceError::CommandFailed(format!(
+                            "Malformed passwd entry for user '{username}': expected at least 3 colon-separated fields"
+                        )))
                     }
                 } else {
-                    line.to_string()
+                    Ok(line.to_string())
                 }
             })
+            .collect::<Result<Vec<_>, ServiceError>>()?
+            .into_iter()
             .map(|line| format!("{}\n", line))
             .collect();
 

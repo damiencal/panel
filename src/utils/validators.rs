@@ -91,7 +91,7 @@ pub fn validate_db_name(name: &str) -> Result<(), &'static str> {
     if !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return Err("Database name can only contain alphanumeric characters and underscores");
     }
-    if !name.chars().next().unwrap().is_alphabetic() {
+    if !name.chars().next().is_some_and(|c| c.is_alphabetic()) {
         return Err("Database name must start with a letter");
     }
     Ok(())
@@ -116,6 +116,8 @@ pub fn validate_mysql_password(password: &str) -> Result<(), &'static str> {
 
 /// Validate that a file path is safe and confined under an expected base directory.
 /// Rejects paths with `..`, null bytes, newlines, or paths that don't start with `base`.
+/// The path is canonicalized (symlinks resolved) before the prefix check to prevent
+/// a directory symlink from pointing outside the allowed base.
 pub fn validate_safe_path(path: &str, base: &str) -> Result<(), &'static str> {
     if path.is_empty() {
         return Err("Path must not be empty");
@@ -126,8 +128,23 @@ pub fn validate_safe_path(path: &str, base: &str) -> Result<(), &'static str> {
     if path.contains("..") {
         return Err("Path must not contain '..' sequences");
     }
-    if !path.starts_with(base) {
-        return Err("Path is outside the allowed base directory");
+    // Canonicalize resolves symlinks and cleans the path, then verify the
+    // resulting absolute path is still under the expected base directory.
+    // This prevents a symlink inside /home/ from redirecting to /etc/.
+    // If the path does not exist yet, fall back to the lexical prefix check
+    // (the caller must ensure the path is safe before creating it).
+    match std::fs::canonicalize(path) {
+        Ok(canonical) => {
+            if !canonical.starts_with(base) {
+                return Err("Path is outside the allowed base directory");
+            }
+        }
+        Err(_) => {
+            // Path does not exist yet — apply the lexical check as a best-effort guard.
+            if !path.starts_with(base) {
+                return Err("Path is outside the allowed base directory");
+            }
+        }
     }
     Ok(())
 }

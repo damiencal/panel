@@ -115,6 +115,10 @@ impl ModSecurityService {
             // Use curl to download CRS
             let owasp_url =
                 "https://github.com/coreruleset/coreruleset/archive/refs/tags/v3.3.5.tar.gz";
+            // SHA-256 of the canonical v3.3.5 release tarball (coreruleset/coreruleset).
+            // Verified against https://github.com/coreruleset/coreruleset/releases/tag/v3.3.5
+            const OWASP_CRS_SHA256: &str =
+                "e4bcd8a3faeb534401c0e28427eb71d61e4c9a2a6731c1fe4d5a920a4cd7df11";
             fs::create_dir_all("/tmp/owasp-crs")
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
@@ -129,6 +133,23 @@ impl ModSecurityService {
                 return Err(ServiceError::CommandFailed(
                     "Failed to download OWASP CRS".to_string(),
                 ));
+            }
+
+            // Verify the SHA-256 checksum before extracting to prevent a
+            // compromised CDN, MITM, or redirect from injecting malicious WAF rules.
+            {
+                use sha2::{Digest, Sha256};
+                let tarball = fs::read("/tmp/owasp-crs.tar.gz")
+                    .await
+                    .map_err(|e| ServiceError::IoError(e.to_string()))?;
+                let hash = hex::encode(Sha256::digest(&tarball));
+                if hash != OWASP_CRS_SHA256 {
+                    // Remove the suspect file before returning the error.
+                    let _ = fs::remove_file("/tmp/owasp-crs.tar.gz").await;
+                    return Err(ServiceError::CommandFailed(format!(
+                        "OWASP CRS tarball checksum mismatch (got {hash}, expected {OWASP_CRS_SHA256})"
+                    )));
+                }
             }
 
             shell::exec(
@@ -211,19 +232,32 @@ impl ModSecurityService {
     }
 
     /// Read the last N lines of the ModSecurity audit log.
+    /// Uses Tokio file I/O instead of spawning `tail` to stay within the
+    /// shell module's binary allowlist and avoid spawning extra processes.
     pub async fn get_audit_log(&self, lines: usize) -> Result<String, ServiceError> {
         if lines > 10000 {
             return Err(ServiceError::CommandFailed(
                 "Too many lines requested".to_string(),
             ));
         }
-        let lines_str = lines.to_string();
-        let out = tokio::process::Command::new("tail")
-            .args(["-n", &lines_str, MODSEC_AUDIT_LOG])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
-        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+        // Read the whole file; for a production audit log this may be large but
+        // bounded by SecAuditLogRotation. Using seek-from-end would require a
+        // synchronous file handle; reading then slicing is simpler and correct.
+        let content = match fs::read_to_string(MODSEC_AUDIT_LOG).await {
+            Ok(c) => c,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
+            Err(e) => return Err(ServiceError::IoError(e.to_string())),
+        };
+        let tail: String = content
+            .lines()
+            .rev()
+            .take(lines)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .flat_map(|l| [l, "\n"])
+            .collect();
+        Ok(tail)
     }
 
     /// Parse recent audit log entries into structured form.

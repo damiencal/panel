@@ -37,7 +37,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PANEL_DIR=/opt/panel
 
 # ── Base system packages ──────────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Cache mounts keep downloaded .deb files across rebuilds so apt-get never
+# re-downloads the same package twice within a single build run.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg lsb-release systemd systemd-sysv \
         dbus dbus-user-session sudo locales tzdata \
         sqlite3 python3 python3-pip argon2 \
@@ -58,19 +63,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         certbot python3-certbot \
         # WP-CLI deps
         php8.3-cli php8.3-mysql php8.3-xml php8.3-curl php8.3-mbstring php8.3-zip \
-    && locale-gen en_US.UTF-8 \
-    && rm -rf /var/lib/apt/lists/*
+    && locale-gen en_US.UTF-8
 
 # ── OpenLiteSpeed ─────────────────────────────────────────────────────────────
-RUN wget -qO - https://rpms.litespeedtech.com/debian/enable_lst_debian_repo.sh | bash && \
-    apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    wget -qO - https://rpms.litespeedtech.com/debian/enable_lst_debian_repo.sh | bash && \
+    apt-get install -y --no-install-recommends \
         openlitespeed lsphp83 lsphp83-common lsphp83-mysql lsphp83-curl \
-    && rm -rf /var/lib/apt/lists/* \
     && (systemctl disable openlitespeed 2>/dev/null || true)
 
 # ── phpMyAdmin ────────────────────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends phpmyadmin \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get install -y --no-install-recommends phpmyadmin
 
 # ── Copy compiled panel binary and web assets ─────────────────────────────────
 RUN mkdir -p ${PANEL_DIR}

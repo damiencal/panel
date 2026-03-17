@@ -119,24 +119,43 @@ $cfg['CheckConfigurationPermissions'] = false;
 /* Disable version check (managed by system packages) */
 $cfg['VersionCheck'] = false;
 
-/* Temporary directory */
-$cfg['TempDir'] = '/tmp/phpmyadmin';
+/* Temporary directory — under /var/lib to avoid world-writable /tmp symlink attacks */
+$cfg['TempDir'] = '/var/lib/phpmyadmin/tmp';
 "#,
             blowfish_secret
         );
 
+        // Write config as a temp file, then rename atomically.
+        // Use mode 0o640 so that only root and the web-server group can read
+        // the blowfish secret; world-readable /usr/share permissions are
+        // deliberately not used here.
         let tmp_config = format!("{}.panel_tmp", PMA_CONFIG_FILE);
-        fs::write(&tmp_config, config)
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o640)
+                .open(&tmp_config)
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+            use std::io::Write;
+            f.write_all(config.as_bytes())
+                .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        }
         fs::rename(&tmp_config, PMA_CONFIG_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
-        // Ensure temp directory exists
-        fs::create_dir_all("/tmp/phpmyadmin")
+        // Ensure temp directory exists with tight permissions.
+        // /var/lib/phpmyadmin/tmp is only accessible by root, preventing other
+        // local users from pre-creating a symlink under the world-writable /tmp.
+        fs::create_dir_all("/var/lib/phpmyadmin/tmp")
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        shell::exec("chmod", &["700", "/var/lib/phpmyadmin/tmp"])
+            .await
+            .ok();
 
         info!("phpMyAdmin configuration deployed");
         Ok(())

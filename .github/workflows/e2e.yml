@@ -14,7 +14,7 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -32,18 +32,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
-      # Cache sandbox Docker image layers to avoid re-running the full install
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-sandbox-${{ hashFiles('sandbox/Dockerfile', 'sandbox/entrypoint.sh', 'install.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-sandbox-
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # BuildKit fetches individual layer blobs on-demand from the GHA cache
+      # API — much faster and more reliable than restoring a local tarball.
       - name: Build sandbox image
         uses: docker/build-push-action@v6
         with:
@@ -52,15 +45,8 @@ jobs:
           push: false
           load: true
           tags: panel-sandbox:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      # Prevent cache from growing unbounded
-      - name: Rotate cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-        if: always()
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start sandbox container
         run: |

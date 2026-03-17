@@ -226,33 +226,54 @@ impl MariaDbService {
     pub async fn secure_installation(&self) -> Result<(), ServiceError> {
         info!("Securing MariaDB installation...");
 
+        // Collect non-fatal errors so the caller can log them without masking
+        // the final FLUSH PRIVILEGES result.  A partial success is still reported
+        // so the operator knows hardening may be incomplete.
+        let mut warnings: Vec<String> = Vec::new();
+
         // Remove anonymous users
-        let _ = shell::exec("mysql", &["-e", "DELETE FROM mysql.user WHERE User=''"]).await;
+        if let Err(e) =
+            shell::exec_stdin("mysql", &[], b"DELETE FROM mysql.user WHERE User='';\n").await
+        {
+            warnings.push(format!("Remove anonymous users: {e}"));
+        }
 
         // Remove remote root login
-        let _ = shell::exec(
+        if let Err(e) = shell::exec_stdin(
             "mysql",
-            &[
-                "-e",
-                "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1')",
-            ],
+            &[],
+            b"DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');\n",
         )
-        .await;
+        .await
+        {
+            warnings.push(format!("Remove remote root: {e}"));
+        }
 
         // Remove test database
-        let _ = shell::exec("mysql", &["-e", "DROP DATABASE IF EXISTS test"]).await;
-        let _ = shell::exec(
+        if let Err(e) = shell::exec_stdin("mysql", &[], b"DROP DATABASE IF EXISTS test;\n").await {
+            warnings.push(format!("Drop test DB: {e}"));
+        }
+        if let Err(e) = shell::exec_stdin(
             "mysql",
-            &[
-                "-e",
-                "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'",
-            ],
+            &[],
+            b"DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';\n",
         )
-        .await;
+        .await
+        {
+            warnings.push(format!("Remove test DB grants: {e}"));
+        }
 
-        shell::exec("mysql", &["-e", "FLUSH PRIVILEGES"]).await?;
+        // FLUSH PRIVILEGES is required — treat failure as a hard error.
+        shell::exec_stdin("mysql", &[], b"FLUSH PRIVILEGES;\n").await?;
 
-        info!("MariaDB secured");
+        if !warnings.is_empty() {
+            tracing::warn!(
+                "MariaDB secure_installation completed with warnings: {}",
+                warnings.join("; ")
+            );
+        } else {
+            info!("MariaDB secured");
+        }
         Ok(())
     }
 }

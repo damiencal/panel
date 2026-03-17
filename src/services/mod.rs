@@ -90,8 +90,6 @@ pub mod shell {
         "rm",
         "cp",
         "mv",
-        "chown",
-        "chmod",
         "tar",
         "zip",
         "unzip",
@@ -138,7 +136,6 @@ pub mod shell {
         "docker",
         "find",
         "lshttpd",
-        "pgrep",
     ];
 
     /// Validate that shell arguments don't contain injection characters.

@@ -251,11 +251,27 @@ pub async fn server_change_ftp_password(
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Update Pure-FTPd
+    // Update Pure-FTPd. If this fails, roll back the DB to the old hash so
+    // the panel DB and Pure-FTPd do not diverge (users would be unable to log
+    // in via FTP while the panel shows a successful change).
     let ftpd = crate::services::pureftpd::PureFtpdService;
-    ftpd.update_password(&account.username, &new_password)
-        .await
-        .map_err(|e| ServerFnError::new(format!("Pure-FTPd update failed: {}", e)))?;
+    if let Err(e) = ftpd.update_password(&account.username, &new_password).await {
+        // Best-effort rollback; if the rollback itself fails, log the incident
+        // so an operator can reconcile manually.
+        if let Err(rb_err) =
+            crate::db::ftp::update_password(pool, account_id, account.password_hash.clone()).await
+        {
+            tracing::error!(
+                account_id = account_id,
+                rollback_err = %rb_err,
+                "FTP password DB rollback failed after Pure-FTPd update error; manual reconciliation required"
+            );
+        }
+        return Err(ServerFnError::new(format!(
+            "Pure-FTPd update failed: {}",
+            e
+        )));
+    }
 
     audit_log(
         claims.sub,

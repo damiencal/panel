@@ -72,8 +72,17 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
         ServiceType::Dovecot => Some("dovecot"),
         ServiceType::Ftpd => Some("pure-ftpd"),
         ServiceType::PHP => return Ok(ServiceStatus::Running), // runs inside OLS
-        ServiceType::Certbot => return Ok(ServiceStatus::Running),
-        ServiceType::PhpMyAdmin => return Ok(ServiceStatus::Running),
+        ServiceType::Certbot => return Ok(ServiceStatus::Running), // one-shot CLI tool
+        ServiceType::PhpMyAdmin => {
+            // phpMyAdmin is a web app; check that its index file is present rather
+            // than unconditionally reporting Running (it may have been uninstalled).
+            let installed = std::path::Path::new("/usr/share/phpmyadmin/index.php").exists();
+            return Ok(if installed {
+                ServiceStatus::Running
+            } else {
+                ServiceStatus::Stopped
+            });
+        }
         ServiceType::SpamAssassin => Some("spamassassin"),
         ServiceType::Rspamd => Some("rspamd"),
         ServiceType::ClamAV => Some("clamd"),
@@ -97,8 +106,16 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
         ServiceType::Postfix => "postfix",
         ServiceType::Dovecot => "dovecot",
         ServiceType::Ftpd => "pure-ftpd",
-        ServiceType::PHP | ServiceType::Certbot | ServiceType::PhpMyAdmin => {
+        ServiceType::PHP | ServiceType::Certbot => {
             return Ok(ServiceStatus::Running);
+        }
+        ServiceType::PhpMyAdmin => {
+            let installed = std::path::Path::new("/usr/share/phpmyadmin/index.php").exists();
+            return Ok(if installed {
+                ServiceStatus::Running
+            } else {
+                ServiceStatus::Stopped
+            });
         }
         ServiceType::SpamAssassin => "spamassassin",
         ServiceType::Rspamd => "rspamd",
