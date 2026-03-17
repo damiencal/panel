@@ -82,6 +82,22 @@ pub async fn create(
     Ok(result.last_insert_rowid())
 }
 
+/// Count active packages with the given name owned by the same creator.
+/// Used to enforce per-creator package name uniqueness.
+pub async fn count_by_name_and_creator(
+    pool: &SqlitePool,
+    name: &str,
+    creator_id: i64,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT COUNT(*) FROM packages WHERE name = ? AND created_by = ? AND is_active = 1",
+    )
+    .bind(name)
+    .bind(creator_id)
+    .fetch_one(pool)
+    .await
+}
+
 /// Deactivate a package.
 pub async fn deactivate(pool: &SqlitePool, package_id: i64) -> Result<(), sqlx::Error> {
     sqlx::query("UPDATE packages SET is_active = 0 WHERE id = ?")

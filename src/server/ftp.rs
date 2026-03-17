@@ -46,12 +46,37 @@ pub async fn server_create_ftp_account(
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
 
-    // Validate username: alphanumeric + underscore, 3-32 chars
-    let username_re = regex::Regex::new(r"^[a-zA-Z0-9_]{3,32}$")
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-    if !username_re.is_match(&username) {
+    // Validate username: alphanumeric + underscore + dot, 3-64 chars.
+    // Following the opencli convention, FTP usernames MUST end with
+    // ".<owner_username>" (e.g. "media.alice" for user "alice").  This
+    // namespacing prevents account-name collisions between tenants that would
+    // otherwise result in one user being able to overwrite another's Pure-FTPd
+    // passwd entry.
+    let expected_suffix = format!(".{}", claims.username);
+    if !username.ends_with(&expected_suffix) {
+        return Err(ServerFnError::new(format!(
+            "FTP username must end with '.{}' (e.g. 'media.{}')",
+            claims.username, claims.username
+        )));
+    }
+    // Validate the prefix part (everything before the dot+owner suffix).
+    let prefix = &username[..username.len() - expected_suffix.len()];
+    if prefix.is_empty() || prefix.len() > 32 {
         return Err(ServerFnError::new(
-            "FTP username must be 3-32 alphanumeric characters or underscores",
+            "FTP username prefix must be 1-32 characters",
+        ));
+    }
+    let username_re =
+        regex::Regex::new(r"^[a-zA-Z0-9_]+$").map_err(|e| ServerFnError::new(e.to_string()))?;
+    if !username_re.is_match(prefix) {
+        return Err(ServerFnError::new(
+            "FTP username prefix must contain only alphanumeric characters or underscores",
+        ));
+    }
+    // Full username length guard: prefix + "." + owner_username ≤ 64 chars.
+    if username.len() > 64 {
+        return Err(ServerFnError::new(
+            "FTP username too long (max 64 characters)",
         ));
     }
 

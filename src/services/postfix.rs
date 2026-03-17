@@ -135,8 +135,18 @@ impl PostfixService {
             }
         }
 
-        // Read old main.cf for rollback in case postfix check fails
-        let old_main_cf = fs::read_to_string(POSTFIX_MAIN_CF).await.ok();
+        // Read old main.cf for rollback in case postfix check fails.
+        // Distinguish between "not found" (OK during initial install) and a read
+        // error that would leave us without a rollback point.
+        let old_main_cf = match fs::read_to_string(POSTFIX_MAIN_CF).await {
+            Ok(content) => Some(content),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => {
+                return Err(ServiceError::IoError(format!(
+                    "Failed to backup main.cf before modification: {e}"
+                )))
+            }
+        };
 
         // Write new main.cf atomically
         let main_cf = generate_main_cf(hostname);
@@ -802,6 +812,9 @@ impl PostfixService {
     /// Enable the OpenDKIM milter in main.cf.
     /// Idempotent — only adds the lines if they are not already present.
     pub async fn enable_dkim_milter(&self) -> Result<(), super::ServiceError> {
+        // Lock main.cf before read-modify-write to prevent TOCTOU races
+        // with concurrent Postfix configuration operations.
+        let _lock = super::filelock::FileLock::exclusive(POSTFIX_MAIN_CF)?;
         let old_main_cf = tokio::fs::read_to_string(POSTFIX_MAIN_CF)
             .await
             .unwrap_or_default();

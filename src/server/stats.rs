@@ -149,7 +149,11 @@ pub async fn server_run_stats(site_id: i64, tool: StatsTool) -> Result<(), Serve
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     // Mark as running
-    let _ = crate::db::stats::record_run(pool, config_id, StatsRunStatus::Running, None).await;
+    if let Err(e) =
+        crate::db::stats::record_run(pool, config_id, StatsRunStatus::Running, None).await
+    {
+        tracing::warn!(config_id, "Failed to record stats run start: {e}");
+    }
 
     let run_result = match tool {
         StatsTool::Webalizer => {
@@ -165,8 +169,11 @@ pub async fn server_run_stats(site_id: i64, tool: StatsTool) -> Result<(), Serve
 
     match run_result {
         Ok(()) => {
-            let _ =
-                crate::db::stats::record_run(pool, config_id, StatsRunStatus::Success, None).await;
+            if let Err(e) =
+                crate::db::stats::record_run(pool, config_id, StatsRunStatus::Success, None).await
+            {
+                tracing::warn!(config_id, "Failed to record stats run success: {e}");
+            }
             audit_log(
                 claims.sub,
                 "run_stats",
@@ -181,13 +188,16 @@ pub async fn server_run_stats(site_id: i64, tool: StatsTool) -> Result<(), Serve
         }
         Err(e) => {
             let err_str = e.to_string();
-            let _ = crate::db::stats::record_run(
+            if let Err(db_err) = crate::db::stats::record_run(
                 pool,
                 config_id,
                 StatsRunStatus::Failed,
                 Some(&err_str),
             )
-            .await;
+            .await
+            {
+                tracing::warn!(config_id, "Failed to record stats run failure: {db_err}");
+            }
             Err(ServerFnError::new(err_str))
         }
     }

@@ -215,6 +215,15 @@ impl UfwService {
                 "Invalid UFW rules file format".to_string(),
             ));
         }
+        // Reject iptables table sections beyond *filter — these can manipulate NAT,
+        // routing and raw packet processing outside of normal UFW firewall rules.
+        for forbidden in &["*nat", "*mangle", "*raw", "*security"] {
+            if content.contains(forbidden) {
+                return Err(ServiceError::CommandFailed(format!(
+                    "Rejected: rules file contains disallowed iptables table '{forbidden}'"
+                )));
+            }
+        }
         // Reject files with open default policies that would disable all firewall protection.
         // A legitimate UFW export always has DROP or REJECT as the default INPUT policy.
         if content.contains(":INPUT ACCEPT") || content.contains(":FORWARD ACCEPT") {

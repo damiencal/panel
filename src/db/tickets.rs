@@ -76,6 +76,15 @@ pub async fn create_ticket(
     Ok(result.last_insert_rowid())
 }
 
+/// Delete a ticket and its messages (used for rollback when message creation fails).
+pub async fn delete_ticket(pool: &SqlitePool, ticket_id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM support_tickets WHERE id = ?")
+        .bind(ticket_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 /// Update ticket status.
 pub async fn update_status(
     pool: &SqlitePool,

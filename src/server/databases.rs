@@ -94,8 +94,20 @@ pub async fn server_create_database(
     if database_type == DatabaseType::MariaDB {
         if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username).await {
             // Roll back both the SQLite record and the quota counter.
-            let _ = crate::db::databases::delete(pool, db_id).await;
-            let _ = crate::db::quotas::increment_databases(pool, claims.sub, -1).await;
+            // Log rollback failures so operators can reconcile orphan records.
+            if let Err(del_err) = crate::db::databases::delete(pool, db_id).await {
+                tracing::error!(
+                    "Failed to roll back database record (id={db_id}) after provisioning failure: {del_err}"
+                );
+            }
+            if let Err(quota_err) =
+                crate::db::quotas::increment_databases(pool, claims.sub, -1).await
+            {
+                tracing::error!(
+                    "Failed to roll back DB quota counter for user {} after provisioning failure: {quota_err}",
+                    claims.sub
+                );
+            }
             return Err(ServerFnError::new(format!(
                 "MySQL provisioning failed: {}",
                 e
@@ -523,8 +535,19 @@ async fn get_or_create_mysql_session_password(
     );
 
     // Try create first, then alter to reset password — both via stdin
-    let _ = shell::exec_stdin("mysql", &[], create_sql.as_bytes()).await;
-    let _ = shell::exec_stdin("mysql", &[], alter_sql.as_bytes()).await;
+    let create_result = shell::exec_stdin("mysql", &[], create_sql.as_bytes()).await;
+    let alter_result = shell::exec_stdin("mysql", &[], alter_sql.as_bytes()).await;
+
+    // If both failed, MySQL is likely unavailable or the panel user lacks
+    // sufficient privileges — surface the alter error (more informative).
+    if create_result.is_err() && alter_result.is_err() {
+        tracing::warn!(
+            "Failed to create or reset MySQL session user '{}': create={:?}, alter={:?}",
+            mysql_user,
+            create_result.err(),
+            alter_result.err()
+        );
+    }
 
     shell::exec("mysql", &["-e", "FLUSH PRIVILEGES"])
         .await

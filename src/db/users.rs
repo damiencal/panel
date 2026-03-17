@@ -187,3 +187,20 @@ pub async fn delete(pool: &SqlitePool, user_id: i64) -> Result<(), sqlx::Error> 
         .await?;
     Ok(())
 }
+
+/// Update the hosting package assigned to a user.  Pass `None` to remove
+/// the package assignment (downgrade / unassign).
+pub async fn update_package(
+    pool: &SqlitePool,
+    user_id: i64,
+    package_id: Option<i64>,
+) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+    sqlx::query("UPDATE users SET package_id = ?, updated_at = ? WHERE id = ?")
+        .bind(package_id)
+        .bind(now)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}

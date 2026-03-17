@@ -234,7 +234,14 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
             .and_then(|u| u.system_gid),
     ) {
         let uid_gid = format!("{uid}:{gid}");
-        let _ = crate::services::shell::exec("chown", &["-R", &uid_gid, &site.doc_root]).await;
+        if let Err(e) =
+            crate::services::shell::exec("chown", &["-R", &uid_gid, &site.doc_root]).await
+        {
+            tracing::warn!(
+                site_id,
+                "Failed to restore file ownership after git pull: {e}"
+            );
+        }
     }
 
     // Update the cached last-sync info from the most recent commit.
@@ -245,7 +252,14 @@ pub async fn server_git_pull(site_id: i64) -> Result<String, ServerFnError> {
     };
     if let Ok(commits) = crate::services::git::log(&log_dir, 1).await {
         if let Some(c) = commits.first() {
-            let _ = crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await;
+            if let Err(e) =
+                crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await
+            {
+                tracing::warn!(
+                    site_id,
+                    "Failed to update git last-sync cache after pull: {e}"
+                );
+            }
         }
     }
 
@@ -300,7 +314,14 @@ pub async fn server_git_commit(site_id: i64, message: String) -> Result<String, 
     // Update cached commit info.
     if let Ok(commits) = crate::services::git::log(&site.doc_root, 1).await {
         if let Some(c) = commits.first() {
-            let _ = crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await;
+            if let Err(e) =
+                crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await
+            {
+                tracing::warn!(
+                    site_id,
+                    "Failed to update git last-sync cache after commit: {e}"
+                );
+            }
         }
     }
 
@@ -407,7 +428,14 @@ pub async fn server_git_commit_and_push(
     // Update cached commit info.
     if let Ok(commits) = crate::services::git::log(&site.doc_root, 1).await {
         if let Some(c) = commits.first() {
-            let _ = crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await;
+            if let Err(e) =
+                crate::db::git::update_last_sync(pool, site_id, &c.hash, &c.message).await
+            {
+                tracing::warn!(
+                    site_id,
+                    "Failed to update git last-sync cache after commit+push: {e}"
+                );
+            }
         }
     }
 

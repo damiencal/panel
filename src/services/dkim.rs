@@ -106,10 +106,8 @@ impl DkimService {
         self.add_to_key_table(domain, selector, &private_key_path)
             .await?;
 
-        // Restart OpenDKIM.
-        shell::exec("systemctl", &["restart", "opendkim"])
-            .await
-            .ok();
+        // Restart OpenDKIM so the new key is picked up.
+        shell::exec("systemctl", &["restart", "opendkim"]).await?;
 
         Ok(public_key_dns)
     }
@@ -134,9 +132,7 @@ impl DkimService {
         let key_dir = format!("{}/{}", OPENDKIM_KEYS_DIR, domain);
         let _ = fs::remove_dir_all(&key_dir).await;
 
-        shell::exec("systemctl", &["restart", "opendkim"])
-            .await
-            .ok();
+        shell::exec("systemctl", &["restart", "opendkim"]).await?;
         Ok(())
     }
 

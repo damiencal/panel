@@ -92,6 +92,16 @@ impl MariaDbService {
         crate::utils::validators::validate_db_name(db_name)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
+        // Secondary metachar guard — mirrors the same check in `drop_database`
+        // (SEC-32-05).  If the validator is ever relaxed or the function called
+        // from a new code path that skips the validator, a backtick or semicolon
+        // in the name would escape the SQL identifier context.
+        if db_name.contains(['`', '\'', '"', ';', '\\', '\n', '\r', '\0']) {
+            return Err(ServiceError::CommandFailed(
+                "db_name contains disallowed characters".to_string(),
+            ));
+        }
+
         let sql = format!(
             "CREATE DATABASE IF NOT EXISTS `{}`;
 ",

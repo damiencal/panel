@@ -201,8 +201,9 @@ pub async fn server_add_dns_record(
         {
             Ok(rec) => Some(rec.id),
             Err(e) => {
-                tracing::warn!("Cloudflare record creation failed: {e}");
-                None
+                return Err(ServerFnError::new(format!(
+                    "Cloudflare record creation failed: {e}"
+                )));
             }
         }
     } else {

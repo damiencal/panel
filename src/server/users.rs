@@ -259,6 +259,26 @@ pub async fn server_delete_user(user_id: i64) -> Result<(), ServerFnError> {
     crate::auth::guards::check_ownership(&claims, target.id, target.parent_id)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    // Before deleting from the DB, remove the user's virtual FTP accounts from
+    // the Pure-FTPd passwd database.  The DB rows will be cascade-deleted by the
+    // FK constraint on `ftp_accounts.owner_id`, but the puredb binary and the
+    // plain-text passwd file are not managed by SQLite — they must be cleaned up
+    // explicitly to prevent stale accounts from accumulating.
+    let ftp_accounts = crate::db::ftp::list_for_owner(pool, user_id)
+        .await
+        .unwrap_or_default();
+    let ftpd = crate::services::pureftpd::PureFtpdService;
+    for account in &ftp_accounts {
+        if let Err(e) = ftpd.delete_user(&account.username).await {
+            tracing::warn!(
+                "Failed to remove FTP account '{}' from pureftpd during user {} deletion: {}",
+                account.username,
+                user_id,
+                e
+            );
+        }
+    }
+
     crate::db::users::delete(pool, user_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
@@ -513,4 +533,69 @@ pub async fn server_end_impersonation() -> Result<crate::models::auth::LoginResp
         expires_at: chrono::Utc::now().timestamp() + auth_token.expires_in,
         impersonated_by: None,
     })
+}
+
+/// Change the hosting package assigned to a user.
+///
+/// Mirrors `opencli user-change_plan` / `opencli plan-apply`.
+/// Admins may reassign any user to any package.
+/// Resellers may only reassign their direct clients to packages they own.
+/// Pass `new_package_id = None` to remove the package assignment entirely.
+#[server]
+pub async fn server_change_user_plan(
+    user_id: i64,
+    new_package_id: Option<i64>,
+) -> Result<(), ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    let pool = get_pool()?;
+    check_token_not_revoked(pool, &claims).await?;
+
+    // Only admins and resellers may change plan assignments.
+    crate::auth::guards::require_reseller(&claims)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let target = crate::db::users::get(pool, user_id)
+        .await
+        .map_err(|_| ServerFnError::new("User not found"))?;
+
+    // IDOR guard: resellers can only change their own clients.
+    crate::auth::guards::check_ownership(&claims, target.id, target.parent_id)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Validate the new package exists and the caller has access to it.
+    if let Some(pkg_id) = new_package_id {
+        let pkg = crate::db::packages::get(pool, pkg_id)
+            .await
+            .map_err(|_| ServerFnError::new("Package not found"))?;
+        if claims.role != crate::models::user::Role::Admin && pkg.created_by != claims.sub {
+            return Err(ServerFnError::new(
+                "Access denied: package does not belong to you",
+            ));
+        }
+        if !pkg.is_active {
+            return Err(ServerFnError::new(
+                "Cannot assign a deactivated package to a user",
+            ));
+        }
+    }
+
+    crate::db::users::update_package(pool, user_id, new_package_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    audit_log(
+        claims.sub,
+        "change_user_plan",
+        Some("user"),
+        Some(user_id),
+        Some(&target.username),
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(())
 }

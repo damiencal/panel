@@ -88,10 +88,17 @@ pub async fn server_create_ticket(
             .await
             .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Add the initial message
-    crate::db::tickets::add_message(pool, ticket_id, claims.sub, body, false)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    // Add the initial message; on failure, delete the ticket to avoid empty-ticket orphans.
+    if let Err(e) = crate::db::tickets::add_message(pool, ticket_id, claims.sub, body, false).await
+    {
+        if let Err(rb_err) = crate::db::tickets::delete_ticket(pool, ticket_id).await {
+            tracing::error!(
+                ticket_id,
+                "Failed to rollback empty ticket after message-add failure: {rb_err}"
+            );
+        }
+        return Err(ServerFnError::new(e.to_string()));
+    }
 
     audit_log(
         claims.sub,
@@ -206,7 +213,9 @@ pub async fn server_reply_to_ticket(
     } else {
         TicketStatus::Answered
     };
-    let _ = crate::db::tickets::update_status(pool, ticket_id, new_status).await;
+    if let Err(e) = crate::db::tickets::update_status(pool, ticket_id, new_status).await {
+        tracing::warn!(ticket_id, "Failed to update ticket status after reply: {e}");
+    }
 
     audit_log(
         claims.sub,

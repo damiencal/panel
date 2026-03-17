@@ -361,13 +361,19 @@ pub async fn server_trigger_backup(schedule_id: i64) -> Result<i64, ServerFnErro
                 .map_err(|e| ServerFnError::new(e.to_string()))?;
 
             // Update last_run on the schedule.
-            let _ =
+            if let Err(e) =
                 crate::db::backup::update_run_times(pool, schedule_id, chrono::Utc::now(), None)
-                    .await;
+                    .await
+            {
+                tracing::warn!(schedule_id, "Failed to update backup run times: {e}");
+            }
 
             // Prune old runs.
-            let _ =
-                crate::db::backup::prune_old_runs(pool, schedule_id, sched.retention_count).await;
+            if let Err(e) =
+                crate::db::backup::prune_old_runs(pool, schedule_id, sched.retention_count).await
+            {
+                tracing::warn!(schedule_id, "Failed to prune old backup runs: {e}");
+            }
 
             audit_log(
                 claims.sub,
@@ -383,7 +389,9 @@ pub async fn server_trigger_backup(schedule_id: i64) -> Result<i64, ServerFnErro
             Ok(run_id)
         }
         Err(e) => {
-            let _ = crate::db::backup::finish_run_failed(pool, run_id, &e).await;
+            if let Err(db_err) = crate::db::backup::finish_run_failed(pool, run_id, &e).await {
+                tracing::warn!(run_id, "Failed to persist backup failure record: {db_err}");
+            }
             audit_log(
                 claims.sub,
                 "trigger_backup",
@@ -484,6 +492,10 @@ async fn backup_site(
     if !tokio::fs::try_exists(&doc_root).await.unwrap_or(false) {
         return Err(format!("Document root does not exist: {doc_root}"));
     }
+    // Defense-in-depth: ensure the database-stored doc_root is within the
+    // permitted base so a manipulated entry cannot tar arbitrary system paths.
+    crate::utils::validators::validate_safe_path(&doc_root, "/home/")
+        .map_err(|_| format!("Document root '{doc_root}' is not in a permitted location"))?;
 
     // Sanitise and resolve destination directory.
     let dest_dir = shellexpand::tilde(&sched.destination).into_owned();

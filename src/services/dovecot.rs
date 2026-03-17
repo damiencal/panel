@@ -184,6 +184,15 @@ impl DovecotService {
 
         // Format: user:{scheme}password:uid:gid:gecos:home:extra_fields
         let home = format!("{}/{}/{}", VIRTUAL_MAILBOX_BASE, domain, email);
+        // Defense-in-depth: ensure the computed home path cannot corrupt the
+        // colon-delimited passwd file format (validate_domain/validate_email
+        // already reject colons, but we check here as an extra layer).
+        if home.contains(':') || home.contains('\n') || home.contains('\r') {
+            return Err(ServiceError::CommandFailed(
+                "Computed home path contains characters that would corrupt the passwd file format"
+                    .to_string(),
+            ));
+        }
         let entry = format!(
             "{}:{{SHA512-CRYPT}}{}:{}:{}::{}:{}\n",
             email, password_hash, VMAIL_UID, VMAIL_GID, home, quota_rule

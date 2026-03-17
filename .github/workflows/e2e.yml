@@ -8,13 +8,16 @@ on:
 
 concurrency:
   group: e2e-${{ github.ref }}
-  cancel-in-progress: true
+  # Only cancel in-progress runs for PRs; let main-branch runs complete so a slow
+  # Docker build (cold cache) is never killed mid-wait by a follow-up push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Cold Rust+WASM build can take 25-30 min; give the full job 60 min.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -49,8 +52,12 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Start sandbox container
+        # --wait blocks until the service healthcheck passes (panel HTTP on :8080).
+        # This ensures the container is healthy before the wait-for-services step,
+        # so that step only needs to verify individual hosting services.
         run: |
-          docker compose -f sandbox/docker-compose.test.yml up -d
+          docker compose -f sandbox/docker-compose.test.yml up -d --wait --wait-timeout 300
+        timeout-minutes: 8
         env:
           COMPOSE_PROJECT_NAME: panel_e2e
 

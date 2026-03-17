@@ -392,17 +392,24 @@ pub async fn server_set_catch_all(domain_id: i64, address: String) -> Result<(),
         Some(address.as_str())
     };
 
-    // Persist in DB.
+    // Persist in DB first.
     crate::db::email::set_catch_all(pool, domain_id, dest)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Apply to Postfix virtual_aliases.
+    // Apply to Postfix virtual_aliases.  On failure, roll back the DB update
+    // so the panel DB and Postfix remain in sync.
     let postfix = crate::services::postfix::PostfixService;
-    postfix
-        .set_catch_all(&domain.domain, dest)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    if let Err(e) = postfix.set_catch_all(&domain.domain, dest).await {
+        // Restore the previous DB value; log if the rollback itself fails.
+        let rollback_dest = domain.catch_all_address.as_deref();
+        if let Err(rb_err) = crate::db::email::set_catch_all(pool, domain_id, rollback_dest).await {
+            tracing::error!(
+                "Catch-all DB rollback failed after Postfix error (domain_id={domain_id}): {rb_err}"
+            );
+        }
+        return Err(ServerFnError::new(e.to_string()));
+    }
 
     audit_log(
         claims.sub,
@@ -453,11 +460,20 @@ pub async fn server_set_plus_addressing(
         .await
         .unwrap_or(enabled);
 
+    // Apply to Postfix.  On failure, roll back the DB update so the panel DB
+    // and Postfix remain in sync.
     let postfix = crate::services::postfix::PostfixService;
-    postfix
-        .set_plus_addressing(any_enabled)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    if let Err(e) = postfix.set_plus_addressing(any_enabled).await {
+        if let Err(rb_err) =
+            crate::db::email::set_plus_addressing(pool, domain_id, domain.plus_addressing_enabled)
+                .await
+        {
+            tracing::error!(
+                "Plus-addressing DB rollback failed after Postfix error (domain_id={domain_id}): {rb_err}"
+            );
+        }
+        return Err(ServerFnError::new(e.to_string()));
+    }
 
     audit_log(
         claims.sub,
@@ -555,8 +571,17 @@ pub async fn server_create_regex_forwarder(
             .await
             .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Rebuild the Postfix regexp map.
-    rebuild_and_apply_regex_map(pool).await?;
+    // Rebuild the Postfix regexp map.  On failure, delete the just-inserted DB
+    // row to keep the DB and Postfix consistent — otherwise the UI would show an
+    // active rule that Postfix is not applying.
+    if let Err(e) = rebuild_and_apply_regex_map(pool).await {
+        if let Err(rb_err) = crate::db::email::delete_regex_forwarder(pool, id).await {
+            tracing::error!(
+                "Regex forwarder DB rollback failed (id={id}) after Postfix rebuild error: {rb_err}"
+            );
+        }
+        return Err(e);
+    }
 
     audit_log(
         claims.sub,
@@ -604,7 +629,18 @@ pub async fn server_delete_regex_forwarder(
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    rebuild_and_apply_regex_map(pool).await?;
+    // Rebuild the Postfix regexp map.  If this fails, the rule is gone from
+    // the DB (authoritative source) but may still be active in Postfix until
+    // the next successful rebuild triggered by any other email operation.  Log
+    // this condition so an operator can force a reload manually if needed.
+    if let Err(e) = rebuild_and_apply_regex_map(pool).await {
+        tracing::error!(
+            "Postfix regex map rebuild failed after deleting forwarder {forwarder_id}: {e}. \
+             The rule has been removed from the database; Postfix may still apply it until \
+             the next successful reload."
+        );
+        return Err(e);
+    }
 
     audit_log(
         claims.sub,

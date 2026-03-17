@@ -243,10 +243,10 @@ pub async fn server_fix_mail_ssl(hostname: String) -> Result<(), ServerFnError> 
     // Reload both services.
     crate::services::shell::exec("systemctl", &["reload", "postfix"])
         .await
-        .ok();
+        .map_err(|e| ServerFnError::new(format!("Failed to reload postfix: {e}")))?;
     crate::services::shell::exec("systemctl", &["reload", "dovecot"])
         .await
-        .ok();
+        .map_err(|e| ServerFnError::new(format!("Failed to reload dovecot: {e}")))?;
 
     audit_log(
         claims.sub,

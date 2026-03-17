@@ -155,7 +155,8 @@ impl PureFtpdService {
         gid: u32,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate all inputs at service layer
-        crate::utils::validators::validate_username(username)
+        // validate_ftp_username accepts the "prefix.owner" dot convention.
+        crate::utils::validators::validate_ftp_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_passwd_field(username, "username")
             .map_err(ServiceError::CommandFailed)?;
@@ -224,7 +225,7 @@ impl PureFtpdService {
 
     /// Delete a virtual FTP user.
     pub async fn delete_user(&self, username: &str) -> Result<(), ServiceError> {
-        crate::utils::validators::validate_username(username)
+        crate::utils::validators::validate_ftp_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
         info!("Deleting FTP user: {}", username);
@@ -262,7 +263,7 @@ impl PureFtpdService {
         username: &str,
         new_password: &str,
     ) -> Result<(), ServiceError> {
-        crate::utils::validators::validate_username(username)
+        crate::utils::validators::validate_ftp_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_passwd_field(new_password, "password")
             .map_err(ServiceError::CommandFailed)?;
@@ -327,7 +328,7 @@ impl PureFtpdService {
         new_home_dir: &str,
     ) -> Result<(), ServiceError> {
         // Defense-in-depth: prevent path traversal in home directory
-        crate::utils::validators::validate_username(username)
+        crate::utils::validators::validate_ftp_username(username)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
         crate::utils::validators::validate_safe_path(new_home_dir, "/home/")
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;

@@ -186,8 +186,14 @@ pub async fn server_record_bandwidth_event(
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Update daily aggregate for today
+    // Update daily aggregate and running total atomically so the two counters
+    // can never diverge if the second write fails.
     let today = Utc::now().date_naive();
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
     // Increment existing row or insert new row via upsert
     sqlx::query(
         "INSERT INTO daily_usage_aggregates (user_id, date, bandwidth_used_mb, storage_used_mb)
@@ -198,7 +204,7 @@ pub async fn server_record_bandwidth_event(
     .bind(user_id)
     .bind(today)
     .bind(value_mb)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
@@ -209,9 +215,13 @@ pub async fn server_record_bandwidth_event(
     .bind(value_mb)
     .bind(Utc::now())
     .bind(user_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     Ok(())
 }

@@ -249,7 +249,13 @@ pub async fn server_accept_team_invitation(
     // Grant per-site access based on the invitation's site_ids JSON.
     let site_ids: Vec<i64> = serde_json::from_str(&inv.site_ids).unwrap_or_default();
     for sid in site_ids {
-        let _ = crate::db::team::grant_site_access(pool, user_id, sid).await;
+        if let Err(e) = crate::db::team::grant_site_access(pool, user_id, sid).await {
+            tracing::error!(
+                user_id,
+                site_id = sid,
+                "Failed to grant site access during invitation acceptance: {e}"
+            );
+        }
     }
 
     // Mark the invitation as consumed (prevents replay).

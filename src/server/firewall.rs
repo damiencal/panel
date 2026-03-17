@@ -219,10 +219,21 @@ pub async fn server_ufw_add_rule(
     // well-known service name consisting only of ASCII letters, digits, and '-').
     if let Some(ref port_str) = to_port {
         // Accept "N", "N:M" (UFW port range syntax), or a service name.
-        let valid = if let Some((low, high)) = port_str.split_once(':') {
-            let low_ok = low.parse::<u16>().is_ok();
-            let high_ok = high.parse::<u16>().is_ok();
-            low_ok && high_ok
+        let valid = if let Some((low_s, high_s)) = port_str.split_once(':') {
+            match (low_s.parse::<u16>(), high_s.parse::<u16>()) {
+                (Ok(low), Ok(high)) => {
+                    if low == 0 {
+                        return Err(ServerFnError::new("Port range must start at 1 or above"));
+                    }
+                    if low > high {
+                        return Err(ServerFnError::new(
+                            "Port range low must be ≤ high (e.g. 8000:9000)",
+                        ));
+                    }
+                    true
+                }
+                _ => false,
+            }
         } else if let Ok(n) = port_str.parse::<u16>() {
             n > 0
         } else {

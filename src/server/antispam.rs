@@ -91,7 +91,9 @@ pub async fn server_save_spam_filter_settings(
                 .map_err(|e| ServerFnError::new(e.to_string()))?;
             // Disable rspamd milter if switching back
             let rspamd = crate::services::rspamd::RspamdService;
-            rspamd.integrate_with_postfix(false).await.ok();
+            if let Err(e) = rspamd.integrate_with_postfix(false).await {
+                tracing::warn!("Failed to disable Rspamd Postfix integration during switch to SpamAssassin: {e}");
+            }
         }
         "rspamd" => {
             let rspamd = crate::services::rspamd::RspamdService;
@@ -117,7 +119,11 @@ pub async fn server_save_spam_filter_settings(
                 .map_err(|e| ServerFnError::new(e.to_string()))?;
             // Disable SA content_filter if switching
             let sa = crate::services::spamassassin::SpamAssassinService;
-            sa.integrate_with_postfix(false).await.ok();
+            if let Err(e) = sa.integrate_with_postfix(false).await {
+                tracing::warn!(
+                    "Failed to disable SpamAssassin Postfix integration during switch to Rspamd: {e}"
+                );
+            }
 
             // ClamAV
             if clamav_enabled {
@@ -129,15 +135,21 @@ pub async fn server_save_spam_filter_settings(
                         .await
                         .map_err(|e| ServerFnError::new(e.to_string()))?;
                 }
-                clamav.start().await.ok();
+                if let Err(e) = clamav.start().await {
+                    tracing::warn!("Failed to start ClamAV after installation: {e}");
+                }
             }
         }
         "none" => {
             // Disable both integrations
             let sa = crate::services::spamassassin::SpamAssassinService;
-            sa.integrate_with_postfix(false).await.ok();
+            if let Err(e) = sa.integrate_with_postfix(false).await {
+                tracing::warn!("Failed to disable SpamAssassin Postfix integration: {e}");
+            }
             let rspamd = crate::services::rspamd::RspamdService;
-            rspamd.integrate_with_postfix(false).await.ok();
+            if let Err(e) = rspamd.integrate_with_postfix(false).await {
+                tracing::warn!("Failed to disable Rspamd Postfix integration: {e}");
+            }
         }
         _ => {}
     }
@@ -151,8 +163,12 @@ pub async fn server_save_spam_filter_settings(
                 .await
                 .map_err(|e| ServerFnError::new(e.to_string()))?;
         }
-        ms.configure(true).await.ok();
-        ms.start().await.ok();
+        ms.configure(true)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        ms.start()
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
     }
 
     audit_log(
@@ -331,6 +347,15 @@ pub async fn server_delete_queued_message(queue_id: String) -> Result<(), Server
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // Validate queue ID format: Postfix queue IDs are hex characters only.
+    // Reject anything else to prevent path traversal or shell injection.
+    if queue_id.is_empty()
+        || queue_id.len() > 64
+        || !queue_id.chars().all(|c| c.is_ascii_alphanumeric())
+    {
+        return Err(ServerFnError::new("Invalid mail queue ID"));
+    }
 
     crate::services::mail_queue::delete_message(&queue_id)
         .await

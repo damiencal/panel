@@ -281,12 +281,18 @@ impl CertbotService {
         let expires_at = expiry_line.strip_prefix("notAfter=").and_then(|s| {
             let s = s.trim().trim_end_matches(" GMT").trim();
             // Try space-padded day (%e) first, then zero-padded (%d).
-            chrono::NaiveDateTime::parse_from_str(s, "%b %e %H:%M:%S %Y")
+            match chrono::NaiveDateTime::parse_from_str(s, "%b %e %H:%M:%S %Y")
                 .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%b %d %H:%M:%S %Y"))
-                .ok()
-                .map(|dt| {
-                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-                })
+            {
+                Ok(dt) => Some(chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                    dt,
+                    chrono::Utc,
+                )),
+                Err(e) => {
+                    tracing::warn!("Failed to parse certificate expiry date '{s}': {e}");
+                    None
+                }
+            }
         });
 
         Ok(CertificateInfo {

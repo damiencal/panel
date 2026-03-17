@@ -1,6 +1,7 @@
 //! Package management server functions.
 #![allow(clippy::too_many_arguments)]
 use crate::models::package::Package;
+use crate::models::user::User;
 use dioxus::prelude::*;
 
 /// List packages visible to the caller.
@@ -75,6 +76,19 @@ pub async fn server_create_package(
 
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
+
+    // Reject duplicate package name within the same creator's account.
+    // opencli `plan-create` also rejects plans with a name that already exists
+    // in the DB — enforce the same constraint here to prevent confusion when
+    // multiple identically-named plans appear in client drop-downs.
+    let existing = crate::db::packages::count_by_name_and_creator(pool, &name, claims.sub)
+        .await
+        .unwrap_or(0);
+    if existing > 0 {
+        return Err(ServerFnError::new(
+            "A package with that name already exists; choose a different name",
+        ));
+    }
 
     // FIND-28-05: cap each quota field at a sane maximum to prevent a
     // reseller from creating packages that advertise more resources than
@@ -200,6 +214,25 @@ pub async fn server_delete_package(package_id: i64) -> Result<(), ServerFnError>
         return Err(ServerFnError::new("Access denied"));
     }
 
+    // Block deletion if any users are still assigned to this package —
+    // matching the behaviour of `opencli plan-delete` which lists the
+    // affected accounts and aborts.  Admins must reassign or delete those
+    // accounts first; otherwise the FK reference becomes dangling and the
+    // affected users have no recorded limits.
+    let assigned: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM users WHERE package_id = ? AND status != 'Deleted'",
+    )
+    .bind(package_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+    if assigned > 0 {
+        return Err(ServerFnError::new(format!(
+            "Cannot delete package: {assigned} user(s) are currently assigned to it. \
+             Reassign or remove those accounts first."
+        )));
+    }
+
     crate::db::packages::delete(pool, package_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
@@ -216,4 +249,49 @@ pub async fn server_delete_package(package_id: i64) -> Result<(), ServerFnError>
     .await;
 
     Ok(())
+}
+
+/// List users currently assigned to a package.
+/// Admins may query any package; Resellers may only query their own packages.
+///
+/// Mirrors `opencli plan-usage $plan_name` which lists all accounts on a plan.
+#[server]
+pub async fn server_list_users_on_package(package_id: i64) -> Result<Vec<User>, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    crate::auth::guards::require_reseller(&claims)
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let pool = get_pool()?;
+    check_token_not_revoked(pool, &claims).await?;
+
+    // IDOR guard: only admins may inspect packages they do not own.
+    let pkg = crate::db::packages::get(pool, package_id)
+        .await
+        .map_err(|_| ServerFnError::new("Package not found"))?;
+    if pkg.created_by != claims.sub && claims.role != crate::models::user::Role::Admin {
+        return Err(ServerFnError::new("Access denied"));
+    }
+
+    let users = sqlx::query_as::<_, User>(
+        "SELECT * FROM users WHERE package_id = ? AND status != 'Deleted' ORDER BY username",
+    )
+    .bind(package_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    audit_log(
+        claims.sub,
+        "list_users_on_package",
+        Some("package"),
+        Some(package_id),
+        None,
+        "Success",
+        None,
+    )
+    .await;
+
+    Ok(users)
 }

@@ -139,6 +139,25 @@ pub async fn server_delete_site(site_id: i64) -> Result<(), ServerFnError> {
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
+    // Remove any virtual FTP accounts associated with this site from the
+    // Pure-FTPd passwd database before the DB row cascade deletes them.
+    // The DB FK (`ftp_accounts.site_id ON DELETE CASCADE`) handles the DB
+    // side, but the pureftpd passwd file needs an explicit cleanup call.
+    let site_ftp = crate::db::ftp::list_for_site(pool, site_id)
+        .await
+        .unwrap_or_default();
+    let ftpd = crate::services::pureftpd::PureFtpdService;
+    for account in &site_ftp {
+        if let Err(e) = ftpd.delete_user(&account.username).await {
+            tracing::warn!(
+                "Failed to remove FTP account '{}' from pureftpd during site {} deletion: {}",
+                account.username,
+                site_id,
+                e
+            );
+        }
+    }
+
     crate::db::sites::delete(pool, site_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;

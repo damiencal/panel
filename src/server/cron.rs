@@ -174,7 +174,9 @@ async fn sync_user_crontab(
         .await;
 
     // 7. Always clean up the temp file.
-    let _ = tokio::fs::remove_file(&temp_path).await;
+    if let Err(e) = tokio::fs::remove_file(&temp_path).await {
+        tracing::warn!("Failed to remove temporary crontab file {temp_path}: {e}");
+    }
 
     match result {
         Ok(out) if out.status.success() => Ok(()),

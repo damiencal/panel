@@ -43,11 +43,90 @@ pub fn validate_domain(domain: &str) -> Result<(), &'static str> {
     if domain.len() < 3 || domain.len() > 253 {
         return Err("Domain length invalid (3-253 characters)");
     }
-    if domain_regex().is_match(domain) {
-        Ok(())
-    } else {
-        Err("Invalid domain format")
+    if !domain_regex().is_match(domain) {
+        return Err("Invalid domain format");
     }
+    // Prevent registering bare TLDs or well-known eTLDs as if they were
+    // hosting domains — mirroring the public-suffix check in opencli domains/add.sh.
+    // The regex already enforces at least one dot, so a bare TLD like "com" is
+    // rejected above. The check here targets two-label eTLDs (co.uk, com.au,
+    // github.io, …) which look like valid domains but are themselves public
+    // suffixes — adding them would allow a user to hijack all subdomains.
+    validate_not_public_suffix(domain)?;
+    Ok(())
+}
+
+/// Reject domains that are themselves public suffixes (TLDs, ccTLDs, eTLDs).
+/// This is a hardcoded subset covering the most commonly misused entries; it
+/// intentionally does not attempt to replicate the full IANA/Mozilla PSL.
+pub fn validate_not_public_suffix(domain: &str) -> Result<(), &'static str> {
+    // A registrable domain must have at least one label left of the eTLD.
+    // Heuristic: if the domain consists entirely of a known single-label TLD
+    // or two-label eTLD, reject it.
+    const KNOWN_ETLDS: &[&str] = &[
+        // Country-code second-level suffixes
+        "co.uk",
+        "co.nz",
+        "co.jp",
+        "co.za",
+        "co.in",
+        "co.id",
+        "co.ke",
+        "com.au",
+        "com.br",
+        "com.mx",
+        "com.ar",
+        "com.cn",
+        "com.hk",
+        "com.sg",
+        "com.my",
+        "com.ph",
+        "com.pe",
+        "com.co",
+        "com.ve",
+        "com.do",
+        "com.ec",
+        "com.gt",
+        "com.hn",
+        "net.au",
+        "net.br",
+        "net.cn",
+        "net.mx",
+        "org.uk",
+        "org.au",
+        "org.nz",
+        "gov.uk",
+        "gov.au",
+        "gov.br",
+        "edu.au",
+        "edu.br",
+        "ac.uk",
+        "me.uk",
+        "ltd.uk",
+        "plc.uk",
+        // Dynamic-DNS / SaaS subdomain registries — these are eTLDs where
+        // user-registrable names sit one level below.
+        "github.io",
+        "gitlab.io",
+        "vercel.app",
+        "netlify.app",
+        "pages.dev",
+        "workers.dev",
+        "run.app",
+        "web.app",
+        "firebaseapp.com",
+        "appspot.com",
+    ];
+
+    let lower = domain.to_lowercase();
+    for etld in KNOWN_ETLDS {
+        if lower == *etld {
+            return Err(
+                "Domain is a public suffix / registry; please enter a registrable domain name",
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Validate a username.
@@ -57,6 +136,27 @@ pub fn validate_username(username: &str) -> Result<(), &'static str> {
     } else {
         Err("Username must be 3-32 characters, alphanumeric, underscore, or hyphen")
     }
+}
+
+/// Validate an FTP virtual username in `prefix.owner_username` format.
+/// The full username must be ≤ 64 characters, contain exactly one dot separator,
+/// and contain only alphanumeric characters, underscores, or the single dot.
+/// A dot is safe in Pure-FTPd passwd entries; colons and newlines are blocked
+/// by `validate_passwd_field` at the call site.
+pub fn validate_ftp_username(username: &str) -> Result<(), &'static str> {
+    if username.is_empty() || username.len() > 64 {
+        return Err("FTP username must be 1-64 characters");
+    }
+    if !username
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+    {
+        return Err("FTP username may only contain alphanumeric characters, underscores, or a dot");
+    }
+    if username.contains("..") || username.starts_with('.') || username.ends_with('.') {
+        return Err("FTP username must not start or end with a dot, or contain consecutive dots");
+    }
+    Ok(())
 }
 
 /// Validate password strength.
