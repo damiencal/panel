@@ -1021,13 +1021,19 @@ pub async fn server_remove_basic_auth_user(
             .await
             .map_err(|e| ServerFnError::new(e.to_string()))?;
         if users.is_empty() {
-            let _ = crate::services::basic_auth::remove_htpasswd(&site.domain).await;
+            if let Err(e) = crate::services::basic_auth::remove_htpasswd(&site.domain).await {
+                tracing::warn!(domain = %site.domain, "Failed to remove htpasswd file: {e}");
+            }
         } else {
             let entries: Vec<(String, String)> = users
                 .into_iter()
                 .map(|u| (u.username, u.password_hash))
                 .collect();
-            let _ = crate::services::basic_auth::write_htpasswd(&site.domain, &entries).await;
+            if let Err(e) =
+                crate::services::basic_auth::write_htpasswd(&site.domain, &entries).await
+            {
+                tracing::warn!(domain = %site.domain, "Failed to write htpasswd file: {e}");
+            }
         }
     }
 

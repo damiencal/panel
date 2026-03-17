@@ -500,14 +500,21 @@ async fn provision_mysql_database(
 
     // Persist the MySQL user in SQLite for tracking (password_hash not stored here — creds live in MySQL)
     let privileges = format!("ALL PRIVILEGES ON `{}`.*", db_name);
-    let _ = crate::db::databases::create_user(
+    if let Err(e) = crate::db::databases::create_user(
         pool,
         db_id,
         mysql_user.clone(),
         String::new(),
         Some(privileges),
     )
-    .await;
+    .await
+    {
+        tracing::warn!(
+            db_name = %db_name,
+            mysql_user = %mysql_user,
+            "Failed to persist MySQL user tracking record in panel DB: {e}"
+        );
+    }
 
     tracing::info!(
         "Provisioned MySQL database '{}' with user '{}'",
