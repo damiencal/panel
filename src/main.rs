@@ -47,6 +47,23 @@ fn main() {
     {
         tracing_subscriber::fmt().with_target(false).init();
 
+        // Propagate panel.toml [server] host/port into the env vars Dioxus reads
+        // for its TCP bind address (IP and PORT).  Only set when the caller has not
+        // already provided an explicit override, so systemd or container environments
+        // that set IP/PORT directly still take precedence.
+        if std::env::var_os("IP").is_none() || std::env::var_os("PORT").is_none() {
+            if let Ok(content) = std::fs::read_to_string("panel.toml") {
+                if let Ok(config) = toml::from_str::<panel::utils::config::PanelConfig>(&content) {
+                    if std::env::var_os("IP").is_none() {
+                        std::env::set_var("IP", &config.server.host);
+                    }
+                    if std::env::var_os("PORT").is_none() {
+                        std::env::set_var("PORT", config.server.port.to_string());
+                    }
+                }
+            }
+        }
+
         dioxus::serve(|| async {
             use dioxus::server::axum;
             let panel_config = match panel::utils::PanelConfig::load(Some("panel.toml")).await {

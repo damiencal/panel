@@ -1,6 +1,6 @@
 [server]
-host = "127.0.0.1"
-port = 8080
+host = "0.0.0.0"
+port = 3030
 # IMPORTANT: Replace this with a strong random key before any deployment.
 # Generate one with: openssl rand -base64 32
 # The key MUST be at least 32 characters. The install.sh script sets this automatically.

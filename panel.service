@@ -12,6 +12,12 @@ WorkingDirectory=/opt/panel
 
 Environment="RUST_LOG=warn,panel=warn"
 Environment="DATABASE_URL=sqlite:/var/lib/panel/panel.db"
+# Dioxus reads IP and PORT to determine the TCP bind address.
+# These mirror the [server] defaults in panel.toml; panel.toml values
+# take precedence at runtime (main.rs propagates them first), but these
+# act as a reliable fallback if panel.toml is absent or unreadable.
+Environment="IP=0.0.0.0"
+Environment="PORT=3030"
 
 ExecStart=/opt/panel/panel
 ExecReload=/bin/kill -HUP $MAINPID

@@ -343,14 +343,25 @@ install_auxiliary_services() {
 
 configure_openlitespeed() {
     print_header "Configuring OpenLiteSpeed"
-    
-    
+
     # Create default document root
     mkdir -p /usr/local/lsws/html
-    
-    # Configure listeners for HTTP (80) and HTTPS (443)
-    # The panel will manage vhost configs directly
-    
+
+    local OLS_CONF="/usr/local/lsws/conf/httpd_config.conf"
+
+    # OLS ships with a default listener on port 8088.  Change it to port 80
+    # so HTTP traffic is served correctly.  The sed substitution matches both
+    # the exact default (address *:8088) and any leading whitespace variants.
+    if [[ -f "$OLS_CONF" ]]; then
+        sed -i 's/address[[:space:]]\+\*:8088/address                *:80/' "$OLS_CONF"
+        print_info "OLS default listener updated from port 8088 to port 80"
+    else
+        print_warning "OLS config not found at $OLS_CONF — listener may need manual update to port 80"
+    fi
+
+    # Restart OLS to pick up the new listener address.
+    svc_restart lsws
+
     print_info "WebAdmin URL: https://$SERVER_IP:7080"
     print_success "OpenLiteSpeed configured"
 }
@@ -884,7 +895,8 @@ install_firewall() {
     ufw allow 587/tcp  comment 'Submission'    2>/dev/null || true
     ufw allow 993/tcp  comment 'IMAPS'         2>/dev/null || true
     ufw allow 995/tcp  comment 'POP3S'         2>/dev/null || true
-    ufw allow 8080/tcp comment 'Panel Web UI'  2>/dev/null || true
+    ufw allow 3030/tcp comment 'Panel API'     2>/dev/null || true
+    ufw allow 8443/tcp comment 'Panel SSL'     2>/dev/null || true
 
     if $iptables_ok; then
         if ufw --force enable 2>/dev/null; then
@@ -1099,6 +1111,8 @@ WorkingDirectory=$INSTALL_DIR
 Environment="RUST_LOG=info,panel=debug"
 Environment="RUST_BACKTRACE=1"
 Environment="DATABASE_URL=sqlite:$DATA_DIR/panel.db"
+Environment="IP=0.0.0.0"
+Environment="PORT=3030"
 
 ExecStart=$INSTALL_DIR/panel
 ExecReload=/bin/kill -HUP \$MAINPID
@@ -1142,7 +1156,7 @@ create_config() {
     
     cat > "$INSTALL_DIR/panel.toml" <<EOF
 [server]
-host = "127.0.0.1"
+host = "0.0.0.0"
 port = 3030
 secret_key = "$SECRET_KEY"
 
