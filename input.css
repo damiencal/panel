@@ -80,7 +80,7 @@ html {
 
 body {
   @apply antialiased;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: hsl(var(--foreground));
   background: linear-gradient(to bottom right, #f9fafb, rgba(243, 244, 246, 0.5), #f9fafb);
   background-attachment: fixed;

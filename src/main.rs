@@ -266,17 +266,21 @@ async fn security_headers_middleware(
     );
     // Content-Security-Policy: restrict content sources to reduce XSS impact.
     // 'wasm-unsafe-eval' is required for the Dioxus/WASM application bundle.
+    // 'unsafe-inline' for scripts is required because Dioxus SSR injects the
+    // hydration payload as an inline <script> (window.initial_dioxus_hydration_data).
+    // Without it the WASM client cannot read the server-rendered state and the
+    // page stays blank.  Nonce-based CSP would require upstream Dioxus support.
     // 'unsafe-inline' for styles is needed by Tailwind CSS class injection.
-    // The /phpmyadmin/* sub-path may serve inline scripts; if you need stricter
-    // CSP for the panel itself, split this into two separate middleware paths.
+    // System fonts are used exclusively — no external font sources required.
     headers.insert(
         "content-security-policy",
         HeaderValue::from_static(
             "default-src 'self'; \
-             script-src 'self' 'wasm-unsafe-eval'; \
+             script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; \
              style-src 'self' 'unsafe-inline'; \
+             font-src 'self'; \
              img-src 'self' data:; \
-             connect-src 'self'; \
+             connect-src 'self' ws: wss:; \
              frame-ancestors 'none'",
         ),
     );
