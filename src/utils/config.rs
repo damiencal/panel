@@ -206,7 +206,7 @@ impl Default for PanelConfig {
                     // must set PANEL_SECRET_KEY to a permanent value for production use.
                     use rand::RngCore;
                     let mut key_bytes = [0u8; 32];
-                    rand::thread_rng().fill_bytes(&mut key_bytes);
+                    rand::rng().fill_bytes(&mut key_bytes);
                     let key = hex::encode(key_bytes);
                     eprintln!(
                         "WARNING: PANEL_SECRET_KEY is not set. \
