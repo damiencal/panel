@@ -7,9 +7,9 @@
 /// None of these functions interact with user-controlled paths unless the username
 /// has first been validated; all path construction is done with explicit base
 /// directory checks.
+use super::shell;
 #[cfg(feature = "server")]
 use sqlx::SqlitePool;
-use tokio::process::Command;
 use tracing::{info, warn};
 
 /// Threshold at which a user's disk usage is considered a warning, in percent.
@@ -56,9 +56,7 @@ pub async fn refresh_user_disk_usage(
         return Err("Computed home path is outside /home/".into());
     }
 
-    let output = Command::new("du")
-        .args(["-s", "--block-size=1M", &home_dir])
-        .output()
+    let output = shell::exec_output("du", &["-s", "--block-size=1M", &home_dir])
         .await
         .map_err(|e| format!("du invocation failed: {e}"))?;
 
@@ -244,8 +242,9 @@ pub async fn cleanup_orphaned_tmp(max_age_hours: u32) -> usize {
     // silently double the lifetime for any value < 24 h.
     let mmin_arg = format!("+{}", max_age_hours * 60);
 
-    let output = Command::new("find")
-        .args([
+    let output = shell::exec_output(
+        "find",
+        &[
             "/tmp",
             "-maxdepth",
             "2",
@@ -257,9 +256,9 @@ pub async fn cleanup_orphaned_tmp(max_age_hours: u32) -> usize {
             "f",
             "-delete",
             "-print",
-        ])
-        .output()
-        .await;
+        ],
+    )
+    .await;
 
     match output {
         Ok(out) => {

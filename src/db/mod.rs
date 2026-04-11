@@ -27,15 +27,73 @@ use std::sync::OnceLock;
 
 static DB_POOL: OnceLock<SqlitePool> = OnceLock::new();
 
+/// Extract the file-system path from a `sqlite:` URL, if it refers to a real file.
+/// Returns `None` for in-memory databases (`sqlite::memory:`) or unrecognised schemes.
+fn sqlite_file_path(url: &str) -> Option<std::path::PathBuf> {
+    // sqlite:///abs/path  →  /abs/path
+    if let Some(rest) = url.strip_prefix("sqlite:///") {
+        return Some(std::path::PathBuf::from(format!("/{rest}")));
+    }
+    // sqlite:/abs/path  →  /abs/path   (single-slash form used in panel.toml)
+    if let Some(rest) = url.strip_prefix("sqlite:") {
+        if rest.starts_with('/') {
+            return Some(std::path::PathBuf::from(rest));
+        }
+    }
+    None
+}
+
 /// Initialize the database pool.
 pub async fn init_pool(database_url: &str) -> Result<(), sqlx::Error> {
+    // Check that the database directory exists before attempting to connect.
+    // SQLite error 14 (CANTOPEN) is cryptic; surface an actionable message instead.
+    if let Some(db_path) = sqlite_file_path(database_url) {
+        if let Some(parent) = db_path.parent() {
+            if !parent.as_os_str().is_empty() && !parent.exists() {
+                return Err(sqlx::Error::Configuration(
+                    format!(
+                        "Database directory '{}' does not exist.\n\
+                         The panel has not been installed yet. \
+                         Run the install script (install.sh) to complete setup, \
+                         or update [database] url in panel.toml to point to an existing path.",
+                        parent.display()
+                    )
+                    .into(),
+                ));
+            }
+        }
+    }
+
     let options = SqliteConnectOptions::from_str(database_url)?
+        .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal);
 
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
         .connect_with(options)
-        .await?;
+        .await
+        .map_err(|e| {
+            // Detect SQLITE_CANTOPEN (code 14) and surface an actionable message.
+            let is_cantopen = e
+                .as_database_error()
+                .and_then(|d| d.code())
+                .map(|c| c == "14")
+                .unwrap_or_else(|| e.to_string().contains("unable to open database"));
+            if is_cantopen {
+                sqlx::Error::Configuration(
+                    format!(
+                        "Cannot open database '{database_url}': SQLite error 14 (CANTOPEN).\n\
+                         The panel may not be fully installed. \
+                         Run install.sh to complete setup, or verify the path and \
+                         permissions of [database] url in panel.toml.\n\
+                         Original error: {e}"
+                    )
+                    .into(),
+                )
+            } else {
+                e
+            }
+        })?;
     // Run migrations
     sqlx::migrate!("./migrations").run(&pool).await?;
 

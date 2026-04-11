@@ -18,6 +18,9 @@ use tokio::fs;
 use tokio::process::Command;
 use uuid::Uuid;
 
+const GIT_COMMAND_TIMEOUT_SECS: u64 = 300;
+const SUDO_COMMAND_TIMEOUT_SECS: u64 = 300;
+
 // ─── Input Validators ────────────────────────────────────────────────────────
 
 /// Validate a repository URL.  Only `https://` and `git@` schemes are accepted.
@@ -235,6 +238,17 @@ fn validate_work_dir(dir: &str) -> Result<(), String> {
 
 /// Run `sudo -n git <args>` inside `dir` with optional extra environment variables.
 async fn run_git(dir: &str, args: &[&str], extra_env: &[(&str, &str)]) -> Result<String, String> {
+    use tokio::time::{timeout, Duration};
+
+    // Allowlist check: "sudo" is the OS entry binary; "git" is hard-coded as the
+    // next argument.  shell::exec cannot be used here because we need current_dir
+    // and extra env vars, but we still enforce the central allowlist.
+    if !super::shell::is_allowed("sudo") {
+        return Err("sudo is not in the command allowlist".to_string());
+    }
+    if !super::shell::is_allowed("git") {
+        return Err("git is not in the command allowlist".to_string());
+    }
     // Reject injection characters in any argument before passing to the OS.
     for arg in args {
         if arg
@@ -256,7 +270,10 @@ async fn run_git(dir: &str, args: &[&str], extra_env: &[(&str, &str)]) -> Result
         cmd.env(k, v);
     }
 
-    let output = cmd.output().await.map_err(|e| e.to_string())?;
+    let output = timeout(Duration::from_secs(GIT_COMMAND_TIMEOUT_SECS), cmd.output())
+        .await
+        .map_err(|_| format!("git command timed out after {GIT_COMMAND_TIMEOUT_SECS}s"))?
+        .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
@@ -270,6 +287,48 @@ async fn run_git(dir: &str, args: &[&str], extra_env: &[(&str, &str)]) -> Result
         };
         Err(msg)
     }
+}
+
+/// Run a simple `sudo` command with allowlist checks and timeout.
+///
+/// Use this for fixed command shapes such as:
+/// `sudo -n cp ...`, `sudo -n ln ...`, `sudo -n mv ...`, `sudo -n git ...`.
+async fn run_sudo(args: &[&str]) -> Result<std::process::Output, String> {
+    use tokio::time::{timeout, Duration};
+
+    if args.is_empty() {
+        return Err("sudo command arguments cannot be empty".to_string());
+    }
+    if !super::shell::is_allowed("sudo") {
+        return Err("sudo is not in the command allowlist".to_string());
+    }
+
+    // Find the first non-flag argument after sudo; this should be the subcommand.
+    let subcommand = args
+        .iter()
+        .copied()
+        .find(|arg| !arg.starts_with('-'))
+        .ok_or_else(|| "sudo command is missing a subcommand".to_string())?;
+    if !super::shell::is_allowed(subcommand) {
+        return Err(format!("{subcommand} is not in the command allowlist"));
+    }
+
+    for arg in args {
+        if arg
+            .chars()
+            .any(|c| matches!(c, ';' | '|' | '&' | '$' | '`' | '\n' | '\r'))
+        {
+            return Err(format!("Invalid characters in sudo argument: {arg}"));
+        }
+    }
+
+    timeout(
+        Duration::from_secs(SUDO_COMMAND_TIMEOUT_SECS),
+        Command::new("sudo").args(args).output(),
+    )
+    .await
+    .map_err(|_| format!("sudo command timed out after {SUDO_COMMAND_TIMEOUT_SECS}s"))?
+    .map_err(|e| e.to_string())
 }
 
 /// Write an SSH private key to a uniquely-named temp file (mode 0o600).
@@ -552,6 +611,12 @@ pub async fn status(dir: &str) -> Result<String, String> {
 /// Generate a new Ed25519 SSH key pair suitable for a deploy key.
 /// Returns `(private_key_pem, public_key_authorized_keys_line)`.
 pub async fn generate_deploy_key(label: &str) -> Result<(String, String), String> {
+    use tokio::time::{timeout, Duration};
+
+    if !super::shell::is_allowed("ssh-keygen") {
+        return Err("ssh-keygen is not in the command allowlist".to_string());
+    }
+
     let key_path = format!("/tmp/panel-git-key-{}", Uuid::new_v4().simple());
 
     // Sanitise the label so it cannot inject into ssh-keygen arguments.
@@ -561,20 +626,24 @@ pub async fn generate_deploy_key(label: &str) -> Result<(String, String), String
         .take(64)
         .collect();
 
-    let output = Command::new("ssh-keygen")
-        .args([
-            "-t",
-            "ed25519",
-            "-C",
-            &safe_label,
-            "-f",
-            &key_path,
-            "-N",
-            "", // no passphrase
-        ])
-        .output()
-        .await
-        .map_err(|e| format!("ssh-keygen failed: {e}"))?;
+    let output = timeout(
+        Duration::from_secs(30),
+        Command::new("ssh-keygen")
+            .args([
+                "-t",
+                "ed25519",
+                "-C",
+                &safe_label,
+                "-f",
+                &key_path,
+                "-N",
+                "", // no passphrase
+            ])
+            .output(),
+    )
+    .await
+    .map_err(|_| "ssh-keygen timed out after 30s".to_string())?
+    .map_err(|e| format!("ssh-keygen failed: {e}"))?;
 
     if !output.status.success() {
         let _ = fs::remove_file(&key_path).await;
@@ -673,11 +742,7 @@ pub async fn enable_atomic_deploy(doc_root: &str) -> Result<(), String> {
 
     // Re-entrant: skip clone if repo/ already exists.
     if !Path::new(&repo_dir).exists() {
-        let output = Command::new("sudo")
-            .args(["-n", "git", "clone", "--local", doc_root, &repo_dir])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let output = run_sudo(&["-n", "git", "clone", "--local", doc_root, &repo_dir]).await?;
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
         }
@@ -711,30 +776,18 @@ pub async fn enable_atomic_deploy(doc_root: &str) -> Result<(), String> {
             .await
             .map_err(|e| format!("Failed to create initial release dir: {e}"))?;
 
-        let cp_out = Command::new("sudo")
-            .args(["-n", "cp", "-a", &public_src, &release_pub])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let cp_out = run_sudo(&["-n", "cp", "-a", &public_src, &release_pub]).await?;
         if !cp_out.status.success() {
             return Err(String::from_utf8_lossy(&cp_out.stderr).trim().to_string());
         }
 
         // Atomic symlink swap: ln -sfn target tmp && mv -T tmp public
         let tmp_link = format!("{doc_root}/public_next");
-        let ln_out = Command::new("sudo")
-            .args(["-n", "ln", "-sfn", &release_pub, &tmp_link])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let ln_out = run_sudo(&["-n", "ln", "-sfn", &release_pub, &tmp_link]).await?;
         if !ln_out.status.success() {
             return Err(String::from_utf8_lossy(&ln_out.stderr).trim().to_string());
         }
-        let mv_out = Command::new("sudo")
-            .args(["-n", "mv", "-T", &tmp_link, &public_src])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let mv_out = run_sudo(&["-n", "mv", "-T", &tmp_link, &public_src]).await?;
         if !mv_out.status.success() {
             return Err(String::from_utf8_lossy(&mv_out.stderr).trim().to_string());
         }
@@ -767,32 +820,20 @@ pub async fn disable_atomic_deploy(doc_root: &str) -> Result<(), String> {
 
     validate_work_dir(&target_str)?; // ensure target is still under /home/
 
-    let cp_out = Command::new("sudo")
-        .args(["-n", "cp", "-a", &target_str, &public_restore])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let cp_out = run_sudo(&["-n", "cp", "-a", &target_str, &public_restore]).await?;
     if !cp_out.status.success() {
         return Err(String::from_utf8_lossy(&cp_out.stderr).trim().to_string());
     }
 
     // Replace the symlink with the real directory.
-    let mv_out = Command::new("sudo")
-        .args(["-n", "mv", "-T", &public_restore, &public_link])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let mv_out = run_sudo(&["-n", "mv", "-T", &public_restore, &public_link]).await?;
     if !mv_out.status.success() {
         return Err(String::from_utf8_lossy(&mv_out.stderr).trim().to_string());
     }
 
     // Move the git working tree back to doc_root if repo/ exists.
     if Path::new(&repo_dir).exists() {
-        let git_out = Command::new("sudo")
-            .args(["-n", "git", "clone", "--local", &repo_dir, doc_root])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let git_out = run_sudo(&["-n", "git", "clone", "--local", &repo_dir, doc_root]).await?;
         if git_out.status.success() {
             let _ = tokio::fs::remove_dir_all(&repo_dir).await;
         }
@@ -860,11 +901,7 @@ pub async fn atomic_pull(
         .map_err(|e| format!("Failed to create release dir: {e}"))?;
 
     // Use -aL to dereference any inner symlinks in the source tree.
-    let cp_out = Command::new("sudo")
-        .args(["-n", "cp", "-aL", &repo_pub, &release_pub])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let cp_out = run_sudo(&["-n", "cp", "-aL", &repo_pub, &release_pub]).await?;
     if !cp_out.status.success() {
         return Err(format!(
             "Snapshot failed: {}",
@@ -929,19 +966,11 @@ pub async fn atomic_pull(
     let public_link = format!("{doc_root}/public");
     let tmp_link = format!("{doc_root}/public_next");
 
-    let ln_out = Command::new("sudo")
-        .args(["-n", "ln", "-sfn", &release_pub, &tmp_link])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let ln_out = run_sudo(&["-n", "ln", "-sfn", &release_pub, &tmp_link]).await?;
     if !ln_out.status.success() {
         return Err(String::from_utf8_lossy(&ln_out.stderr).trim().to_string());
     }
-    let mv_out = Command::new("sudo")
-        .args(["-n", "mv", "-T", &tmp_link, &public_link])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+    let mv_out = run_sudo(&["-n", "mv", "-T", &tmp_link, &public_link]).await?;
     if !mv_out.status.success() {
         return Err(String::from_utf8_lossy(&mv_out.stderr).trim().to_string());
     }

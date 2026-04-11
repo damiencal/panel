@@ -79,6 +79,28 @@ fn validate_destination(dest: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
+#[cfg(feature = "server")]
+async fn run_command_output_with_timeout(
+    cmd: &str,
+    args: &[&str],
+    timeout_secs: u64,
+) -> Result<std::process::Output, String> {
+    use tokio::process::Command;
+    use tokio::time::{timeout, Duration};
+
+    if !crate::services::shell::is_allowed(cmd) {
+        return Err(format!("{cmd} is not in the command allowlist"));
+    }
+
+    timeout(
+        Duration::from_secs(timeout_secs),
+        Command::new(cmd).args(args).output(),
+    )
+    .await
+    .map_err(|_| format!("{cmd} timed out after {timeout_secs}s"))?
+    .map_err(|e| format!("{cmd} failed to start: {e}"))
+}
+
 // ─── Schedule CRUD ────────────────────────────────────────────────────────────
 
 /// List backup schedules (with their latest run) for the current user.
@@ -477,8 +499,6 @@ async fn backup_site(
     safe_name: &str,
     timestamp: &str,
 ) -> Result<(i64, String), String> {
-    use tokio::process::Command;
-
     // Resolve source path from the panel DB.
     let pool = crate::db::pool().map_err(|e| e.to_string())?;
     let site_id = sched
@@ -518,14 +538,19 @@ async fn backup_site(
 
     // Build the tar command.
     let compress_flag = if sched.compress { "-czf" } else { "-cf" };
-    let status = Command::new("tar")
-        .args([compress_flag, &archive_path, "-C", &doc_root, "."])
-        .status()
-        .await
-        .map_err(|e| format!("tar failed to start: {e}"))?;
+    let tar_output = run_command_output_with_timeout(
+        "tar",
+        &[compress_flag, &archive_path, "-C", &doc_root, "."],
+        3600,
+    )
+    .await?;
 
-    if !status.success() {
-        return Err(format!("tar exited with status: {}", status));
+    if !tar_output.status.success() {
+        return Err(format!(
+            "tar exited with status {}: {}",
+            tar_output.status,
+            String::from_utf8_lossy(&tar_output.stderr).trim()
+        ));
     }
 
     let meta = tokio::fs::metadata(&archive_path)
@@ -542,8 +567,6 @@ async fn backup_mailbox(
     safe_name: &str,
     timestamp: &str,
 ) -> Result<(i64, String), String> {
-    use tokio::process::Command;
-
     let pool = crate::db::pool().map_err(|e| e.to_string())?;
     let mailbox_id = sched
         .mailbox_id
@@ -619,14 +642,19 @@ async fn backup_mailbox(
     let archive_path = format!("{dest_dir}/mail_{safe_name}_{timestamp}{archive_ext}");
     let compress_flag = if sched.compress { "-czf" } else { "-cf" };
 
-    let status = Command::new("tar")
-        .args([compress_flag, &archive_path, "-C", &maildir, "."])
-        .status()
-        .await
-        .map_err(|e| format!("tar failed to start: {e}"))?;
+    let tar_output = run_command_output_with_timeout(
+        "tar",
+        &[compress_flag, &archive_path, "-C", &maildir, "."],
+        3600,
+    )
+    .await?;
 
-    if !status.success() {
-        return Err(format!("tar exited with status: {}", status));
+    if !tar_output.status.success() {
+        return Err(format!(
+            "tar exited with status {}: {}",
+            tar_output.status,
+            String::from_utf8_lossy(&tar_output.stderr).trim()
+        ));
     }
 
     let meta = tokio::fs::metadata(&archive_path)

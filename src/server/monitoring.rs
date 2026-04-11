@@ -70,6 +70,30 @@ pub struct ClientDashboardData {
     pub open_tickets: i64,
 }
 
+#[cfg(feature = "server")]
+async fn run_command_output_with_timeout(
+    cmd: &str,
+    args: &[&str],
+    timeout_secs: u64,
+) -> Result<std::process::Output, ServerFnError> {
+    use tokio::process::Command;
+    use tokio::time::{timeout, Duration};
+
+    if !crate::services::shell::is_allowed(cmd) {
+        return Err(ServerFnError::new(format!(
+            "{cmd} is not in the command allowlist"
+        )));
+    }
+
+    timeout(
+        Duration::from_secs(timeout_secs),
+        Command::new(cmd).args(args).output(),
+    )
+    .await
+    .map_err(|_| ServerFnError::new(format!("{cmd} timed out after {timeout_secs} s")))?
+    .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
 /// Get admin dashboard statistics.
 #[server]
 pub async fn server_get_admin_stats() -> Result<AdminStats, ServerFnError> {
@@ -300,7 +324,6 @@ pub struct ServerInfo {
 pub async fn server_get_server_info() -> Result<ServerInfo, ServerFnError> {
     use super::helpers::*;
     use std::fs;
-    use tokio::process::Command;
 
     ensure_init().await.map_err(ServerFnError::new)?;
     let claims = verify_auth()?;
@@ -323,13 +346,7 @@ pub async fn server_get_server_info() -> Result<ServerInfo, ServerFnError> {
         .to_string();
 
     // architecture
-    let arch_out = Command::new("uname")
-        .arg("-m")
-        .output()
-        .await
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|| std::env::consts::ARCH.to_string());
+    let arch_out = std::env::consts::ARCH.to_string();
 
     // OS name from /etc/os-release
     let os_name = fs::read_to_string("/etc/os-release")
@@ -395,9 +412,7 @@ pub async fn server_get_server_info() -> Result<ServerInfo, ServerFnError> {
         .unwrap_or(0);
 
     // Pending updates (apt-get --dry-run upgrade)
-    let apt_out = Command::new("apt-get")
-        .args(["-s", "upgrade"])
-        .output()
+    let apt_out = run_command_output_with_timeout("apt-get", &["-s", "upgrade"], 120)
         .await
         .ok()
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
@@ -664,6 +679,68 @@ pub struct OsUpdateResult {
     pub output_tail: String,
 }
 
+#[cfg(feature = "server")]
+fn is_apt_lock_error(stderr: &str) -> bool {
+    let lowered = stderr.to_ascii_lowercase();
+    (lowered.contains("unable to lock directory") || lowered.contains("could not get lock"))
+        && (lowered.contains("/var/lib/apt/lists") || lowered.contains("/var/lib/dpkg/lock"))
+}
+
+#[cfg(feature = "server")]
+async fn run_apt_with_retries(
+    args: &[&str],
+    label: &str,
+    timeout_secs: u64,
+    max_attempts: u32,
+) -> Result<std::process::Output, ServerFnError> {
+    use tokio::process::Command;
+    use tokio::time::{sleep, timeout, Duration};
+
+    if !crate::services::shell::is_allowed("apt-get") {
+        return Err(ServerFnError::new(
+            "apt-get is not in the command allowlist".to_string(),
+        ));
+    }
+
+    for attempt in 1..=max_attempts {
+        let out = timeout(
+            Duration::from_secs(timeout_secs),
+            Command::new("apt-get")
+                .args(args)
+                .env("DEBIAN_FRONTEND", "noninteractive")
+                .output(),
+        )
+        .await
+        .map_err(|_| ServerFnError::new(format!("{} timed out after {} s", label, timeout_secs)))?
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        if out.status.success() {
+            return Ok(out);
+        }
+
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if attempt < max_attempts && is_apt_lock_error(&stderr) {
+            let backoff_secs = 10 * u64::from(attempt);
+            tracing::warn!(
+                label,
+                attempt,
+                max_attempts,
+                backoff_secs,
+                "apt lock detected; retrying"
+            );
+            sleep(Duration::from_secs(backoff_secs)).await;
+            continue;
+        }
+
+        return Ok(out);
+    }
+
+    Err(ServerFnError::new(format!(
+        "{} failed after {} attempts",
+        label, max_attempts
+    )))
+}
+
 /// Trigger `apt-get update && apt-get upgrade -y` on the host (admin only).
 ///
 /// The update is run with a 10-minute timeout.  The full upgrade output is
@@ -685,23 +762,22 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
     // manages stale locks internally. Forcibly removing them while another
     // process holds them on Linux would not evict the holder (the fd stays
     // open) and could corrupt the dpkg database.
-    let _ = Command::new("dpkg")
-        .args(["--configure", "-a"])
-        .env("DEBIAN_FRONTEND", "noninteractive")
-        .output()
-        .await;
-
-    // Step 2: refresh package lists
-    let update_out = timeout(
-        Duration::from_secs(120),
-        Command::new("apt-get")
-            .args(["-y", "update"])
+    if !crate::services::shell::is_allowed("dpkg") {
+        return Err(ServerFnError::new(
+            "dpkg is not in the command allowlist".to_string(),
+        ));
+    }
+    let _ = timeout(
+        Duration::from_secs(60),
+        Command::new("dpkg")
+            .args(["--configure", "-a"])
             .env("DEBIAN_FRONTEND", "noninteractive")
             .output(),
     )
-    .await
-    .map_err(|_| ServerFnError::new("apt-get update timed out after 120 s"))?
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
+    .await;
+
+    // Step 2: refresh package lists
+    let update_out = run_apt_with_retries(&["-y", "update"], "apt-get update", 120, 4).await?;
 
     if !update_out.status.success() {
         let stderr = String::from_utf8_lossy(&update_out.stderr).to_string();
@@ -711,7 +787,7 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
             Some("system"),
             None,
             Some("apt-get update"),
-            "failure",
+            "Failure",
             Some(&stderr),
         )
         .await;
@@ -722,16 +798,8 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
     }
 
     // Step 3: perform the upgrade
-    let upgrade_out = timeout(
-        Duration::from_secs(600),
-        Command::new("apt-get")
-            .args(["-y", "upgrade"])
-            .env("DEBIAN_FRONTEND", "noninteractive")
-            .output(),
-    )
-    .await
-    .map_err(|_| ServerFnError::new("apt-get upgrade timed out after 600 s"))?
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let upgrade_out =
+        run_apt_with_retries(&["-y", "upgrade"], "apt-get upgrade", 600, 4).await?;
 
     let stdout = String::from_utf8_lossy(&upgrade_out.stdout).to_string();
     let stderr = String::from_utf8_lossy(&upgrade_out.stderr).to_string();
@@ -744,7 +812,7 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
             Some("system"),
             None,
             Some("apt-get upgrade"),
-            "failure",
+            "Failure",
             Some(&stderr),
         )
         .await;
@@ -782,7 +850,7 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
         Some("system"),
         None,
         Some("apt-get upgrade"),
-        "success",
+        "Success",
         None,
     )
     .await;
@@ -1044,20 +1112,21 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
     let extract_dir_str = extract_dir
         .to_str()
         .ok_or_else(|| ServerFnError::new("Extract directory path contains invalid UTF-8"))?;
-    let tar_status = Command::new("tar")
-        .args([
+    let tar_out = run_command_output_with_timeout(
+        "tar",
+        &[
             "-xzf",
             archive_path_str,
             "-C",
             extract_dir_str,
             "--no-absolute-filenames", // block absolute-path entries (tar slip defence)
             "--no-overwrite-dir",      // prevent replacing existing directories
-        ])
-        .status()
-        .await
-        .map_err(|e| ServerFnError::new(format!("tar command failed: {e}")))?;
+        ],
+        120,
+    )
+    .await?;
 
-    if !tar_status.success() {
+    if !tar_out.status.success() {
         return Err(ServerFnError::new(
             "tar extraction failed — archive may be corrupt.".to_string(),
         ));
@@ -1079,23 +1148,16 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
         .map_err(|e| ServerFnError::new(format!("Failed to copy binary to {tmp_binary}: {e}")))?;
 
     // Set permissions before moving into place
-    let chmod_status = Command::new("chmod")
-        .args(["755", tmp_binary])
-        .status()
-        .await
-        .map_err(|e| ServerFnError::new(format!("chmod failed to spawn: {e}")))?;
-    if !chmod_status.success() {
+    let chmod_out = run_command_output_with_timeout("chmod", &["755", tmp_binary], 30).await?;
+    if !chmod_out.status.success() {
         return Err(ServerFnError::new(
             "chmod 755 failed on the new binary — update aborted.".to_string(),
         ));
     }
 
-    let chown_status = Command::new("chown")
-        .args(["panel:panel", tmp_binary])
-        .status()
-        .await
-        .map_err(|e| ServerFnError::new(format!("chown failed to spawn: {e}")))?;
-    if !chown_status.success() {
+    let chown_out = run_command_output_with_timeout("chown", &["panel:panel", tmp_binary], 30)
+        .await?;
+    if !chown_out.status.success() {
         return Err(ServerFnError::new(
             "chown panel:panel failed on the new binary — update aborted.".to_string(),
         ));
@@ -1117,13 +1179,20 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
 
     // ── Step 7: restart the panel service after returning the response ────
     tokio::spawn(async {
+        use tokio::time::{timeout, Duration};
+
         tokio::time::sleep(Duration::from_secs(2)).await;
-        if let Err(e) = Command::new("systemctl")
-            .args(["restart", "panel"])
-            .status()
+        if !crate::services::shell::is_allowed("systemctl") {
+            tracing::error!("systemctl is not in the command allowlist; skipping panel restart");
+            return;
+        }
+        if let Err(e) = timeout(
+            Duration::from_secs(30),
+            Command::new("systemctl").args(["restart", "panel"]).status(),
+        )
             .await
         {
-            tracing::error!("Failed to restart panel service after update: {e}");
+            tracing::error!("Failed to restart panel service after update: {e:?}");
         }
     });
 

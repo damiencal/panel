@@ -92,7 +92,7 @@ async fn sync_user_crontab(
     owner_id: i64,
     username: &str,
 ) -> Result<(), String> {
-    use tokio::process::Command;
+    use tokio::io::AsyncWriteExt;
 
     // Defense-in-depth: re-validate username at this layer even though callers
     // already do so, to guard against future refactors that bypass the caller checks.
@@ -100,10 +100,11 @@ async fn sync_user_crontab(
         .map_err(|e| format!("Invalid username: {}", e))?;
 
     // 1. Read the existing crontab (exit 1 = no crontab yet; treat as empty).
-    let existing = match Command::new("sudo")
-        .args(["--non-interactive", "crontab", "-u", username, "-l"])
-        .output()
-        .await
+    let existing = match crate::services::shell::exec_output(
+        "sudo",
+        &["--non-interactive", "crontab", "-u", username, "-l"],
+    )
+    .await
     {
         Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout).into_owned(),
         _ => String::new(),
@@ -161,17 +162,28 @@ async fn sync_user_crontab(
         content.push_str("# END PANEL CRON JOBS\n");
     }
 
-    // 5. Write to a randomly-named temp file.
+    // 5. Write to a randomly-named temp file with owner-only permissions.
     let temp_path = format!("/tmp/.panel_cron_{}", uuid::Uuid::new_v4());
-    tokio::fs::write(&temp_path, content.as_bytes())
+    let mut temp_file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&temp_path)
         .await
-        .map_err(|e| format!("Failed to write temporary crontab file: {}", e))?;
+        .map_err(|e| format!("Failed to create temporary crontab file: {e}"))?;
+    temp_file
+        .write_all(content.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to write temporary crontab file: {e}"))?;
+    drop(temp_file);
 
     // 6. Install via `crontab -u username /tmp/file`.
-    let result = Command::new("sudo")
-        .args(["--non-interactive", "crontab", "-u", username, &temp_path])
-        .output()
-        .await;
+    // shell::exec_output enforces allowlist and a 30-second timeout.
+    let result = crate::services::shell::exec_output(
+        "sudo",
+        &["--non-interactive", "crontab", "-u", username, &temp_path],
+    )
+    .await;
 
     // 7. Always clean up the temp file.
     if let Err(e) = tokio::fs::remove_file(&temp_path).await {
@@ -184,7 +196,7 @@ async fn sync_user_crontab(
             let stderr = String::from_utf8_lossy(&out.stderr);
             Err(format!("crontab install failed: {}", stderr))
         }
-        Err(e) => Err(format!("Failed to run crontab: {}", e)),
+        Err(e) => Err(format!("Failed to run crontab: {e}")),
     }
 }
 

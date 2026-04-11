@@ -1,7 +1,6 @@
 /// System-level operations and service discovery.
 use crate::models::service::{ServiceHealthState, ServiceInfo, ServiceStatus, ServiceType};
 use std::path::Path;
-use tokio::process::Command;
 
 /// Get the status of all managed services.
 pub async fn get_all_services_status() -> Vec<ServiceInfo> {
@@ -90,9 +89,9 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
         ServiceType::Redis => Some("redis-server"),
     };
 
-    if let Some(pattern) = pgrep_pattern {
+        if let Some(pattern) = pgrep_pattern {
         // pgrep -f searches the full command line; exit 0 means ≥1 match found.
-        if let Ok(out) = Command::new("pgrep").arg("-f").arg(pattern).output().await {
+        if let Ok(out) = super::shell::exec_output("pgrep", &["-f", pattern]).await {
             if out.status.success() {
                 return Ok(ServiceStatus::Running);
             }
@@ -125,10 +124,7 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
     };
 
     // Try systemctl first (works on systemd systems)
-    let output = Command::new("systemctl")
-        .arg("is-active")
-        .arg(service_name)
-        .output()
+    let output = super::shell::exec_output("systemctl", &["is-active", service_name])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -140,10 +136,7 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
     }
 
     // Fallback: `service <name> status`
-    let svc_output = Command::new("service")
-        .arg(service_name)
-        .arg("status")
-        .output()
+    let svc_output = super::shell::exec_output("service", &[service_name, "status"])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -185,9 +178,7 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
     let version = match service_type {
         ServiceType::OpenLiteSpeed => {
             // lshttpd -v writes to stderr on some builds; try both stdout and stderr.
-            let output = Command::new("/usr/local/lsws/bin/lshttpd")
-                .arg("-v")
-                .output()
+            let output = super::shell::exec_output("/usr/local/lsws/bin/lshttpd", &["-v"])
                 .await
                 .map_err(|e| e.to_string())?;
             let raw = format!(
@@ -198,9 +189,7 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
             raw.lines().next().unwrap_or("").trim().to_string()
         }
         ServiceType::MariaDB => {
-            let output = Command::new("mariadb")
-                .arg("--version")
-                .output()
+            let output = super::shell::exec_output("mariadb", &["--version"])
                 .await
                 .map_err(|e| e.to_string())?;
             let raw = String::from_utf8_lossy(&output.stdout);
@@ -213,9 +202,7 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
         }
         ServiceType::Postfix => {
             // `postconf mail_version` emits "mail_version = 3.x.x"
-            let output = Command::new("postconf")
-                .arg("mail_version")
-                .output()
+            let output = super::shell::exec_output("postconf", &["mail_version"])
                 .await
                 .map_err(|e| e.to_string())?;
             let raw = String::from_utf8_lossy(&output.stdout);
@@ -226,9 +213,7 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
         }
         ServiceType::Dovecot => {
             // `dovecot --version` emits e.g. "2.3.19.1 (9b53102964)"
-            let output = Command::new("dovecot")
-                .arg("--version")
-                .output()
+            let output = super::shell::exec_output("dovecot", &["--version"])
                 .await
                 .map_err(|e| e.to_string())?;
             let raw = String::from_utf8_lossy(&output.stdout);
@@ -236,7 +221,13 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
         }
         ServiceType::Ftpd => {
             // pure-ftpd doesn't have a --version flag; read from dpkg.
-            let output = Command::new("dpkg")
+            // The format specifier ${Version} contains '$' which validate_args
+            // rejects, so we call Command::new directly after an explicit
+            // runtime allowlist check.
+            if !super::shell::is_allowed("dpkg") {
+                return Err("dpkg is not in the command allowlist".to_string());
+            }
+            let output = tokio::process::Command::new("dpkg")
                 .args(["--showformat=${Version}", "-W", "pure-ftpd"])
                 .output()
                 .await
@@ -250,7 +241,13 @@ pub async fn get_service_version(service_type: ServiceType) -> Result<String, St
         }
         ServiceType::PhpMyAdmin => {
             // Read version from dpkg-query; strip epoch prefix (e.g. "4:5.2.1+dfsg..." → "5.2.1")
-            let output = Command::new("dpkg-query")
+            // The format specifier ${Version} contains '$' which validate_args
+            // rejects, so we call Command::new directly after an explicit
+            // runtime allowlist check.
+            if !super::shell::is_allowed("dpkg-query") {
+                return Err("dpkg-query is not in the command allowlist".to_string());
+            }
+            let output = tokio::process::Command::new("dpkg-query")
                 .args(["-W", "-f=${Version}", "phpmyadmin"])
                 .output()
                 .await
@@ -294,12 +291,9 @@ pub async fn is_service_installed(service_type: ServiceType) -> bool {
 
 /// Check if a binary exists in PATH.
 async fn which(binary: &str) -> bool {
-    Command::new("which")
-        .arg(binary)
-        .output()
+    super::shell::exec("which", &[binary])
         .await
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+        .is_ok()
 }
 
 /// Get system metrics (CPU, RAM, disk).
@@ -428,8 +422,9 @@ async fn get_cpu_usage() -> f64 {
 
 /// Get disk partition info via df.
 async fn get_disk_partitions() -> Vec<DiskPartition> {
-    let output = Command::new("df")
-        .args([
+    let Ok(output) = super::shell::exec_output(
+        "df",
+        &[
             "-B1",
             "--output=source,size,used,avail,pcent,target",
             "-x",
@@ -438,11 +433,12 @@ async fn get_disk_partitions() -> Vec<DiskPartition> {
             "devtmpfs",
             "-x",
             "overlay",
-        ])
-        .output()
-        .await;
-
-    let Ok(output) = output else { return vec![] };
+        ],
+    )
+    .await
+    else {
+        return vec![];
+    };
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     stdout
@@ -514,17 +510,19 @@ async fn get_network_stats() -> Vec<NetworkInterface> {
 
 /// Get docker container list.
 async fn get_docker_containers() -> Vec<DockerContainer> {
-    let output = Command::new("docker")
-        .args([
+    let Ok(output) = super::shell::exec_output(
+        "docker",
+        &[
             "ps",
             "-a",
             "--format",
             "{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}\t{{.Ports}}",
-        ])
-        .output()
-        .await;
-
-    let Ok(output) = output else { return vec![] };
+        ],
+    )
+    .await
+    else {
+        return vec![];
+    };
     if !output.status.success() {
         return vec![];
     }
@@ -549,15 +547,16 @@ async fn get_docker_containers() -> Vec<DockerContainer> {
 
     // Get resource usage for running containers
     if !containers.is_empty() {
-        let stats_output = Command::new("docker")
-            .args([
+        let stats_output = super::shell::exec_output(
+            "docker",
+            &[
                 "stats",
                 "--no-stream",
                 "--format",
                 "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}",
-            ])
-            .output()
-            .await;
+            ],
+        )
+        .await;
 
         if let Ok(stats) = stats_output {
             let stats_str = String::from_utf8_lossy(&stats.stdout);

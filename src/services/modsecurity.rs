@@ -128,16 +128,9 @@ impl ModSecurityService {
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
             // Download (no shell injection risk; URL is a compile-time constant)
-            let dl_out = tokio::process::Command::new("curl")
-                .args(["-fsSL", "-o", "/tmp/owasp-crs.tar.gz", owasp_url])
-                .output()
+            shell::exec("curl", &["-fsSL", "-o", "/tmp/owasp-crs.tar.gz", owasp_url])
                 .await
-                .map_err(|e| ServiceError::IoError(e.to_string()))?;
-            if !dl_out.status.success() {
-                return Err(ServiceError::CommandFailed(
-                    "Failed to download OWASP CRS".to_string(),
-                ));
-            }
+                .map_err(|_| ServiceError::CommandFailed("Failed to download OWASP CRS".to_string()))?;
 
             // Verify the SHA-256 checksum before extracting to prevent a
             // compromised CDN, MITM, or redirect from injecting malicious WAF rules.
@@ -169,16 +162,9 @@ impl ModSecurityService {
             .await?;
 
             // Move into place
-            let mv_out = tokio::process::Command::new("mv")
-                .args(["/tmp/owasp-crs", OWASP_DIR])
-                .output()
+            shell::exec("mv", &["/tmp/owasp-crs", OWASP_DIR])
                 .await
-                .map_err(|e| ServiceError::IoError(e.to_string()))?;
-            if !mv_out.status.success() {
-                return Err(ServiceError::CommandFailed(
-                    "Failed to install OWASP CRS".to_string(),
-                ));
-            }
+                .map_err(|_| ServiceError::CommandFailed("Failed to install OWASP CRS".to_string()))?;
         }
 
         // Set up CRS setup.conf from example

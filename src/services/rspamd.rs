@@ -16,6 +16,27 @@ const RSPAMD_LOCAL_CFG: &str = "/etc/rspamd/local.d";
 pub struct RspamdService;
 pub struct ClamAvService;
 
+fn validate_scan_target(path: &str) -> Result<String, ServiceError> {
+    if path.contains('\0') || path.contains([';', '|', '&', '\n', '\r']) {
+        return Err(ServiceError::CommandFailed("Invalid scan path".to_string()));
+    }
+
+    let canonical = std::fs::canonicalize(path)
+        .map_err(|_| ServiceError::CommandFailed("Scan path does not exist".to_string()))?;
+
+    let allowed_prefixes = ["/var/www", "/home", "/tmp", "/srv", "/opt"];
+    if !allowed_prefixes
+        .iter()
+        .any(|prefix| canonical.starts_with(prefix))
+    {
+        return Err(ServiceError::CommandFailed(
+            "Scan path must be within /var/www, /home, /tmp, /srv, or /opt".to_string(),
+        ));
+    }
+
+    Ok(canonical.to_string_lossy().to_string())
+}
+
 // ─── Rspamd ──────────────────────────────────────────────────────────────────
 
 #[async_trait]
@@ -257,10 +278,7 @@ impl ClamAvService {
         shell::exec("systemctl", &["stop", CLAMAV_SERVICE])
             .await
             .ok();
-        let out = tokio::process::Command::new("freshclam")
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        let out = shell::exec_output("freshclam", &[]).await?;
         // Restart regardless
         shell::exec("systemctl", &["start", CLAMAV_SERVICE])
             .await
@@ -283,24 +301,14 @@ impl ClamAvService {
     /// Scan a directory or file. Returns a scan report.
     /// `path` is validated to prevent traversal attacks.
     pub async fn scan_path(&self, path: &str) -> Result<ClamScanReport, ServiceError> {
-        // Validate path to prevent injection
-        if path.contains("..") || path.contains(';') || path.contains('|') || path.contains('&') {
-            return Err(ServiceError::CommandFailed("Invalid scan path".to_string()));
-        }
-        // Only allow scanning within /var/www, /home, /tmp, /srv
-        let allowed_prefixes = &["/var/www", "/home", "/tmp", "/srv", "/opt"];
-        if !allowed_prefixes.iter().any(|p| path.starts_with(p)) {
-            return Err(ServiceError::CommandFailed(
-                "Scan path must be within /var/www, /home, /tmp, /srv, or /opt".to_string(),
-            ));
-        }
+        let safe_path = validate_scan_target(path)?;
 
-        info!("ClamAV scanning: {path}");
-        let out = tokio::process::Command::new("clamscan")
-            .args(["--recursive", "--infected", "--no-summary", path])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        info!("ClamAV scanning: {safe_path}");
+        let out = shell::exec_output(
+            "clamscan",
+            &["--recursive", "--infected", "--no-summary", &safe_path],
+        )
+        .await?;
 
         let stdout = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_clamscan_output(&stdout))
@@ -308,22 +316,11 @@ impl ClamAvService {
 
     /// Scan a path using clamdscan (uses the daemon; faster for large dirs).
     pub async fn scan_path_daemon(&self, path: &str) -> Result<ClamScanReport, ServiceError> {
-        if path.contains("..") || path.contains(';') || path.contains('|') || path.contains('&') {
-            return Err(ServiceError::CommandFailed("Invalid scan path".to_string()));
-        }
-        let allowed_prefixes = &["/var/www", "/home", "/tmp", "/srv", "/opt"];
-        if !allowed_prefixes.iter().any(|p| path.starts_with(p)) {
-            return Err(ServiceError::CommandFailed(
-                "Scan path must be within /var/www, /home, /tmp, /srv, or /opt".to_string(),
-            ));
-        }
+        let safe_path = validate_scan_target(path)?;
 
-        info!("clamdscan scanning: {path}");
-        let out = tokio::process::Command::new("clamdscan")
-            .args(["--infected", "--no-summary", path])
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        info!("clamdscan scanning: {safe_path}");
+        let out = shell::exec_output("clamdscan", &["--infected", "--no-summary", &safe_path])
+            .await?;
 
         let stdout = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_clamscan_output(&stdout))
@@ -334,11 +331,7 @@ impl ClamAvService {
         if !std::path::Path::new("/usr/bin/clamscan").exists() {
             return Err(ServiceError::NotInstalled);
         }
-        let out = tokio::process::Command::new("clamscan")
-            .arg("--version")
-            .output()
-            .await
-            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        let out = shell::exec_output("clamscan", &["--version"]).await?;
         let text = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_clam_version(&text))
     }

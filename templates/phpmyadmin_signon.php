@@ -1,83 +1,109 @@
 <?php
 /**
  * phpMyAdmin Single Sign-On Bridge Script
- * 
- * Validates an HMAC-SHA256-signed token from the Hosting Control Panel
+ *
+ * Validates an opaque one-time handle issued by the Hosting Control Panel
  * and establishes a phpMyAdmin session with the provided MySQL credentials.
  *
- * Token format: base64url(json_payload).base64url(hmac_signature)
- * Payload: {"u": mysql_user, "p": mysql_password, "d": db_name, "exp": unix_timestamp}
- *
- * The HMAC secret must match PANEL_SECRET_KEY from the panel configuration.
+ * Security model:
+ *   - The handle is 128-bit random, single-use, and expires in 90 seconds.
+ *   - Credentials are exchanged over a loopback HTTP call; they never appear
+ *     in the URL, browser history, or web-server access logs.
+ *   - This script does NOT need — and does NOT read — the panel master secret.
  */
 
-// Load the panel secret key from environment or config
-$panel_secret = getenv('PANEL_SECRET_KEY');
-if (!$panel_secret) {
-    // Try reading from panel.toml
-    $toml_paths = [
-        '/opt/panel/panel.toml',
-        '/etc/panel/panel.toml',
-    ];
-    foreach ($toml_paths as $path) {
-        if (file_exists($path)) {
-            $content = file_get_contents($path);
-            if (preg_match('/secret_key\s*=\s*"([^"]+)"/', $content, $matches)) {
-                $panel_secret = $matches[1];
-                break;
-            }
-        }
+// ── 1. Read and validate the opaque handle from the URL ──────────────────────
+
+$handle = isset($_GET['handle']) ? trim($_GET['handle']) : '';
+
+if (empty($handle)) {
+    http_response_code(400);
+    die('Missing handle parameter');
+}
+
+// URL-safe base64 chars only (A-Z a-z 0-9 - _), max 64 chars.
+if (!preg_match('/^[A-Za-z0-9_-]{1,64}$/', $handle)) {
+    http_response_code(400);
+    die('Invalid handle format');
+}
+
+// ── 2. Exchange the handle for credentials via loopback ──────────────────────
+
+$panel_port = getenv('PANEL_INTERNAL_PORT');
+if (!$panel_port) {
+    $panel_port = '3000'; // default panel listen port
+}
+
+// Bind source to 127.0.0.1 so the exchange never leaves the loopback interface.
+$exchange_url = 'http://127.0.0.1:' . intval($panel_port)
+    . '/api/pma-token-exchange?handle=' . rawurlencode($handle);
+
+$ctx = stream_context_create([
+    'http' => [
+        'method'  => 'GET',
+        'timeout' => 5,
+        'ignore_errors' => true,
+    ],
+    'socket' => [
+        'bindto' => '127.0.0.1:0',  // loopback only
+    ],
+]);
+
+$body = @file_get_contents($exchange_url, false, $ctx);
+
+if ($body === false) {
+    http_response_code(503);
+    die('Token exchange service unavailable');
+}
+
+// Check HTTP response code from $http_response_header.
+$status_code = 200;
+if (isset($http_response_header[0])) {
+    if (preg_match('/HTTP\/\d+\.\d+ (\d{3})/', $http_response_header[0], $m)) {
+        $status_code = intval($m[1]);
     }
 }
 
-if (!$panel_secret) {
-    http_response_code(500);
-    die('Configuration error: secret key not available');
-}
-
-// Get token from query parameter
-$token = isset($_GET['token']) ? $_GET['token'] : '';
-
-if (empty($token)) {
-    http_response_code(400);
-    die('Missing token parameter');
-}
-
-// Split token into payload and signature
-$parts = explode('.', $token, 2);
-if (count($parts) !== 2) {
-    http_response_code(400);
-    die('Invalid token format');
-}
-
-$payload_b64 = $parts[0];
-$signature_b64 = $parts[1];
-
-// Verify HMAC signature
-$expected_sig = hash_hmac('sha256', $payload_b64, $panel_secret, true);
-$expected_sig_b64 = rtrim(strtr(base64_encode($expected_sig), '+/', '-_'), '=');
-
-if (!hash_equals($expected_sig_b64, $signature_b64)) {
+if ($status_code !== 200) {
+    // 404 = handle not found or expired; 429 = rate-limited
     http_response_code(403);
-    die('Invalid token signature');
+    die('Handle not found, expired, or rate-limited');
 }
 
-// Decode payload (base64url to standard base64)
-$payload_b64_std = strtr($payload_b64, '-_', '+/');
-$padding = 4 - (strlen($payload_b64_std) % 4);
-if ($padding < 4) {
-    $payload_b64_std .= str_repeat('=', $padding);
-}
-$payload_json = base64_decode($payload_b64_std, true);
+$creds = json_decode($body, true);
 
-if ($payload_json === false) {
-    http_response_code(400);
-    die('Invalid token encoding');
+if (!$creds
+    || !isset($creds['user'])
+    || !isset($creds['password'])
+    || !isset($creds['host'])) {
+    http_response_code(503);
+    die('Unexpected response from token exchange service');
 }
 
-$payload = json_decode($payload_json, true);
+// ── 3. Establish the phpMyAdmin signon session ───────────────────────────────
 
-if (!$payload || !isset($payload['u']) || !isset($payload['p']) || !isset($payload['exp'])) {
+$session_name = 'PMA_single_signon';
+session_name($session_name);
+session_start();
+
+$_SESSION['PMA_single_signon_user']     = $creds['user'];
+$_SESSION['PMA_single_signon_password'] = $creds['password'];
+$_SESSION['PMA_single_signon_host']     = $creds['host'];
+
+if (!empty($creds['db'])) {
+    $_SESSION['PMA_single_signon_db'] = $creds['db'];
+}
+
+session_write_close();
+
+// ── 4. Redirect into phpMyAdmin ──────────────────────────────────────────────
+
+$pma_path    = dirname($_SERVER['SCRIPT_NAME']);
+$redirect_url = rtrim($pma_path, '/') . '/index.php';
+
+header('Location: ' . $redirect_url);
+exit;
+
     http_response_code(400);
     die('Invalid token payload');
 }

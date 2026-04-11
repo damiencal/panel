@@ -9,7 +9,7 @@ default_platform = "web"
 title = "Hosting Panel"
 
 [web.watcher]
-watch_path = ["src", "assets"]
+watch_path = ["src", "assets", "index.html"]
 
 [server]
 port = 3030

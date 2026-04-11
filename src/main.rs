@@ -4125,27 +4125,58 @@ fn AdminDatabases() -> Element {
         });
     };
 
-    let do_restart = move |_| {
-        restarting.set(true);
-        restart_msg.set(None);
-        spawn(async move {
-            match server_restart_mysql().await {
-                Ok(()) => restart_msg.set(Some("MariaDB restarted successfully.".into())),
-                Err(e) => restart_msg.set(Some(format!("Restart failed: {e}"))),
-            }
-            restarting.set(false);
-            status.restart();
-        });
-    };
+    let mut confirm_restart = use_signal(|| false);
 
     rsx! {
+        // ── Restart MySQL confirmation modal ──
+        if confirm_restart() {
+            div { class: "fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4",
+                div { class: "bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl",
+                    div { class: "flex items-center gap-3 mb-4",
+                        div { class: "p-2 bg-red-100 rounded-xl",
+                            Icon { name: "alert-triangle", class: "w-5 h-5 text-red-600".to_string() }
+                        }
+                        h3 { class: "text-base font-semibold text-gray-900", "Restart MySQL?" }
+                    }
+                    p { class: "text-sm text-gray-600 mb-5",
+                        "This will restart the MariaDB/MySQL service. All active database connections will be dropped momentarily."
+                    }
+                    div { class: "flex items-center gap-3 justify-end",
+                        button {
+                            class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
+                            onclick: move |_| confirm_restart.set(false),
+                            "Cancel"
+                        }
+                        button {
+                            class: "px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-60",
+                            disabled: restarting(),
+                            onclick: move |_| {
+                                confirm_restart.set(false);
+                                restarting.set(true);
+                                restart_msg.set(None);
+                                spawn(async move {
+                                    match server_restart_mysql().await {
+                                        Ok(()) => restart_msg.set(Some("MariaDB restarted successfully.".into())),
+                                        Err(e) => restart_msg.set(Some(format!("Restart failed: {e}"))),
+                                    }
+                                    restarting.set(false);
+                                    status.restart();
+                                });
+                            },
+                            if restarting() { "Restarting…" } else { "Restart" }
+                        }
+                    }
+                }
+            }
+        }
+
         div { class: "p-6 lg:p-8",
             div { class: "flex items-center justify-between mb-6",
                 h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Database Management" }
                 div { class: "flex gap-3",
                     button {
-                        class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center gap-2 text-sm",
-                        onclick: do_restart,
+                        class: "px-4 py-2 border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-50 font-medium rounded-lg transition-colors flex items-center gap-2 text-sm",
+                        onclick: move |_| confirm_restart.set(true),
                         disabled: restarting(),
                         Icon { name: "refresh", class: "w-4 h-4".to_string() }
                         span { if restarting() { "Restarting…" } else { "Restart MySQL" } }

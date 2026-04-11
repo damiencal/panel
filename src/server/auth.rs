@@ -17,6 +17,29 @@ static LOGIN_RATE_LIMITER: OnceLock<Mutex<HashMap<String, Vec<Instant>>>> = Once
 #[cfg(feature = "server")]
 static TRUST_PROXY_HEADERS: OnceLock<bool> = OnceLock::new();
 
+/// Argon2 hash used to equalize login timing for unknown users.
+/// Initialized once per process at runtime to avoid hard-coding a static hash.
+#[cfg(feature = "server")]
+static DUMMY_LOGIN_HASH: OnceLock<String> = OnceLock::new();
+
+#[cfg(feature = "server")]
+fn dummy_login_hash() -> &'static str {
+    DUMMY_LOGIN_HASH
+        .get_or_init(|| {
+            use argon2::{
+                password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+                Argon2,
+            };
+
+            let salt = SaltString::generate(&mut OsRng);
+            Argon2::default()
+                .hash_password(b"panel_dummy_login_password", &salt)
+                .map(|h| h.to_string())
+                .expect("dummy login hash generation must succeed")
+        })
+        .as_str()
+}
+
 /// Called from `ensure_init()` during server startup.
 #[cfg(feature = "server")]
 pub(crate) fn init_proxy_trust(trust: bool) {
@@ -126,26 +149,38 @@ pub async fn server_login(
 
     let pool = get_pool()?;
 
-    // Find user
-    let user = match crate::db::users::get_by_username(pool, &username).await {
-        Ok(u) => u,
-        Err(_) => {
-            audit_log_with_ip(
-                0,
-                "login",
-                Some("user"),
-                None,
-                Some(&username),
-                &client_ip,
-                "Failure",
-                Some("Unknown username"),
-            )
-            .await;
-            return Err(ServerFnError::new("Invalid credentials"));
-        }
+    // Find user, but always verify password against *some* Argon2 hash so
+    // unknown users and inactive users have comparable timing to valid users.
+    let user = crate::db::users::get_by_username(pool, &username).await.ok();
+    let hash_for_verify = user
+        .as_ref()
+        .map(|u| u.password_hash.clone())
+        .unwrap_or_else(|| dummy_login_hash().to_string());
+    let parsed_hash = PasswordHash::new(&hash_for_verify)
+        .map_err(|_| ServerFnError::new("Invalid credentials"))?;
+    let password_valid = Argon2::default()
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok();
+
+    let user = if let Some(u) = user {
+        u
+    } else {
+        audit_log_with_ip(
+            0,
+            "login",
+            Some("user"),
+            None,
+            Some(&username),
+            &client_ip,
+            "Failure",
+            Some("Unknown username"),
+        )
+        .await;
+        return Err(ServerFnError::new("Invalid credentials"));
     };
 
-    // Check account status
+    // Return the same generic error for suspended/pending users as wrong password
+    // while still paying the same Argon2 verification cost above.
     if user.status != crate::models::user::AccountStatus::Active {
         audit_log_with_ip(
             user.id,
@@ -158,19 +193,10 @@ pub async fn server_login(
             Some("Account suspended or pending"),
         )
         .await;
-        // Return the same generic error as a wrong password to prevent
-        // account-status enumeration.
         return Err(ServerFnError::new("Invalid credentials"));
     }
 
-    // Verify password
-    let parsed_hash = PasswordHash::new(&user.password_hash)
-        .map_err(|_| ServerFnError::new("Invalid credentials"))?;
-
-    if Argon2::default()
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
+    if !password_valid {
         audit_log_with_ip(
             user.id,
             "login",

@@ -372,7 +372,14 @@ impl PureFtpdService {
             .map(|line| format!("{}\n", line))
             .collect();
 
-        fs::write(PUREFTPD_PASSWD_FILE, new_content)
+        // Atomic write: write to a tmp file then rename into place so that a
+        // mid-write process kill never leaves a zero-byte or partially written
+        // passwd file.  Every other write path in this module uses the same pattern.
+        let tmp_path = format!("{}.tmp", PUREFTPD_PASSWD_FILE);
+        fs::write(&tmp_path, new_content)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        fs::rename(&tmp_path, PUREFTPD_PASSWD_FILE)
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 

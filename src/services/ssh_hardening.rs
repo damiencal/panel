@@ -144,9 +144,7 @@ impl SshHardeningService {
             })?;
 
         // Test and reload SSHD
-        let test = tokio::process::Command::new("sshd")
-            .arg("-t")
-            .output()
+        let test = super::shell::exec_output("sshd", &["-t"])
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
@@ -167,17 +165,13 @@ impl SshHardeningService {
         }
 
         // Reload SSHD
-        let reload = tokio::process::Command::new("systemctl")
-            .args(["reload", "sshd"])
-            .output()
+        let reload = super::shell::exec_output("systemctl", &["reload", "sshd"])
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
         if !reload.status.success() {
             // Try 'ssh' as the service name (some distros name it 'ssh')
-            let reload2 = tokio::process::Command::new("systemctl")
-                .args(["reload", "ssh"])
-                .output()
+            let reload2 = super::shell::exec_output("systemctl", &["reload", "ssh"])
                 .await
                 .map_err(|e| ServiceError::IoError(e.to_string()))?;
             if !reload2.status.success() {
@@ -208,11 +202,7 @@ impl SshHardeningService {
         if let Err(e) = fs::remove_file(SSHD_HARDENED_DROPIN).await {
             tracing::warn!("Could not remove SSH hardening drop-in during restore: {e}");
         }
-        if let Err(e) = tokio::process::Command::new("systemctl")
-            .args(["reload", "sshd"])
-            .output()
-            .await
-        {
+        if let Err(e) = super::shell::exec_output("systemctl", &["reload", "sshd"]).await {
             tracing::warn!("Failed to reload sshd after config restore: {e}");
         }
         info!("SSH configuration restored from backup");
@@ -226,11 +216,7 @@ impl SshHardeningService {
 
     /// Check the current SSH listening port.
     pub async fn get_current_port(&self) -> u16 {
-        let out = tokio::process::Command::new("sshd")
-            .arg("-T")
-            .output()
-            .await
-            .ok();
+        let out = super::shell::exec_output("sshd", &["-T"]).await.ok();
         if let Some(out) = out {
             let text = String::from_utf8_lossy(&out.stdout);
             for line in text.lines() {
@@ -248,9 +234,7 @@ impl SshHardeningService {
 
     /// Run `sshd -T` and return full effective config.
     pub async fn get_effective_config(&self) -> Result<String, ServiceError> {
-        let out = tokio::process::Command::new("sshd")
-            .arg("-T")
-            .output()
+        let out = super::shell::exec_output("sshd", &["-T"])
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
         Ok(String::from_utf8_lossy(&out.stdout).to_string())

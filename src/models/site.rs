@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// PHP versions supported by the OpenLiteSpeed service layer.
 /// Kept here (in models) so both the server and the WASM frontend can access it.
-pub const SUPPORTED_PHP_VERSIONS: &[&str] = &["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"];
+pub const SUPPORTED_PHP_VERSIONS: &[&str] = &["7.4", "8.3", "8.4"];
 
 /// Site type determines how OpenLiteSpeed handles the site.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]

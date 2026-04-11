@@ -174,7 +174,11 @@ pub mod shell {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ServiceError::CommandFailed(stderr.to_string()));
+            let cmd_name = cmd.split('/').next_back().unwrap_or(cmd);
+            tracing::error!(cmd = %cmd_name, "Command failed: {}", stderr);
+            return Err(ServiceError::CommandFailed(format!(
+                "{cmd_name} command failed — see server logs for details"
+            )));
         }
 
         Ok(output)
@@ -221,10 +225,49 @@ pub mod shell {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ServiceError::CommandFailed(stderr.to_string()));
+            let cmd_name = cmd.split('/').next_back().unwrap_or(cmd);
+            tracing::error!(cmd = %cmd_name, "Command failed: {}", stderr);
+            return Err(ServiceError::CommandFailed(format!(
+                "{cmd_name} command failed — see server logs for details"
+            )));
         }
 
         Ok(output)
+    }
+
+    /// Execute a command and return the raw `Output` regardless of exit status.
+    /// Applies the same allowlist and argument-injection checks as `exec`, but does
+    /// NOT fail when the process exits with a non-zero code.  Use this when the
+    /// caller needs to inspect the exit status as part of its own logic (e.g.
+    /// `pgrep` returning 1 when no process matches, or `sshd -t` returning 1 on a
+    /// config error that the caller wants to handle gracefully).
+    pub async fn exec_output(cmd: &str, args: &[&str]) -> Result<Output, ServiceError> {
+        let binary = cmd.split('/').next_back().unwrap_or(cmd);
+
+        if !ALLOWED_BINARIES.contains(&binary) {
+            return Err(ServiceError::PermissionDenied);
+        }
+
+        validate_args(args)?;
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            Command::new(cmd).args(args).output(),
+        )
+        .await
+        .map_err(|_| ServiceError::CommandFailed("command timed out after 30s".to_string()))?
+        .map_err(|e| ServiceError::IoError(e.to_string()))
+    }
+
+    /// Returns `true` if `cmd` is in the binary allowlist.
+    ///
+    /// Use this in the rare cases where `exec` / `exec_output` cannot be used
+    /// directly (e.g., the caller needs `Command::env` or `Command::current_dir`),
+    /// but allowlist enforcement is still required.  The caller is responsible for
+    /// running `validate_args` separately.
+    pub fn is_allowed(cmd: &str) -> bool {
+        let binary = cmd.split('/').next_back().unwrap_or(cmd);
+        ALLOWED_BINARIES.contains(&binary)
     }
 
     /// Check if a binary exists in PATH.
