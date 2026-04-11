@@ -3506,6 +3506,7 @@ fn AdminAllSites() -> Element {
             "Static" => panel::models::site::SiteType::Static,
             "ReverseProxy" => panel::models::site::SiteType::ReverseProxy,
             "NodeJS" => panel::models::site::SiteType::NodeJs,
+            "WordPress" => panel::models::site::SiteType::WordPress,
             _ => panel::models::site::SiteType::Php,
         };
         spawn(async move {
@@ -3550,6 +3551,7 @@ fn AdminAllSites() -> Element {
                             value: "{new_site_type}",
                             onchange: move |e| new_site_type.set(e.value()),
                             option { value: "PHP", "PHP" }
+                            option { value: "WordPress", "WordPress" }
                             option { value: "Static", "Static" }
                             option { value: "NodeJS", "Node.js" }
                             option { value: "ReverseProxy", "Reverse Proxy" }
@@ -5670,6 +5672,7 @@ fn ClientSites() -> Element {
             "Static" => panel::models::site::SiteType::Static,
             "ReverseProxy" => panel::models::site::SiteType::ReverseProxy,
             "NodeJS" => panel::models::site::SiteType::NodeJs,
+            "WordPress" => panel::models::site::SiteType::WordPress,
             _ => panel::models::site::SiteType::Php,
         };
         spawn(async move {
@@ -5714,6 +5717,7 @@ fn ClientSites() -> Element {
                             value: "{new_site_type}",
                             onchange: move |e| new_site_type.set(e.value()),
                             option { value: "PHP", "PHP" }
+                            option { value: "WordPress", "WordPress" }
                             option { value: "Static", "Static" }
                             option { value: "NodeJS", "Node.js" }
                             option { value: "ReverseProxy", "Reverse Proxy" }
