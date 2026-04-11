@@ -6437,7 +6437,8 @@ fn DatabaseRow(
         });
     };
 
-    let add_user = move |_: FormEvent| {
+    let add_user = move |e: FormEvent| {
+        e.prevent_default();
         add_error.set(None);
         adding.set(true);
         let username = new_username();
@@ -6717,7 +6718,8 @@ fn DbUserRow(user: panel::models::database::DatabaseUser, on_change: EventHandle
         });
     };
 
-    let change_pw = move |_: FormEvent| {
+    let change_pw = move |e: FormEvent| {
+        e.prevent_default();
         changing_pw.set(true);
         pw_error.set(None);
         let pw = new_pw();
