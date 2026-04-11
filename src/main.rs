@@ -73,6 +73,15 @@ fn main() {
                     panel::utils::PanelConfig::default()
                 }
             };
+
+            // Spawn the heartbeat background runner.
+            // The pool is initialized lazily on the first server function call via
+            // `ensure_init()`; we check it is ready before spawning.
+            if let Ok(pool) = panel::db::pool() {
+                let hb_pool = pool.clone();
+                tokio::spawn(panel::services::heartbeat::HeartbeatRunner::new(hb_pool).run());
+            }
+
             let request_guard = RequestAccessLayer::new(panel_config.request_security);
             let router = dioxus::server::router(App)
                 .route(

@@ -70,6 +70,22 @@ pub struct ClientDashboardData {
     pub open_tickets: i64,
 }
 
+/// Information about a single heartbeat beat task (most recent run).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BeatInfo {
+    pub last_ran_at: chrono::DateTime<chrono::Utc>,
+    pub status: crate::models::task::TaskStatus,
+    pub log_output: Option<String>,
+}
+
+/// Admin-visible summary of the latest heartbeat beat outcomes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeartbeatStatus {
+    pub pulse: Option<BeatInfo>,
+    pub maintenance: Option<BeatInfo>,
+    pub quotas: Option<BeatInfo>,
+}
+
 #[cfg(feature = "server")]
 async fn run_command_output_with_timeout(
     cmd: &str,
@@ -1200,5 +1216,45 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
     Ok(PanelUpdateResult {
         success: true,
         message: format!("Panel updated to {tag}. Restarting…"),
+    })
+}
+
+/// Get the most recent outcome of each heartbeat beat (admin only).
+#[server]
+pub async fn server_get_heartbeat_status() -> Result<HeartbeatStatus, ServerFnError> {
+    use super::helpers::*;
+
+    ensure_init().await.map_err(ServerFnError::new)?;
+    let claims = verify_auth()?;
+    crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
+    let pool = get_pool()?;
+    check_token_not_revoked(pool, &claims).await?;
+
+    async fn latest_beat(pool: &sqlx::SqlitePool, name: &str) -> Option<BeatInfo> {
+        sqlx::query_as::<_, crate::models::task::BackgroundTask>(
+            "SELECT * FROM background_tasks WHERE name = ? ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(name)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+        .map(|t| BeatInfo {
+            last_ran_at: t.created_at,
+            status: t.status,
+            log_output: t.log_output,
+        })
+    }
+
+    let (pulse, maintenance, quotas) = tokio::join!(
+        latest_beat(pool, "heartbeat:pulse"),
+        latest_beat(pool, "heartbeat:maintenance"),
+        latest_beat(pool, "heartbeat:quotas"),
+    );
+
+    Ok(HeartbeatStatus {
+        pulse,
+        maintenance,
+        quotas,
     })
 }
