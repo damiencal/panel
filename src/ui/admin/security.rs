@@ -240,7 +240,7 @@ pub fn AdminFirewall() -> Element {
                             rsx! { p { class: "text-sm text-red-500", "{msg}" } }
                         }
                     },
-                    None => rsx! { p { class: "text-sm text-gray-400", "Loading..." } },
+                    None => rsx! { p { class: "text-sm text-gray-500", "Loading..." } },
                 }
             }
 
@@ -252,6 +252,7 @@ pub fn AdminFirewall() -> Element {
                     div { class: "space-y-3",
                         div { class: "grid grid-cols-2 gap-2",
                             select {
+                                aria_label: "Rule action",
                                 class: "border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 value: add_action(),
                                 oninput: move |e| add_action.set(e.value()),
@@ -261,6 +262,7 @@ pub fn AdminFirewall() -> Element {
                                 option { value: "limit", "Limit" }
                             }
                             select {
+                                aria_label: "Protocol",
                                 class: "border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 value: add_proto(),
                                 oninput: move |e| add_proto.set(e.value()),
@@ -270,18 +272,21 @@ pub fn AdminFirewall() -> Element {
                             }
                         }
                         input {
+                            aria_label: "Port",
                             class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "Port (e.g. 80, 443, 8080:8090)",
                             value: add_port(),
                             oninput: move |e| add_port.set(e.value()),
                         }
                         input {
+                            aria_label: "From IP or CIDR",
                             class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "From IP/CIDR (leave blank for any)",
                             value: add_from(),
                             oninput: move |e| add_from.set(e.value()),
                         }
                         input {
+                            aria_label: "Rule comment",
                             class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "Comment (optional)",
                             value: add_comment(),
@@ -302,6 +307,7 @@ pub fn AdminFirewall() -> Element {
                     p { class: "text-xs text-gray-400 mb-3", "Immediately deny all traffic from an IP or CIDR range." }
                     div { class: "space-y-3",
                         input {
+                            aria_label: "IP address or CIDR to block",
                             class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                             placeholder: "IP address or CIDR (e.g. 1.2.3.4 or 1.2.3.0/24)",
                             value: block_ip(),
@@ -340,6 +346,7 @@ pub fn AdminFirewall() -> Element {
                         if show_import() {
                             div { class: "mt-3 space-y-2",
                                 textarea {
+                                    aria_label: "iptables rules to import",
                                     class: "w-full h-32 border border-black/[0.08] rounded-xl px-3 py-2 text-xs font-mono",
                                     placeholder: "Paste iptables-restore format rules here…",
                                     value: import_text(),
@@ -375,7 +382,7 @@ pub fn AdminFirewall() -> Element {
                         div { class: "overflow-x-auto",
                             table { class: "w-full text-sm",
                                 thead {
-                                    tr { class: "text-xs text-gray-400 uppercase tracking-wide bg-gray-50",
+                                    tr { class: "text-xs text-gray-500 uppercase tracking-wide bg-gray-50",
                                         th { class: "px-4 py-3 text-left", "#" }
                                         th { class: "px-4 py-3 text-left", "Action" }
                                         th { class: "px-4 py-3 text-left", "From" }
@@ -406,6 +413,7 @@ pub fn AdminFirewall() -> Element {
                                                         button {
                                                             class: "text-red-400 hover:text-red-600 transition-colors",
                                                             title: "Delete rule",
+                                                            aria_label: "Delete rule",
                                                             onclick: {
                                                                 move |_| {
                                                                     error.set(None); ok_msg.set(None);
@@ -670,7 +678,7 @@ pub fn AdminWaf() -> Element {
                         }
                     },
                     Some(Err(e)) => rsx! { p { class: "text-sm text-red-500", "{e}" } },
-                    None => rsx! { p { class: "text-sm text-gray-400", "Loading..." } },
+                    None => rsx! { p { class: "text-sm text-gray-500", "Loading..." } },
                 }
             }
 
@@ -687,7 +695,7 @@ pub fn AdminWaf() -> Element {
                         div { class: "overflow-x-auto",
                             table { class: "w-full text-sm",
                                 thead {
-                                    tr { class: "text-xs text-gray-400 uppercase tracking-wide bg-gray-50",
+                                    tr { class: "text-xs text-gray-500 uppercase tracking-wide bg-gray-50",
                                         th { class: "px-4 py-3 text-left", "Time" }
                                         th { class: "px-4 py-3 text-left", "Client IP" }
                                         th { class: "px-4 py-3 text-left", "Method" }
@@ -837,6 +845,7 @@ pub fn AdminClamAv() -> Element {
                 p { class: "text-xs text-gray-400 mb-3", "Only paths under /var/www, /home, /tmp, /srv, and /opt are allowed." }
                 div { class: "flex gap-2",
                     input {
+                        aria_label: "Path to scan",
                         class: "flex-1 border border-black/[0.08] rounded-xl px-3 py-2 text-sm font-mono",
                         value: scan_path(),
                         oninput: move |e| scan_path.set(e.value()),
@@ -880,7 +889,7 @@ pub fn AdminClamAv() -> Element {
                                     div { class: "bg-red-50 px-4 py-2 text-sm font-semibold text-red-700", "Threats detected" }
                                     table { class: "w-full text-sm",
                                         thead {
-                                            tr { class: "text-xs text-gray-400 uppercase bg-gray-50",
+                                            tr { class: "text-xs text-gray-500 uppercase bg-gray-50",
                                                 th { class: "px-4 py-2 text-left", "Path" }
                                                 th { class: "px-4 py-2 text-left", "Virus" }
                                             }
@@ -1062,8 +1071,9 @@ pub fn AdminSshHardening() -> Element {
                         // Port & Root login
                         div { class: "grid grid-cols-2 gap-4",
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "SSH Port" }
+                                label { r#for: "ssh-port", class: "block text-xs font-semibold text-gray-600 mb-1.5", "SSH Port" }
                                 input {
+                                    id: "ssh-port",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "65535",
                                     value: port(),
@@ -1071,8 +1081,9 @@ pub fn AdminSshHardening() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Permit Root Login" }
+                                label { r#for: "ssh-permit-root", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Permit Root Login" }
                                 select {
+                                    id: "ssh-permit-root",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     value: permit_root(),
                                     oninput: move |e| permit_root.set(e.value()),
@@ -1086,7 +1097,7 @@ pub fn AdminSshHardening() -> Element {
 
                         // Auth methods
                         div {
-                            label { class: "block text-xs font-semibold text-gray-600 mb-2", "Authentication Methods" }
+                            span { class: "block text-xs font-semibold text-gray-600 mb-2", "Authentication Methods" }
                             div { class: "space-y-2",
                                 label { class: "flex items-center gap-2 cursor-pointer",
                                     input { r#type: "checkbox", class: "accent-rose-600", checked: pubkey_auth(), oninput: move |e| pubkey_auth.set(e.checked()) }
@@ -1106,8 +1117,9 @@ pub fn AdminSshHardening() -> Element {
                         // Limits
                         div { class: "grid grid-cols-3 gap-4",
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Auth Tries" }
+                                label { r#for: "ssh-max-auth-tries", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Auth Tries" }
                                 input {
+                                    id: "ssh-max-auth-tries",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "20",
                                     value: max_auth_tries(),
@@ -1115,8 +1127,9 @@ pub fn AdminSshHardening() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Login Grace (sec)" }
+                                label { r#for: "ssh-login-grace", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Login Grace (sec)" }
                                 input {
+                                    id: "ssh-login-grace",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "10", max: "600",
                                     value: login_grace_time(),
@@ -1124,8 +1137,9 @@ pub fn AdminSshHardening() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Sessions" }
+                                label { r#for: "ssh-max-sessions", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Max Sessions" }
                                 input {
+                                    id: "ssh-max-sessions",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "1", max: "50",
                                     value: max_sessions(),
@@ -1137,8 +1151,9 @@ pub fn AdminSshHardening() -> Element {
                         // Keep-alive
                         div { class: "grid grid-cols-2 gap-4",
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Interval (sec)" }
+                                label { r#for: "ssh-alive-interval", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Interval (sec)" }
                                 input {
+                                    id: "ssh-alive-interval",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "0",
                                     value: client_alive_interval(),
@@ -1146,8 +1161,9 @@ pub fn AdminSshHardening() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Count Max" }
+                                label { r#for: "ssh-alive-count-max", class: "block text-xs font-semibold text-gray-600 mb-1.5", "Client Alive Count Max" }
                                 input {
+                                    id: "ssh-alive-count-max",
                                     class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                     r#type: "number", min: "0", max: "10",
                                     value: client_alive_count_max(),
@@ -1158,7 +1174,7 @@ pub fn AdminSshHardening() -> Element {
 
                         // Feature toggles
                         div {
-                            label { class: "block text-xs font-semibold text-gray-600 mb-2", "Feature Flags" }
+                            span { class: "block text-xs font-semibold text-gray-600 mb-2", "Feature Flags" }
                             div { class: "grid grid-cols-2 gap-2",
                                 label { class: "flex items-center gap-2 cursor-pointer",
                                     input { r#type: "checkbox", class: "accent-rose-600", checked: use_pam(), oninput: move |e| use_pam.set(e.checked()) }
@@ -1189,8 +1205,9 @@ pub fn AdminSshHardening() -> Element {
 
                         // AllowUsers
                         div {
-                            label { class: "block text-xs font-semibold text-gray-600 mb-1.5", "AllowUsers (space-separated, leave blank for all)" }
+                            label { r#for: "ssh-allowed-users", class: "block text-xs font-semibold text-gray-600 mb-1.5", "AllowUsers (space-separated, leave blank for all)" }
                             input {
+                                id: "ssh-allowed-users",
                                 class: "w-full border border-black/[0.08] rounded-xl px-3 py-2 text-sm",
                                 placeholder: "e.g. deploy ubuntu admin",
                                 value: allowed_users(),
@@ -1238,11 +1255,12 @@ pub fn AdminBackups() -> Element {
             div { class: "flex items-center justify-between mb-6",
                 div {
                     h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Backup Overview" }
-                    p { class: "text-[13px] text-gray-400 mt-1", "Global backup stats and run history across all clients." }
+                    p { class: "text-[13px] text-gray-500 mt-1", "Global backup stats and run history across all clients." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
                     title: "Refresh",
+                    aria_label: "Refresh",
                     onclick: move |_| { stats_res.restart(); runs_res.restart(); },
                     Icon { name: "refresh-cw", class: "w-5 h-5".to_string() }
                 }

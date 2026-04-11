@@ -1691,7 +1691,7 @@ fn Login() -> Element {
 
             div { class: "w-full max-w-md glass-strong rounded-2xl shadow-float p-8 lg:p-10 relative z-10 animate-scale-in",
                 h1 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-1", "Welcome back" }
-                p { class: "text-[13px] text-gray-400 mb-6", "Sign in to your hosting panel" }
+                p { class: "text-[13px] text-gray-500 mb-6", "Sign in to your hosting panel" }
 
                 if let Some(err) = error() {
                     div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-xl mb-4 text-sm", "{err}" }
@@ -1762,7 +1762,7 @@ fn AdminDashboard() -> Element {
                         "Admin Dashboard"
                     }
                 }
-                p { class: "text-[13px] text-gray-400 mt-1", "Overview of your hosting infrastructure." }
+                p { class: "text-[13px] text-gray-500 mt-1", "Overview of your hosting infrastructure." }
             }
             match &*stats.read() {
                 Some(Ok(s)) => rsx! {
@@ -1803,7 +1803,7 @@ fn StatCard(
         div { class: "glass-card rounded-2xl p-6 hover:shadow-glass transition-all duration-200",
             div { class: "flex items-center justify-between",
                 div {
-                    p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "{label}" }
+                    p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "{label}" }
                     p { class: "text-3xl font-semibold text-gray-900 mt-2 tracking-tight", "{value}" }
                 }
                 div { class: "p-3 bg-black/[0.04] rounded-xl text-gray-500",
@@ -1916,7 +1916,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "monitor", class: "w-4 h-4 text-blue-500".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "Hostname" }
+                                        p { class: "text-xs text-gray-500 uppercase", "Hostname" }
                                         p { class: "text-sm font-medium text-gray-900", "{info.hostname}" }
                                     }
                                 }
@@ -1925,7 +1925,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "layers", class: "w-4 h-4 text-purple-500".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "Operating System" }
+                                        p { class: "text-xs text-gray-500 uppercase", "Operating System" }
                                         p { class: "text-sm font-medium text-gray-900", "{info.os_name}" }
                                     }
                                 }
@@ -1934,7 +1934,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "terminal", class: "w-4 h-4 text-amber-500".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "Kernel" }
+                                        p { class: "text-xs text-gray-500 uppercase", "Kernel" }
                                         p { class: "text-sm font-medium text-gray-900", "{info.kernel_version}" }
                                     }
                                 }
@@ -1943,7 +1943,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "cpu", class: "w-4 h-4 text-emerald-500".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "CPU" }
+                                        p { class: "text-xs text-gray-500 uppercase", "CPU" }
                                         p { class: "text-sm font-medium text-gray-900", "{info.cpu_model}" }
                                         p { class: "text-xs text-gray-500", "{cpu_detail}" }
                                     }
@@ -1953,7 +1953,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "hard-drive", class: "w-4 h-4 text-gray-700".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "Memory / Swap" }
+                                        p { class: "text-xs text-gray-500 uppercase", "Memory / Swap" }
                                         p { class: "text-sm font-medium text-gray-900", "{mem_detail}" }
                                     }
                                 }
@@ -1962,7 +1962,7 @@ fn AdminServers() -> Element {
                                         Icon { name: "clock", class: "w-4 h-4 text-blue-500".to_string() }
                                     }
                                     div {
-                                        p { class: "text-xs text-gray-400 uppercase", "Uptime" }
+                                        p { class: "text-xs text-gray-500 uppercase", "Uptime" }
                                         p { class: "text-sm font-medium text-gray-900", "{uptime_str}" }
                                     }
                                 }
@@ -2080,11 +2080,11 @@ fn AdminServers() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Service" }
-                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Port" }
-                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Version" }
-                                    th { class: "px-6 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Service" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Port" }
+                                    th { class: "px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Version" }
+                                    th { class: "px-6 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -2152,7 +2152,7 @@ fn AdminServers() -> Element {
 
             // PHP Versions — install lsphp packages from the official LiteSpeed repo.
             div { class: "glass-card rounded-2xl p-6",
-                h3 { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-4",
+                h3 { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-4",
                     "PHP Versions (lsphp)"
                 }
                 if let Some(err) = php_install_error() {
@@ -2476,12 +2476,12 @@ fn AdminResellers() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Clients" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
-                                    th { class: "px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Clients" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -2810,8 +2810,9 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Role" }
+                                label { r#for: "new-role", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Role" }
                                 select {
+                                    id: "new-role",
                                     class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                     value: "{new_role}",
                                     onchange: move |e| new_role.set(e.value()),
@@ -2823,8 +2824,9 @@ fn AdminClients() -> Element {
                         // Package selector (only for Client role)
                         if new_role() == "Client" {
                             div {
-                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Package" }
+                                label { r#for: "new-package", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Package" }
                                 select {
+                                    id: "new-package",
                                     class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                                     onchange: move |e| {
                                         let val = e.value();
@@ -2842,8 +2844,9 @@ fn AdminClients() -> Element {
                         // Optional contact details
                         div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
                             div {
-                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company (optional)" }
+                                label { r#for: "new-company", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company (optional)" }
                                 input {
+                                    id: "new-company",
                                     r#type: "text",
                                     class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "Acme Inc.",
@@ -2852,8 +2855,9 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone (optional)" }
+                                label { r#for: "new-phone", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone (optional)" }
                                 input {
+                                    id: "new-phone",
                                     r#type: "tel",
                                     class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "+1 555 000 0000",
@@ -2862,8 +2866,9 @@ fn AdminClients() -> Element {
                                 }
                             }
                             div {
-                                label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address (optional)" }
+                                label { r#for: "new-address", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address (optional)" }
                                 input {
+                                    id: "new-address",
                                     r#type: "text",
                                     class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                                     placeholder: "123 Main St, City",
@@ -2891,13 +2896,13 @@ fn AdminClients() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Company" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Role" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Company" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Role" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -3403,14 +3408,14 @@ fn PackagesPage() -> Element {
                             table { class: "w-full",
                                 thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Sites" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "DBs" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Disk (MB)" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "BW (MB)" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Features" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Name" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Sites" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "DBs" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Email" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Disk (MB)" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "BW (MB)" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Features" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-black/[0.04]",
@@ -3554,8 +3559,9 @@ fn AdminAllSites() -> Element {
                 }
                 form { onsubmit: on_create, class: "flex gap-4 items-end flex-wrap",
                     div { class: "flex-1 min-w-[200px]",
-                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Domain" }
+                        label { r#for: "site-domain", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Domain" }
                         input {
+                            id: "site-domain",
                             r#type: "text",
                             class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
                             placeholder: "example.com",
@@ -3565,8 +3571,9 @@ fn AdminAllSites() -> Element {
                         }
                     }
                     div { class: "w-48",
-                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Site Type" }
+                        label { r#for: "site-type", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Site Type" }
                         select {
+                            id: "site-type",
                             class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent bg-white",
                             value: "{new_site_type}",
                             onchange: move |e| new_site_type.set(e.value()),
@@ -3592,15 +3599,15 @@ fn AdminAllSites() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Owner" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "SSL" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HTTPS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HSTS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Owner" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "SSL" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "HTTPS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "HSTS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -4475,7 +4482,7 @@ fn AdminDatabases() -> Element {
                             "Access phpMyAdmin to manage all MariaDB databases on this server. "
                             "As an administrator, you have full access to all databases."
                         }
-                        p { class: "text-sm text-gray-400",
+                        p { class: "text-sm text-gray-500",
                             "phpMyAdmin opens in a new tab with auto-authentication. "
                             "Sessions expire after 30 minutes of inactivity."
                         }
@@ -4547,11 +4554,11 @@ fn AdminEmail() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Owner ID" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Hourly Limit" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Daily Limit" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Owner ID" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Hourly Limit" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Daily Limit" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -4676,10 +4683,10 @@ fn AdminAuditLog() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr { class: "hover:bg-black/[0.02] transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Action" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Target" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Time" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Action" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Target" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Time" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -4738,7 +4745,7 @@ fn ResellerDashboard() -> Element {
                         "Reseller Dashboard"
                     }
                 }
-                p { class: "text-[13px] text-gray-400 mt-1", "Manage your hosting clients and packages." }
+                p { class: "text-[13px] text-gray-500 mt-1", "Manage your hosting clients and packages." }
             }
             div { class: "grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8",
                 match &*clients.read() {
@@ -5004,11 +5011,11 @@ fn ResellerClients() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Email" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Username" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -5328,7 +5335,7 @@ fn ResellerSupportTickets() -> Element {
             div { class: "flex items-center justify-between mb-6",
                 div {
                     h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Support Tickets" }
-                    p { class: "text-[13px] text-gray-400 mt-1", "All client tickets for your accounts." }
+                    p { class: "text-[13px] text-gray-500 mt-1", "All client tickets for your accounts." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
@@ -5343,10 +5350,10 @@ fn ResellerSupportTickets() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Updated" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -5718,7 +5725,7 @@ fn ClientDashboard() -> Element {
                         "Dashboard"
                     }
                 }
-                p { class: "text-[13px] text-gray-400 mt-1", "Manage your websites, databases, and hosting services." }
+                p { class: "text-[13px] text-gray-500 mt-1", "Manage your websites, databases, and hosting services." }
             }
             match &*dashboard.read() {
                 Some(Ok(d)) => rsx! {
@@ -5828,14 +5835,14 @@ fn ClientSites() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "SSL" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HTTPS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "HSTS" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Created" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Domain" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "SSL" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "HTTPS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "HSTS" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Created" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -6331,11 +6338,11 @@ fn ClientDatabases() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr { class: "hover:bg-black/[0.02] transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Users" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Name" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Type" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Users" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -6542,9 +6549,9 @@ fn DatabaseRow(
                                             table { class: "w-full text-sm",
                                                 thead { class: "bg-gray-100 border-b border-gray-200",
                                                     tr {
-                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
-                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Privileges" }
-                                                        th { class: "px-4 py-2 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Username" }
+                                                        th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Privileges" }
+                                                        th { class: "px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                                     }
                                                 }
                                                 tbody { class: "divide-y divide-black/[0.04]",
@@ -6564,7 +6571,7 @@ fn DatabaseRow(
                                 p { class: "text-sm text-red-600", "Error loading users: {e}" }
                             },
                             None => rsx! {
-                                p { class: "text-sm text-gray-400", "Loading…" }
+                                p { class: "text-sm text-gray-500", "Loading…" }
                             },
                         }
 
@@ -7158,12 +7165,12 @@ fn DnsRecordPanel(
                                 table { class: "w-full",
                                     thead {
                                         tr { class: "border-b border-gray-200",
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Type" }
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Name" }
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Value" }
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "TTL" }
-                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Type" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Name" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Value" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Priority" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "TTL" }
+                                            th { class: "px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                         }
                                     }
                                     tbody { class: "divide-y divide-black/[0.04]",
@@ -7546,7 +7553,7 @@ fn MailboxList(domain_id: i64, domain_name: String) -> Element {
                     div { class: "px-6 py-4 text-sm text-red-600", "Error loading mailboxes: {e}" }
                 },
                 None => rsx! {
-                    div { class: "px-6 py-4 text-sm text-gray-400", "Loading mailboxes…" }
+                    div { class: "px-6 py-4 text-sm text-gray-500", "Loading mailboxes…" }
                 },
             }
         }
@@ -7616,7 +7623,7 @@ fn ClientBackups() -> Element {
             div { class: "flex items-center justify-between mb-6",
                 div {
                     h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Backups" }
-                    p { class: "text-[13px] text-gray-400 mt-1",
+                    p { class: "text-[13px] text-gray-500 mt-1",
                         "Per-domain and per-mailbox scheduled backups with history and stats."
                     }
                 }
@@ -8309,7 +8316,7 @@ fn ClientFtp() -> Element {
         div { class: "p-6 lg:p-8",
             div { class: "mb-6",
                 h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "FTP Usage Statistics" }
-                p { class: "text-[13px] text-gray-400 mt-1",
+                p { class: "text-[13px] text-gray-500 mt-1",
                     "Transfer activity across all your FTP accounts."
                 }
             }
@@ -8382,12 +8389,12 @@ fn ClientFtp() -> Element {
                                 table { class: "w-full text-sm",
                                     thead { class: "border-b border-black/[0.05]",
                                         tr {
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Username" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Uploads" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Up Bytes" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Downloads" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Down Bytes" }
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Last Active" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Username" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Uploads" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Up Bytes" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Downloads" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Down Bytes" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Last Active" }
                                         }
                                     }
                                     tbody { class: "divide-y divide-black/[0.04]",
@@ -8427,13 +8434,13 @@ fn ClientFtp() -> Element {
                                 table { class: "w-full text-sm",
                                     thead { class: "border-b border-black/[0.05]",
                                         tr {
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Time" }
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "User" }
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Direction" }
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "File" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Size" }
-                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider", "Secs" }
-                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Client IP" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Time" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "User" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Direction" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "File" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Size" }
+                                            th { class: "px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider", "Secs" }
+                                            th { class: "px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Client IP" }
                                         }
                                     }
                                     tbody { class: "divide-y divide-black/[0.04]",
@@ -8492,7 +8499,7 @@ fn AdminSupportTickets() -> Element {
             div { class: "flex items-center justify-between mb-6",
                 div {
                     h2 { class: "text-2xl font-semibold tracking-tight text-gray-900", "Support Tickets" }
-                    p { class: "text-[13px] text-gray-400 mt-1", "All client and reseller tickets." }
+                    p { class: "text-[13px] text-gray-500 mt-1", "All client and reseller tickets." }
                 }
                 button {
                     class: "p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
@@ -8507,10 +8514,10 @@ fn AdminSupportTickets() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr {
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Updated" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -8814,10 +8821,10 @@ fn ClientSupportTickets() -> Element {
                         table { class: "w-full",
                             thead { class: "border-b border-black/[0.05]",
                                 tr { class: "hover:bg-black/[0.02] transition-colors",
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Subject" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Priority" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider", "Updated" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Subject" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Priority" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider", "Updated" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -8932,11 +8939,11 @@ fn ClientWebStats() -> Element {
                             table { class: "w-full",
                                 thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Domain" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Tool" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Last Run" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Status" }
-                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider tracking-wider", "Actions" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider tracking-wider", "Domain" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider tracking-wider", "Tool" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider tracking-wider", "Last Run" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider tracking-wider", "Status" }
+                                        th { class: "px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider tracking-wider", "Actions" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-black/[0.04]",

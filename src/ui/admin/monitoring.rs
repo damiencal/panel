@@ -253,7 +253,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             if m.network.is_empty() {
                                 div { class: "text-center py-6",
                                     Icon { name: "wifi", class: "w-8 h-8 text-gray-300 mx-auto mb-2".to_string() }
-                                    p { class: "text-sm text-gray-400", "No network data available" }
+                                    p { class: "text-sm text-gray-500", "No network data available" }
                                 }
                             } else {
                                 div { class: "space-y-3",
@@ -297,7 +297,7 @@ fn MonitoringOverview(metrics: MetricsResource) -> Element {
                             if m.docker.is_empty() {
                                 div { class: "text-center py-6",
                                     Icon { name: "box", class: "w-8 h-8 text-gray-300 mx-auto mb-2".to_string() }
-                                    p { class: "text-sm text-gray-400", "No containers running" }
+                                    p { class: "text-sm text-gray-500", "No containers running" }
                                     p { class: "text-xs text-gray-300 mt-1", "Docker may not be installed" }
                                 }
                             } else {
@@ -477,19 +477,19 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
                     // Docker summary cards
                     div { class: "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6",
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Total" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Total" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{m.docker.len()}" }
                         }
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Running" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Running" }
                             p { class: "text-2xl font-bold text-green-600 mt-1", "{running}" }
                         }
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "CPU Usage" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "CPU Usage" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{total_cpu:.1}%" }
                         }
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Memory" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Memory" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1",
                                 {if total_mem >= 1024.0 { format!("{:.1} GB", total_mem / 1024.0) } else { format!("{:.0} MB", total_mem) }}
                             }
@@ -509,12 +509,12 @@ fn MonitoringDocker(metrics: MetricsResource) -> Element {
                             table { class: "w-full",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
-                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Container" }
-                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Image" }
-                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "CPU" }
-                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Memory" }
-                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Ports" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Container" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Image" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "CPU" }
+                                        th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Memory" }
+                                        th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Ports" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-black/[0.04]",
@@ -594,21 +594,21 @@ fn MonitoringNetwork(metrics: MetricsResource) -> Element {
                         div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "arrow-down", class: "w-4 h-4 text-green-500".to_string() }
-                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Received" }
+                                p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Total Received" }
                             }
                             p { class: "text-xl font-semibold tracking-tight text-gray-900", "{format_bytes(total_rx)}" }
                         }
                         div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "arrow-up", class: "w-4 h-4 text-blue-500".to_string() }
-                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Sent" }
+                                p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Total Sent" }
                             }
                             p { class: "text-xl font-semibold tracking-tight text-gray-900", "{format_bytes(total_tx)}" }
                         }
                         div { class: "glass-card rounded-xl p-4",
                             div { class: "flex items-center gap-2 mb-2",
                                 Icon { name: "alert-triangle", class: "w-4 h-4 text-amber-500".to_string() }
-                                p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Total Errors" }
+                                p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Total Errors" }
                             }
                             p { class: "text-xl font-semibold tracking-tight text-gray-900", "{total_errors}" }
                         }
@@ -702,15 +702,15 @@ fn MonitoringStorage(metrics: MetricsResource) -> Element {
                     // Summary
                     div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6",
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Partitions" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Partitions" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{m.disks.len()}" }
                         }
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Total Space" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Total Space" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{total_disk:.1} GB" }
                         }
                         div { class: "glass-card rounded-xl p-4",
-                            p { class: "text-[11px] font-semibold text-gray-400 uppercase tracking-wider tracking-wide", "Used Space" }
+                            p { class: "text-[11px] font-semibold text-gray-500 uppercase tracking-wider tracking-wide", "Used Space" }
                             p { class: "text-2xl font-semibold tracking-tight text-gray-900 mt-1", "{used_disk:.1} GB" }
                         }
                     }
@@ -1420,14 +1420,14 @@ fn MonitoringProcesses() -> Element {
                             table { class: "w-full text-sm",
                                 thead { class: "bg-gray-50 border-b border-gray-200",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16", "PID" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Name" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "User" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10", "St" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20", "CPU %" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-24", "Memory" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16", "Threads" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20", "Action" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-16", "PID" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Name" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "User" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10", "St" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20", "CPU %" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24", "Memory" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-16", "Threads" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20", "Action" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-gray-50",
@@ -1491,7 +1491,7 @@ fn MonitoringProcesses() -> Element {
                                 }
                             }
                             if list.is_empty() {
-                                p { class: "p-6 text-center text-sm text-gray-400", "No processes found." }
+                                p { class: "p-6 text-center text-sm text-gray-500", "No processes found." }
                             }
                         }
                     },
@@ -1502,7 +1502,7 @@ fn MonitoringProcesses() -> Element {
                         }
                     },
                     None => rsx! {
-                        div { class: "p-6 text-[13px] text-gray-400 animate-pulse", "Loading processes…" }
+                        div { class: "p-6 text-[13px] text-gray-500 animate-pulse", "Loading processes…" }
                     },
                 }
             }
@@ -1550,11 +1550,11 @@ fn MonitoringServicesTab() -> Element {
                         table { class: "w-full",
                             thead { class: "bg-gray-50 border-b border-gray-200",
                                 tr {
-                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Service" }
-                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Status" }
-                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Port" }
-                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Version" }
-                                    th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Service" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Status" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Port" }
+                                    th { class: "px-5 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Version" }
+                                    th { class: "px-5 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
                             }
                             tbody { class: "divide-y divide-black/[0.04]",
@@ -1656,7 +1656,7 @@ fn MonitoringServicesTab() -> Element {
                         }
                     },
                     Some(Err(e)) => rsx! { p { class: "p-6 text-red-600 text-sm", "Error: {e}" } },
-                    None => rsx! { p { class: "p-6 text-[13px] text-gray-400", "Loading services..." } },
+                    None => rsx! { p { class: "p-6 text-[13px] text-gray-500", "Loading services..." } },
                 }
             }
         }

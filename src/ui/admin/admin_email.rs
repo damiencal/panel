@@ -110,7 +110,7 @@ pub fn AdminAntiSpam() -> Element {
                             }
                         },
                         Some(Err(e)) => rsx! { p { class: "text-sm text-red-500", "{e}" } },
-                        None => rsx! { p { class: "text-sm text-gray-400", "Loading..." } },
+                        None => rsx! { p { class: "text-sm text-gray-500", "Loading..." } },
                     }
                 }
             }
@@ -161,8 +161,9 @@ pub fn AdminAntiSpam() -> Element {
                 // Threshold settings
                 div { class: "grid grid-cols-1 md:grid-cols-2 gap-4",
                     div {
-                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Spam Score Threshold" }
+                        label { r#for: "spam-threshold", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Spam Score Threshold" }
                         input {
+                            id: "spam-threshold",
                             r#type: "number",
                             step: "0.5",
                             min: "1",
@@ -174,8 +175,9 @@ pub fn AdminAntiSpam() -> Element {
                         p { class: "text-xs text-gray-400 mt-1", "Messages scoring above this are tagged as spam (default: 5.0)" }
                     }
                     div {
-                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Reject Score (0 = disabled)" }
+                        label { r#for: "spam-reject-score", class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Reject Score (0 = disabled)" }
                         input {
+                            id: "spam-reject-score",
                             r#type: "number",
                             step: "0.5",
                             min: "0",
@@ -213,6 +215,7 @@ pub fn AdminAntiSpam() -> Element {
                         div { class: "ml-7",
                             input {
                                 r#type: "email",
+                                aria_label: "Quarantine mailbox address",
                                 placeholder: "quarantine@yourdomain.com",
                                 class: "border border-gray-300 rounded-lg px-3 py-2 text-sm w-72",
                                 value: "{quarantine_mailbox}",
@@ -341,14 +344,14 @@ pub fn AdminMailQueue() -> Element {
                             table { class: "w-full text-sm",
                                 thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Queue ID" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Type" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Size" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Arrived" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Sender" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Recipient" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Reason" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Actions" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Queue ID" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Type" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Size" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Arrived" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Sender" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Recipient" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Reason" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Actions" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-black/[0.04]",
@@ -447,8 +450,9 @@ pub fn AdminEmailStats() -> Element {
                     }
                 }
                 div { class: "flex gap-2 items-center",
-                    label { class: "text-sm text-gray-600", "Last" }
+                    label { r#for: "stats-days", class: "text-sm text-gray-600", "Last" }
                     select {
+                        id: "stats-days",
                         class: "border border-gray-300 rounded-lg px-3 py-2 text-sm",
                         value: "{days}",
                         onchange: move |e| {
@@ -492,13 +496,13 @@ pub fn AdminEmailStats() -> Element {
                             table { class: "w-full text-sm",
                                 thead { class: "border-b border-black/[0.05]",
                                     tr {
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Date" }
-                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Domain" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Sent" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Received" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Rejected" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Spam" }
-                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider", "Bounced" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Date" }
+                                        th { class: "px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Domain" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Sent" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Received" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Rejected" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Spam" }
+                                        th { class: "px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider", "Bounced" }
                                     }
                                 }
                                 tbody { class: "divide-y divide-black/[0.04]",
@@ -533,6 +537,7 @@ pub fn AdminEmailStats() -> Element {
                     h3 { class: "font-semibold text-gray-900 shrink-0", "Mail Log" }
                     input {
                         r#type: "text",
+                        aria_label: "Filter mail logs",
                         placeholder: "Filter logs (queue-id, domain, address…)",
                         class: "flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm",
                         value: "{search}",
