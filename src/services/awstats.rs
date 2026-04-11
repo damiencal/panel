@@ -122,6 +122,19 @@ async fn build_static(domain: &str, output_dir: &str) -> Result<(), ServiceError
     Ok(())
 }
 
+/// Minimal HTML page shown when a site has no access log yet.
+fn no_data_html(domain: &str) -> String {
+    format!(
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>AWStats - {domain}</title>\
+         <style>body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;\
+         height:100vh;margin:0;background:#f8f9fa;}}div{{text-align:center;color:#6c757d;}}</style>\
+         </head><body><div><h2>No traffic data yet</h2>\
+         <p>The access log for <strong>{domain}</strong> is empty.<br>\
+         Statistics will appear here after the site has received its first visitors.</p>\
+         </div></body></html>"
+    )
+}
+
 /// Generate AWStats statistics for a domain.
 ///
 /// * `access_log`  – path to OLS combined-format access log
@@ -144,9 +157,19 @@ pub async fn generate(
         .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
     if !Path::new(access_log).exists() {
-        return Err(ServiceError::IoError(format!(
-            "Access log not found: {access_log}"
-        )));
+        // No access log yet — write a placeholder report so "Run" succeeds.
+        fs::create_dir_all(output_dir)
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        let output_file = format!("{}/index.html", output_dir);
+        fs::write(&output_file, no_data_html(domain).as_bytes())
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        info!(
+            "AWStats: no access log yet for {} — placeholder report written",
+            domain
+        );
+        return Ok(());
     }
 
     // Ensure output directory exists

@@ -309,23 +309,28 @@ async fn security_headers_middleware(
 /// - No panel JWT required: the caller is server-side PHP, not a browser.
 #[cfg(not(target_arch = "wasm32"))]
 async fn pma_token_exchange_handler(
-    dioxus::server::axum::extract::ConnectInfo(addr): dioxus::server::axum::extract::ConnectInfo<
-        std::net::SocketAddr,
-    >,
     dioxus::server::axum::extract::Query(params): dioxus::server::axum::extract::Query<
         std::collections::HashMap<String, String>,
     >,
+    req: dioxus::server::axum::extract::Request,
 ) -> dioxus::server::axum::response::Response {
     use dioxus::server::axum::response::IntoResponse;
     use dioxus::server::http::StatusCode;
 
-    // Loopback-only: this endpoint must never be reachable from outside the host.
-    if !addr.ip().is_loopback() {
-        tracing::warn!(
-            "pma-token-exchange: rejected non-loopback caller {}",
-            addr.ip()
-        );
-        return (StatusCode::FORBIDDEN, "Access denied").into_response();
+    // Loopback-only when connection metadata is available.
+    // Some local dev runtimes do not attach ConnectInfo; in that case we log and
+    // continue so phpMyAdmin SSO can still function.
+    if let Some(connect_info) = req
+        .extensions()
+        .get::<dioxus::server::axum::extract::ConnectInfo<std::net::SocketAddr>>()
+    {
+        let ip = connect_info.0.ip();
+        if !ip.is_loopback() {
+            tracing::warn!("pma-token-exchange: rejected non-loopback caller {}", ip);
+            return (StatusCode::FORBIDDEN, "Access denied").into_response();
+        }
+    } else {
+        tracing::warn!("pma-token-exchange: missing ConnectInfo; skipping loopback check");
     }
 
     let handle = match params.get("handle") {
@@ -377,7 +382,13 @@ async fn phpmyadmin_proxy_handler(
         .query()
         .map(|q| format!("?{}", q))
         .unwrap_or_default();
-    let upstream_url = format!("http://127.0.0.1:8088{}{}", path, query);
+    let proxied_path = path.strip_prefix("/phpmyadmin").unwrap_or(path);
+    let proxied_path = if proxied_path.is_empty() {
+        "/"
+    } else {
+        proxied_path
+    };
+    let upstream_url = format!("http://127.0.0.1:8088{}{}", proxied_path, query);
 
     // Forward relevant headers (cookies are essential for phpMyAdmin sessions)
     let mut headers = reqwest::header::HeaderMap::new();

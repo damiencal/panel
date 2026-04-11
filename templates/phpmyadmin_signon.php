@@ -103,37 +103,3 @@ $redirect_url = rtrim($pma_path, '/') . '/index.php';
 
 header('Location: ' . $redirect_url);
 exit;
-
-    http_response_code(400);
-    die('Invalid token payload');
-}
-
-// Check expiry
-if (time() > intval($payload['exp'])) {
-    http_response_code(403);
-    die('Token expired');
-}
-
-// Start the phpMyAdmin signon session
-$session_name = 'PMA_single_signon';
-session_name($session_name);
-session_start();
-
-// Set session variables for phpMyAdmin signon authentication
-$_SESSION['PMA_single_signon_user'] = $payload['u'];
-$_SESSION['PMA_single_signon_password'] = $payload['p'];
-$_SESSION['PMA_single_signon_host'] = 'localhost';
-
-// Pre-select database if specified
-if (!empty($payload['d'])) {
-    $_SESSION['PMA_single_signon_db'] = $payload['d'];
-}
-
-session_write_close();
-
-// Redirect to phpMyAdmin index
-$pma_path = dirname($_SERVER['SCRIPT_NAME']);
-$redirect_url = rtrim($pma_path, '/') . '/index.php';
-
-header('Location: ' . $redirect_url);
-exit;

@@ -1,7 +1,7 @@
 {
   "scripts": {
     "prepare": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit",
-    "build:wasm-opt": "wasm-opt -Oz target/dx/panel/release/web/public/wasm/panel_bg.wasm -o target/dx/panel/release/web/public/wasm/panel_bg.wasm",
+    "build:wasm-opt": "wasm-opt -Oz --enable-bulk-memory --enable-sign-ext --enable-mutable-globals --enable-nontrapping-float-to-int target/dx/panel/release/web/public/wasm/panel_bg.wasm -o target/dx/panel/release/web/public/wasm/panel_bg.wasm",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
     "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.ts --headed",

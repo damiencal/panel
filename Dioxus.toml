@@ -8,9 +8,13 @@ default_platform = "web"
 [web.app]
 title = "Hosting Panel"
 
+[web.build]
+features = ["web"]
+
 [web.watcher]
 watch_path = ["src", "assets", "index.html"]
 
 [server]
 port = 3030
 address = "0.0.0.0"
+features = ["server"]

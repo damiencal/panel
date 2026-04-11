@@ -22,6 +22,19 @@ pub async fn install() -> Result<(), ServiceError> {
     Ok(())
 }
 
+/// Minimal HTML page shown when a site has no access log yet.
+fn no_data_html(domain: &str) -> String {
+    format!(
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Webalizer – {domain}</title>\
+         <style>body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;\
+         height:100vh;margin:0;background:#f8f9fa;}}div{{text-align:center;color:#6c757d;}}</style>\
+         </head><body><div><h2>No traffic data yet</h2>\
+         <p>The access log for <strong>{domain}</strong> is empty.<br>\
+         Statistics will appear here after the site has received its first visitors.</p>\
+         </div></body></html>"
+    )
+}
+
 /// Generate Webalizer statistics for a domain.
 ///
 /// * `access_log`  – path to OLS combined-format access log
@@ -43,16 +56,24 @@ pub async fn generate(
     crate::utils::validators::validate_safe_path(output_dir, "/var/www/")
         .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
 
-    if !Path::new(access_log).exists() {
-        return Err(ServiceError::IoError(format!(
-            "Access log not found: {access_log}"
-        )));
-    }
-
     // Ensure output directory exists
     fs::create_dir_all(output_dir)
         .await
         .map_err(|e| ServiceError::IoError(e.to_string()))?;
+
+    // If no log exists yet, write a placeholder report instead of failing.
+    if !Path::new(access_log).exists() {
+        let placeholder = no_data_html(domain);
+        let output_file = format!("{}/index.html", output_dir);
+        fs::write(&output_file, placeholder.as_bytes())
+            .await
+            .map_err(|e| ServiceError::IoError(e.to_string()))?;
+        info!(
+            "Webalizer: no access log yet for {} — placeholder report written",
+            domain
+        );
+        return Ok(());
+    }
 
     info!("Running Webalizer for {} → {}", domain, output_dir);
 

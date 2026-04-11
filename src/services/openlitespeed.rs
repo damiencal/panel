@@ -200,6 +200,23 @@ impl OpenLiteSpeedService {
             .await
             .map_err(|e| ServiceError::IoError(e.to_string()))?;
 
+        // Touch the per-domain access log so that stats tools (Webalizer, GoAccess,
+        // AWStats) can run even before the first HTTP request arrives.
+        let logs_dir = "/usr/local/lsws/logs";
+        if Path::new(logs_dir).exists() {
+            let access_log = format!("{}/{}.access.log", logs_dir, domain);
+            if !Path::new(&access_log).exists() {
+                if let Err(e) = fs::write(&access_log, b"").await {
+                    tracing::warn!(
+                        domain,
+                        "Could not pre-create access log {}: {}",
+                        access_log,
+                        e
+                    );
+                }
+            }
+        }
+
         info!("Virtual host {} created", domain);
         Ok(())
     }
