@@ -3980,6 +3980,8 @@ fn AdminSiteRow(
     let mut show_logs = use_signal(|| false);
     let mut show_cert = use_signal(|| false);
     let mut show_auth = use_signal(|| false);
+    let mut delete_confirm_input = use_signal(String::new);
+    let mut delete_confirm_phrase = use_signal(String::new);
 
     let on_toggle_status = move |_| {
         let new_status = match current_status {
@@ -4188,25 +4190,99 @@ fn AdminSiteRow(
                         onclick: move |_| show_logs.toggle(),
                         "Logs"
                     }
-                    if confirm_delete() {
-                        span { class: "text-xs text-red-600 font-medium", "Sure?" }
+                    button {
+                        class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50",
+                        onclick: move |_| {
+                            delete_confirm_input.set(String::new());
+                            delete_confirm_phrase.set(String::new());
+                            confirm_delete.set(true);
+                        },
+                        disabled: busy(),
+                        "Delete"
+                    }
+                }
+            }
+        }
+        // Delete confirmation modal
+        if confirm_delete() {
+            div {
+                class: "fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center",
+                onclick: move |_| {
+                    if !busy() {
+                        confirm_delete.set(false);
+                        delete_confirm_input.set(String::new());
+                        delete_confirm_phrase.set(String::new());
+                    }
+                },
+                div {
+                    class: "bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4",
+                    onclick: move |e| e.stop_propagation(),
+                    div { class: "flex items-center gap-3 mb-4",
+                        div { class: "p-2 bg-red-100 rounded-xl shrink-0",
+                            Icon { name: "alert-triangle", class: "w-6 h-6 text-red-600".to_string() }
+                        }
+                        h3 { class: "text-lg font-semibold text-gray-900", "Delete Project" }
+                    }
+                    p { class: "text-sm text-gray-600 mb-5",
+                        "This will permanently delete the site "
+                        span { class: "font-semibold text-gray-900", "{site_domain}" }
+                        "."
+                    }
+                    div { class: "mb-4",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"" "{site_domain}" "\""
+                            }
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            placeholder: "{site_domain}",
+                            value: "{delete_confirm_input}",
+                            oninput: move |e| delete_confirm_input.set(e.value()),
+                            autocomplete: "off",
+                            spellcheck: "false",
+                        }
+                    }
+                    div { class: "mb-5",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"delete my project\""
+                            }
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            placeholder: "delete my project",
+                            value: "{delete_confirm_phrase}",
+                            oninput: move |e| delete_confirm_phrase.set(e.value()),
+                            autocomplete: "off",
+                            spellcheck: "false",
+                        }
+                    }
+                    p { class: "text-sm text-red-600 font-medium mb-5",
+                        "Deleting "
+                        span { class: "font-semibold", "{site_domain}" }
+                        " cannot be undone."
+                    }
+                    div { class: "flex justify-end gap-3",
                         button {
-                            class: "text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
+                            class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
+                            disabled: busy(),
+                            onclick: move |_| {
+                                confirm_delete.set(false);
+                                delete_confirm_input.set(String::new());
+                                delete_confirm_phrase.set(String::new());
+                            },
+                            "Cancel"
+                        }
+                        button {
+                            class: "px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed",
+                            disabled: delete_confirm_input() != site_domain || delete_confirm_phrase() != "delete my project" || busy(),
                             onclick: on_delete,
-                            disabled: busy(),
-                            "Yes"
-                        }
-                        button {
-                            class: "text-xs px-2 py-1 rounded bg-black/[0.06] text-gray-600 hover:bg-gray-300",
-                            onclick: move |_| confirm_delete.set(false),
-                            "No"
-                        }
-                    } else {
-                        button {
-                            class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50",
-                            onclick: move |_| confirm_delete.set(true),
-                            disabled: busy(),
-                            "Delete"
+                            if busy() { "Deleting…" } else { "Delete Project" }
                         }
                     }
                 }
@@ -5890,6 +5966,8 @@ fn SiteRow(
     let mut show_logs = use_signal(|| false);
     let mut show_cert = use_signal(|| false);
     let mut show_auth = use_signal(|| false);
+    let mut delete_confirm_input = use_signal(String::new);
+    let mut delete_confirm_phrase = use_signal(String::new);
     let mut php_ver = use_signal(|| {
         site.php_version
             .clone()
@@ -6137,25 +6215,99 @@ fn SiteRow(
                         title: "HTTP Basic Authentication",
                         if basic_auth_on { "Auth🔐" } else { "Auth" }
                     }
-                    if confirm_delete() {
-                        span { class: "text-xs text-red-600 font-medium", "Sure?" }
+                    button {
+                        class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50",
+                        onclick: move |_| {
+                            delete_confirm_input.set(String::new());
+                            delete_confirm_phrase.set(String::new());
+                            confirm_delete.set(true);
+                        },
+                        disabled: busy(),
+                        "Delete"
+                    }
+                }
+            }
+        }
+        // Delete confirmation modal
+        if confirm_delete() {
+            div {
+                class: "fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center",
+                onclick: move |_| {
+                    if !busy() {
+                        confirm_delete.set(false);
+                        delete_confirm_input.set(String::new());
+                        delete_confirm_phrase.set(String::new());
+                    }
+                },
+                div {
+                    class: "bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4",
+                    onclick: move |e| e.stop_propagation(),
+                    div { class: "flex items-center gap-3 mb-4",
+                        div { class: "p-2 bg-red-100 rounded-xl shrink-0",
+                            Icon { name: "alert-triangle", class: "w-6 h-6 text-red-600".to_string() }
+                        }
+                        h3 { class: "text-lg font-semibold text-gray-900", "Delete Project" }
+                    }
+                    p { class: "text-sm text-gray-600 mb-5",
+                        "This will permanently delete the site "
+                        span { class: "font-semibold text-gray-900", "{site_domain}" }
+                        "."
+                    }
+                    div { class: "mb-4",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"" "{site_domain}" "\""
+                            }
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            placeholder: "{site_domain}",
+                            value: "{delete_confirm_input}",
+                            oninput: move |e| delete_confirm_input.set(e.value()),
+                            autocomplete: "off",
+                            spellcheck: "false",
+                        }
+                    }
+                    div { class: "mb-5",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"delete my project\""
+                            }
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            placeholder: "delete my project",
+                            value: "{delete_confirm_phrase}",
+                            oninput: move |e| delete_confirm_phrase.set(e.value()),
+                            autocomplete: "off",
+                            spellcheck: "false",
+                        }
+                    }
+                    p { class: "text-sm text-red-600 font-medium mb-5",
+                        "Deleting "
+                        span { class: "font-semibold", "{site_domain}" }
+                        " cannot be undone."
+                    }
+                    div { class: "flex justify-end gap-3",
                         button {
-                            class: "text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
+                            class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
+                            disabled: busy(),
+                            onclick: move |_| {
+                                confirm_delete.set(false);
+                                delete_confirm_input.set(String::new());
+                                delete_confirm_phrase.set(String::new());
+                            },
+                            "Cancel"
+                        }
+                        button {
+                            class: "px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed",
+                            disabled: delete_confirm_input() != site_domain || delete_confirm_phrase() != "delete my project" || busy(),
                             onclick: on_delete,
-                            disabled: busy(),
-                            "Yes"
-                        }
-                        button {
-                            class: "text-xs px-2 py-1 rounded bg-black/[0.06] text-gray-600 hover:bg-gray-300",
-                            onclick: move |_| confirm_delete.set(false),
-                            "No"
-                        }
-                    } else {
-                        button {
-                            class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50",
-                            onclick: move |_| confirm_delete.set(true),
-                            disabled: busy(),
-                            "Delete"
+                            if busy() { "Deleting…" } else { "Delete Project" }
                         }
                     }
                 }
@@ -6384,10 +6536,8 @@ fn DatabaseRow(
     // Delete confirmation modal state
     let mut show_delete_confirm = use_signal(|| false);
     let mut delete_confirm_input = use_signal(String::new);
-    let mut downloading_dump = use_signal(|| false);
-    let mut dump_error = use_signal(|| None::<String>);
+    let mut delete_confirm_phrase = use_signal(String::new);
     let db_name_display = db.name.clone();
-    let db_name_for_download = db.name.clone();
 
     let open_phpmyadmin = move |_| {
         spawn(async move {
@@ -6409,45 +6559,13 @@ fn DatabaseRow(
         db_error.set(None);
         show_delete_confirm.set(false);
         delete_confirm_input.set(String::new());
+        delete_confirm_phrase.set(String::new());
         spawn(async move {
             match server_delete_database(db_id).await {
                 Ok(()) => databases_resource.restart(),
                 Err(e) => {
                     db_error.set(Some(e.to_string()));
                     deleting_db.set(false);
-                }
-            }
-        });
-    };
-
-    let download_db = move |_| {
-        dump_error.set(None);
-        downloading_dump.set(true);
-        let _db_name_dl = db_name_for_download.clone();
-        spawn(async move {
-            match server_dump_database(db_id).await {
-                Ok(_b64) => {
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        let js = format!(
-                            r#"(function(){{
-                                var sql = atob('{}');
-                                var blob = new Blob([sql], {{type:'application/octet-stream'}});
-                                var url = URL.createObjectURL(blob);
-                                var a = document.createElement('a');
-                                a.href = url; a.download = '{}.sql';
-                                document.body.appendChild(a); a.click();
-                                setTimeout(function(){{ document.body.removeChild(a); URL.revokeObjectURL(url); }}, 150);
-                            }})();"#,
-                            _b64, _db_name_dl
-                        );
-                        let _ = js_sys::eval(&js);
-                    }
-                    downloading_dump.set(false);
-                }
-                Err(e) => {
-                    dump_error.set(Some(e.to_string()));
-                    downloading_dump.set(false);
                 }
             }
         });
@@ -6515,7 +6633,7 @@ fn DatabaseRow(
                         disabled: deleting_db(),
                         onclick: move |_| {
                             delete_confirm_input.set(String::new());
-                            dump_error.set(None);
+                            delete_confirm_phrase.set(String::new());
                             show_delete_confirm.set(true);
                         },
                         if deleting_db() { "Deleting…" } else { "Delete" }
@@ -6629,67 +6747,62 @@ fn DatabaseRow(
                     if !deleting_db() {
                         show_delete_confirm.set(false);
                         delete_confirm_input.set(String::new());
-                        dump_error.set(None);
+                        delete_confirm_phrase.set(String::new());
                     }
                 },
                 div {
                     class: "bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4",
                     onclick: move |e| e.stop_propagation(),
-                    // Header
                     div { class: "flex items-center gap-3 mb-4",
                         div { class: "p-2 bg-red-100 rounded-xl shrink-0",
                             Icon { name: "alert-triangle", class: "w-6 h-6 text-red-600".to_string() }
                         }
-                        div {
-                            h3 { class: "text-lg font-semibold text-gray-900", "Delete Database" }
-                            p { class: "text-sm text-gray-500 mt-0.5",
-                                "\"" "{db_name_display}" "\""
-                            }
-                        }
+                        h3 { class: "text-lg font-semibold text-gray-900", "Delete Project" }
                     }
                     p { class: "text-sm text-gray-600 mb-5",
-                        "This will permanently delete the database and all its data. This action cannot be undone."
+                        "This will permanently delete the database "
+                        span { class: "font-semibold text-gray-900", "{db_name_display}" }
+                        "."
                     }
-                    // Download section
-                    div { class: "bg-amber-500/[0.08] border border-amber-500/20 rounded-xl p-4 mb-5",
-                        p { class: "text-sm font-medium text-amber-800 mb-3",
-                            "💾 Download a backup before deleting (optional)"
-                        }
-                        if let Some(err) = dump_error() {
-                            div { class: "text-xs text-red-600 mb-2", "{err}" }
-                        }
-                        div { class: "flex gap-2",
-                            button {
-                                class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-40 flex items-center gap-2",
-                                disabled: downloading_dump(),
-                                onclick: download_db,
-                                if downloading_dump() {
-                                    span { "Preparing…" }
-                                } else {
-                                    Icon { name: "download", class: "w-4 h-4".to_string() }
-                                    span { "Download Database" }
-                                }
-                            }
-                        }
-                    }
-                    // Confirm input
-                    div { class: "mb-5",
+                    div { class: "mb-4",
                         label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
-                            "Type "
-                            span { class: "font-mono font-bold text-red-600", "DELETE" }
-                            " to confirm"
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"" "{db_name_display}" "\""
+                            }
                         }
                         input {
                             r#type: "text",
                             class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
-                            placeholder: "DELETE",
+                            placeholder: "{db_name_display}",
                             value: "{delete_confirm_input}",
                             oninput: move |e| delete_confirm_input.set(e.value()),
                             autocomplete: "off",
                             spellcheck: "false",
                         }
                     }
-                    // Action buttons
+                    div { class: "mb-5",
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "To confirm, type "
+                            span { class: "font-mono font-bold text-red-600",
+                                "\"delete my project\""
+                            }
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono",
+                            placeholder: "delete my project",
+                            value: "{delete_confirm_phrase}",
+                            oninput: move |e| delete_confirm_phrase.set(e.value()),
+                            autocomplete: "off",
+                            spellcheck: "false",
+                        }
+                    }
+                    p { class: "text-sm text-red-600 font-medium mb-5",
+                        "Deleting "
+                        span { class: "font-semibold", "{db_name_display}" }
+                        " cannot be undone."
+                    }
                     div { class: "flex justify-end gap-3",
                         button {
                             class: "px-4 py-2 text-sm font-medium text-gray-700 bg-black/[0.04] rounded-xl hover:bg-gray-200 transition-colors",
@@ -6697,15 +6810,15 @@ fn DatabaseRow(
                             onclick: move |_| {
                                 show_delete_confirm.set(false);
                                 delete_confirm_input.set(String::new());
-                                dump_error.set(None);
+                                delete_confirm_phrase.set(String::new());
                             },
                             "Cancel"
                         }
                         button {
                             class: "px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed",
-                            disabled: delete_confirm_input() != "DELETE" || deleting_db(),
+                            disabled: delete_confirm_input() != db_name_display || delete_confirm_phrase() != "delete my project" || deleting_db(),
                             onclick: delete_db,
-                            if deleting_db() { "Deleting…" } else { "Delete Database" }
+                            if deleting_db() { "Deleting…" } else { "Delete Project" }
                         }
                     }
                 }
