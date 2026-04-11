@@ -147,28 +147,34 @@ pub async fn server_create_database(
         }
     };
 
-    // Provision the actual database on the database server
+    // Provision the actual database on the database server when MySQL is available.
     if database_type == DatabaseType::MariaDB {
-        if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username).await {
-            // Roll back both the SQLite record and the quota counter.
-            // Log rollback failures so operators can reconcile orphan records.
-            if let Err(del_err) = crate::db::databases::delete(pool, db_id).await {
-                tracing::error!(
-                    "Failed to roll back database record (id={db_id}) after provisioning failure: {del_err}"
-                );
+        if crate::services::shell::command_exists("mysql").await {
+            if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username).await {
+                // Roll back both the SQLite record and the quota counter.
+                // Log rollback failures so operators can reconcile orphan records.
+                if let Err(del_err) = crate::db::databases::delete(pool, db_id).await {
+                    tracing::error!(
+                        "Failed to roll back database record (id={db_id}) after provisioning failure: {del_err}"
+                    );
+                }
+                if let Err(quota_err) =
+                    crate::db::quotas::increment_databases(pool, claims.sub, -1).await
+                {
+                    tracing::error!(
+                        "Failed to roll back DB quota counter for user {} after provisioning failure: {quota_err}",
+                        claims.sub
+                    );
+                }
+                return Err(ServerFnError::new(format!(
+                    "MySQL provisioning failed: {}",
+                    e
+                )));
             }
-            if let Err(quota_err) =
-                crate::db::quotas::increment_databases(pool, claims.sub, -1).await
-            {
-                tracing::error!(
-                    "Failed to roll back DB quota counter for user {} after provisioning failure: {quota_err}",
-                    claims.sub
-                );
-            }
-            return Err(ServerFnError::new(format!(
-                "MySQL provisioning failed: {}",
-                e
-            )));
+        } else {
+            tracing::warn!(
+                "mysql binary not available; created panel database record without host provisioning"
+            );
         }
     }
 

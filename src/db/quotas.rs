@@ -313,21 +313,33 @@ pub async fn check_and_increment_sites(pool: &SqlitePool, user_id: i64) -> Resul
     }
     // No quota row ⇒ no limit — proceed.
 
+    let now = Utc::now();
     let updated = sqlx::query(
         "UPDATE resource_usage SET sites_used = sites_used + 1, updated_at = ? WHERE user_id = ?",
     )
-    .bind(Utc::now())
+    .bind(now)
     .bind(user_id)
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("Failed to increment site count: {e}"))?;
 
     if updated.rows_affected() == 0 {
-        tx.rollback().await.ok();
-        return Err(format!(
-            "Usage tracking row missing for user {user_id} — \
-             run init_usage before allocating resources"
-        ));
+        // Seed users (e.g. default admin) may not have an initialized usage row yet.
+        // Create it on first allocation and set sites_used=1 for this request.
+        sqlx::query(
+            "INSERT INTO resource_usage (
+                user_id, sites_used, databases_used, email_accounts_used,
+                disk_used_mb, bandwidth_used_mb, updated_at
+             ) VALUES (?, 1, 0, 0, 0, 0, ?)
+             ON CONFLICT(user_id) DO UPDATE SET
+                sites_used = sites_used + 1,
+                updated_at = excluded.updated_at",
+        )
+        .bind(user_id)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to initialize site usage row: {e}"))?;
     }
 
     tx.commit()

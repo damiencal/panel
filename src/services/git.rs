@@ -930,16 +930,33 @@ pub async fn atomic_pull(
                 .map_err(|e| format!("Failed to write deploy script: {e}"))?;
             drop(f);
 
-            let run = Command::new("sudo")
-                .args(["-n", "-u", &username, "timeout", "60", "bash", &script_path])
-                .env("RELEASE_DIR", &release_dir)
-                .env("DOC_ROOT", doc_root)
-                .output()
-                .await;
+            // Allowlist check before direct Command::new — cannot use run_sudo here
+            // because we need per-process env vars (RELEASE_DIR, DOC_ROOT).
+            if !super::shell::is_allowed("sudo") {
+                let _ = tokio::fs::remove_file(&script_path).await;
+                return Err("sudo is not in the command allowlist".to_string());
+            }
+
+            // The `timeout 60` argv entry provides an OS-level deadline; the
+            // outer tokio::time::timeout provides a Rust-level safety net in
+            // case the OS timeout helper itself is unavailable (90s > 60s).
+            let run_result = tokio::time::timeout(
+                tokio::time::Duration::from_secs(90),
+                Command::new("sudo")
+                    .args(["-n", "-u", &username, "timeout", "60", "bash", &script_path])
+                    .env("RELEASE_DIR", &release_dir)
+                    .env("DOC_ROOT", doc_root)
+                    .output(),
+            )
+            .await;
 
             // Always clean up the script file.
             let _ = tokio::fs::remove_file(&script_path).await;
 
+            let run = match run_result {
+                Ok(inner) => inner,
+                Err(_) => return Err("Deploy script timed out after 90s".to_string()),
+            };
             match run {
                 Ok(o) => {
                     let stdout = String::from_utf8_lossy(&o.stdout).to_string();

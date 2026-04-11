@@ -138,7 +138,19 @@ pub async fn server_fm_list_dir(
     crate::auth::guards::check_ownership(&claims, site.owner_id, None)
         .map_err(|_| ServerFnError::new("Access denied"))?;
 
+    // If a site exists in DB before filesystem provisioning creates doc_root,
+    // render an empty listing instead of returning an internal error.
+    if !std::path::Path::new(&site.doc_root).exists() {
+        return Ok(Vec::new());
+    }
+
     let abs_path = resolve_confined_path(&site.doc_root, &rel_path).map_err(ServerFnError::new)?;
+
+    // New sites may exist in DB before their doc_root is provisioned on disk.
+    // Treat that as an empty listing instead of surfacing a 500 to the UI.
+    if !abs_path.exists() {
+        return Ok(Vec::new());
+    }
 
     if !abs_path.is_dir() {
         return Err(ServerFnError::new("Not a directory"));
