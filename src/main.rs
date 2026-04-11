@@ -3669,6 +3669,266 @@ fn SiteLogViewer(site_id: i64, col_span: u32) -> Element {
     }
 }
 
+/// Shared SSL certificate management panel — rendered as a table-row expansion.
+/// Owns all cert form state; parent only holds the show/hide toggle.
+#[component]
+fn SslCertPanel(
+    site_id: i64,
+    site_domain: String,
+    ssl_on: bool,
+    col_span: u32,
+    busy: Signal<bool>,
+    row_error: Signal<Option<String>>,
+    sites_resource: Resource<Result<Vec<panel::models::site::Site>, ServerFnError>>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut cert_email = use_signal(String::new);
+    let mut cert_include_www = use_signal(|| false);
+    let mut custom_cert_pem = use_signal(String::new);
+    let mut custom_key_pem = use_signal(String::new);
+    let mut show_custom_cert = use_signal(|| false);
+    let mut busy = busy;
+    let mut row_error = row_error;
+    let mut sites_resource = sites_resource;
+    rsx! {
+        tr {
+            td { colspan: "{col_span}", class: "px-6 pt-0 pb-4 bg-blue-50/40",
+                div { class: "rounded-lg border border-blue-200 bg-white p-4 space-y-4",
+                    h4 { class: "text-sm font-semibold text-blue-900", "SSL Certificate — {site_domain}" }
+                    div { class: "space-y-2",
+                        p { class: "text-xs font-medium text-gray-700", "Let's Encrypt (Certbot)" }
+                        div { class: "flex flex-wrap gap-2 items-end",
+                            input {
+                                r#type: "email",
+                                placeholder: "admin@example.com",
+                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-56 focus:ring-1 focus:ring-blue-400",
+                                value: "{cert_email}",
+                                oninput: move |e| cert_email.set(e.value()),
+                            }
+                            label { class: "flex items-center gap-1 text-xs text-gray-600",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: cert_include_www(),
+                                    onchange: move |e| cert_include_www.set(e.checked()),
+                                }
+                                "include www"
+                            }
+                            button {
+                                class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                disabled: busy() || cert_email().is_empty(),
+                                onclick: move |_| {
+                                    let email = cert_email();
+                                    let www = cert_include_www();
+                                    busy.set(true);
+                                    row_error.set(None);
+                                    spawn(async move {
+                                        match server_issue_site_certificate(site_id, email, www).await {
+                                            Ok(()) => {
+                                                sites_resource.restart();
+                                                on_close(());
+                                            }
+                                            Err(e) => row_error.set(Some(e.to_string())),
+                                        }
+                                        busy.set(false);
+                                    });
+                                },
+                                "Issue Certificate"
+                            }
+                        }
+                    }
+                    div { class: "space-y-2",
+                        button {
+                            class: "text-xs text-blue-700 underline",
+                            onclick: move |_| show_custom_cert.toggle(),
+                            if show_custom_cert() { "▲ hide custom cert" } else { "▼ upload custom cert" }
+                        }
+                        if show_custom_cert() {
+                            div { class: "space-y-2",
+                                textarea {
+                                    class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                    placeholder: "-----BEGIN CERTIFICATE-----\n...",
+                                    value: "{custom_cert_pem}",
+                                    oninput: move |e| custom_cert_pem.set(e.value()),
+                                }
+                                textarea {
+                                    class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
+                                    placeholder: "-----BEGIN PRIVATE KEY-----\n...",
+                                    value: "{custom_key_pem}",
+                                    oninput: move |e| custom_key_pem.set(e.value()),
+                                }
+                                button {
+                                    class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
+                                    disabled: busy() || custom_cert_pem().is_empty() || custom_key_pem().is_empty(),
+                                    onclick: move |_| {
+                                        let cert = custom_cert_pem();
+                                        let key = custom_key_pem();
+                                        busy.set(true);
+                                        row_error.set(None);
+                                        spawn(async move {
+                                            match server_set_custom_cert(site_id, cert, key).await {
+                                                Ok(()) => {
+                                                    sites_resource.restart();
+                                                    on_close(());
+                                                }
+                                                Err(e) => row_error.set(Some(e.to_string())),
+                                            }
+                                            busy.set(false);
+                                        });
+                                    },
+                                    "Save Custom Certificate"
+                                }
+                            }
+                        }
+                    }
+                    if ssl_on {
+                        p { class: "text-xs text-emerald-700 font-medium",
+                            "✓ SSL is currently enabled for this site"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Shared HTTP Basic Authentication panel — rendered as a table-row expansion.
+/// Owns all basic-auth form state; parent only holds the show/hide toggle.
+#[component]
+fn BasicAuthPanel(
+    site_id: i64,
+    site_domain: String,
+    basic_auth_on: bool,
+    basic_auth_realm: String,
+    col_span: u32,
+    busy: Signal<bool>,
+    row_error: Signal<Option<String>>,
+    sites_resource: Resource<Result<Vec<panel::models::site::Site>, ServerFnError>>,
+) -> Element {
+    let mut ba_realm = use_signal(move || basic_auth_realm.clone());
+    let mut ba_username = use_signal(String::new);
+    let mut ba_password = use_signal(String::new);
+    let ba_users =
+        use_resource(move || async move { server_list_basic_auth_users(site_id).await.ok() });
+    let mut busy = busy;
+    let mut row_error = row_error;
+    let mut sites_resource = sites_resource;
+    rsx! {
+        tr {
+            td { colspan: "{col_span}", class: "px-6 pt-0 pb-4 bg-orange-50/40",
+                div { class: "rounded-lg border border-orange-200 bg-white p-4 space-y-4",
+                    h4 { class: "text-sm font-semibold text-orange-900",
+                        "HTTP Basic Auth — {site_domain}"
+                    }
+                    div { class: "flex flex-wrap gap-2 items-center",
+                        label { class: "text-xs font-medium text-gray-700", "Realm:" }
+                        input {
+                            r#type: "text",
+                            class: "text-xs px-2 py-1 border border-gray-300 rounded w-40 focus:ring-1 focus:ring-orange-400",
+                            value: "{ba_realm}",
+                            oninput: move |e| ba_realm.set(e.value()),
+                        }
+                        button {
+                            class: if basic_auth_on {
+                                "text-xs px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                            } else {
+                                "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                            },
+                            disabled: busy(),
+                            onclick: move |_| {
+                                let realm = ba_realm();
+                                let new_val = !basic_auth_on;
+                                busy.set(true);
+                                row_error.set(None);
+                                spawn(async move {
+                                    match server_toggle_basic_auth(site_id, new_val, realm).await {
+                                        Ok(()) => sites_resource.restart(),
+                                        Err(e) => row_error.set(Some(e.to_string())),
+                                    }
+                                    busy.set(false);
+                                });
+                            },
+                            if basic_auth_on { "Disable Auth" } else { "Enable Auth" }
+                        }
+                    }
+                    if let Some(Some(users)) = ba_users.read().as_ref() {
+                        if !users.is_empty() {
+                            div { class: "space-y-1",
+                                p { class: "text-xs font-medium text-gray-700", "Users:" }
+                                for user in users.clone().into_iter() {
+                                    {
+                                        let uname = user.username.clone();
+                                        rsx! {
+                                            div { class: "flex items-center gap-2",
+                                                span { class: "text-xs text-gray-800 font-mono",
+                                                    "{user.username}"
+                                                }
+                                                button {
+                                                    class: "text-xs text-red-500 hover:text-red-700",
+                                                    onclick: move |_| {
+                                                        let un = uname.clone();
+                                                        busy.set(true);
+                                                        spawn(async move {
+                                                            let _ = server_remove_basic_auth_user(
+                                                                    site_id,
+                                                                    un,
+                                                                )
+                                                                .await;
+                                                            busy.set(false);
+                                                        });
+                                                    },
+                                                    "remove"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    div { class: "flex flex-wrap gap-2 items-end",
+                        input {
+                            r#type: "text",
+                            placeholder: "username",
+                            class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                            value: "{ba_username}",
+                            oninput: move |e| ba_username.set(e.value()),
+                        }
+                        input {
+                            r#type: "password",
+                            placeholder: "password",
+                            class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
+                            value: "{ba_password}",
+                            oninput: move |e| ba_password.set(e.value()),
+                        }
+                        button {
+                            class: "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50",
+                            disabled: busy() || ba_username().is_empty() || ba_password().is_empty(),
+                            onclick: move |_| {
+                                let uname = ba_username();
+                                let pass = ba_password();
+                                busy.set(true);
+                                row_error.set(None);
+                                spawn(async move {
+                                    match server_add_basic_auth_user(site_id, uname, pass).await {
+                                        Ok(()) => {
+                                            ba_username.set(String::new());
+                                            ba_password.set(String::new());
+                                            sites_resource.restart();
+                                        }
+                                        Err(e) => row_error.set(Some(e.to_string())),
+                                    }
+                                    busy.set(false);
+                                });
+                            },
+                            "Add User"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 fn AdminSiteRow(
     site: panel::models::site::Site,
@@ -3685,6 +3945,7 @@ fn AdminSiteRow(
     let hsts_pre = site.hsts_preload;
     let owner_id = site.owner_id;
     let basic_auth_on = site.basic_auth_enabled;
+    let basic_auth_realm = site.basic_auth_realm.clone();
     let mut sites_resource = sites_resource;
     let mut confirm_delete = use_signal(|| false);
     let mut row_error = use_signal(|| None::<String>);
@@ -3692,23 +3953,6 @@ fn AdminSiteRow(
     let mut show_logs = use_signal(|| false);
     let mut show_cert = use_signal(|| false);
     let mut show_auth = use_signal(|| false);
-    // SSL cert form state
-    let mut cert_email = use_signal(String::new);
-    let mut cert_include_www = use_signal(|| false);
-    let mut custom_cert_pem = use_signal(String::new);
-    let mut custom_key_pem = use_signal(String::new);
-    let mut show_custom_cert = use_signal(|| false);
-    // Basic auth form state
-    let mut ba_realm = use_signal(|| site.basic_auth_realm.clone());
-    let mut ba_username = use_signal(String::new);
-    let mut ba_password = use_signal(String::new);
-    let ba_users = use_resource(move || async move {
-        if show_auth() {
-            server_list_basic_auth_users(site_id).await.ok()
-        } else {
-            None
-        }
-    });
 
     let on_toggle_status = move |_| {
         let new_status = match current_status {
@@ -3946,213 +4190,28 @@ fn AdminSiteRow(
         }
         // ── SSL Certificate Management Panel ────────────────────────────────
         if show_cert() {
-            tr {
-                td { colspan: "10", class: "px-6 pt-0 pb-4 bg-blue-50/40",
-                    div { class: "rounded-lg border border-blue-200 bg-white p-4 space-y-4",
-                        h4 { class: "text-sm font-semibold text-blue-900", "SSL Certificate — {site_domain}" }
-                        // Let's Encrypt section
-                        div { class: "space-y-2",
-                            p { class: "text-xs font-medium text-gray-700", "Let's Encrypt (Certbot)" }
-                            div { class: "flex flex-wrap gap-2 items-end",
-                                input {
-                                    r#type: "email",
-                                    placeholder: "admin@example.com",
-                                    class: "text-xs px-2 py-1 border border-gray-300 rounded w-56 focus:ring-1 focus:ring-blue-400",
-                                    value: "{cert_email}",
-                                    oninput: move |e| cert_email.set(e.value()),
-                                }
-                                label { class: "flex items-center gap-1 text-xs text-gray-600",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: cert_include_www(),
-                                        onchange: move |e| cert_include_www.set(e.checked()),
-                                    }
-                                    "include www"
-                                }
-                                button {
-                                    class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-                                    disabled: busy() || cert_email().is_empty(),
-                                    onclick: move |_| {
-                                        let email = cert_email();
-                                        let www = cert_include_www();
-                                        busy.set(true);
-                                        row_error.set(None);
-                                        spawn(async move {
-                                            match server_issue_site_certificate(site_id, email, www).await {
-                                                Ok(()) => {
-                                                    sites_resource.restart();
-                                                    show_cert.set(false);
-                                                }
-                                                Err(e) => row_error.set(Some(e.to_string())),
-                                            }
-                                            busy.set(false);
-                                        });
-                                    },
-                                    "Issue Certificate"
-                                }
-                            }
-                        }
-                        // Custom certificate section
-                        div { class: "space-y-2",
-                            button {
-                                class: "text-xs text-blue-700 underline",
-                                onclick: move |_| show_custom_cert.toggle(),
-                                if show_custom_cert() { "▲ hide custom cert" } else { "▼ upload custom cert" }
-                            }
-                            if show_custom_cert() {
-                                div { class: "space-y-2",
-                                    textarea {
-                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
-                                        placeholder: "-----BEGIN CERTIFICATE-----\n...",
-                                        value: "{custom_cert_pem}",
-                                        oninput: move |e| custom_cert_pem.set(e.value()),
-                                    }
-                                    textarea {
-                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
-                                        placeholder: "-----BEGIN PRIVATE KEY-----\n...",
-                                        value: "{custom_key_pem}",
-                                        oninput: move |e| custom_key_pem.set(e.value()),
-                                    }
-                                    button {
-                                        class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-                                        disabled: busy() || custom_cert_pem().is_empty() || custom_key_pem().is_empty(),
-                                        onclick: move |_| {
-                                            let cert = custom_cert_pem();
-                                            let key = custom_key_pem();
-                                            busy.set(true);
-                                            row_error.set(None);
-                                            spawn(async move {
-                                                match server_set_custom_cert(site_id, cert, key).await {
-                                                    Ok(()) => {
-                                                        sites_resource.restart();
-                                                        show_cert.set(false);
-                                                    }
-                                                    Err(e) => row_error.set(Some(e.to_string())),
-                                                }
-                                                busy.set(false);
-                                            });
-                                        },
-                                        "Save Custom Certificate"
-                                    }
-                                }
-                            }
-                        }
-                        if ssl_on {
-                            p { class: "text-xs text-emerald-700 font-medium", "✓ SSL is currently enabled for this site" }
-                        }
-                    }
-                }
+            SslCertPanel {
+                site_id,
+                site_domain: site_domain.clone(),
+                ssl_on,
+                col_span: 10,
+                busy,
+                row_error,
+                sites_resource,
+                on_close: move |_| show_cert.set(false),
             }
         }
         // ── HTTP Basic Authentication Panel ────────────────────────────────
         if show_auth() {
-            tr {
-                td { colspan: "10", class: "px-6 pt-0 pb-4 bg-orange-50/40",
-                    div { class: "rounded-lg border border-orange-200 bg-white p-4 space-y-4",
-                        h4 { class: "text-sm font-semibold text-orange-900", "HTTP Basic Auth — {site_domain}" }
-                        // Enable/disable toggle + realm
-                        div { class: "flex flex-wrap gap-2 items-center",
-                            label { class: "text-xs font-medium text-gray-700", "Realm:" }
-                            input {
-                                r#type: "text",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-40 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_realm}",
-                                oninput: move |e| ba_realm.set(e.value()),
-                            }
-                            button {
-                                class: if basic_auth_on {
-                                    "text-xs px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
-                                } else {
-                                    "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
-                                },
-                                disabled: busy(),
-                                onclick: move |_| {
-                                    let realm = ba_realm();
-                                    let new_val = !basic_auth_on;
-                                    busy.set(true);
-                                    row_error.set(None);
-                                    spawn(async move {
-                                        match server_toggle_basic_auth(site_id, new_val, realm).await {
-                                            Ok(()) => sites_resource.restart(),
-                                            Err(e) => row_error.set(Some(e.to_string())),
-                                        }
-                                        busy.set(false);
-                                    });
-                                },
-                                if basic_auth_on { "Disable Auth" } else { "Enable Auth" }
-                            }
-                        }
-                        // User list
-                        if let Some(Some(users)) = ba_users.read().as_ref() {
-                            if !users.is_empty() {
-                                div { class: "space-y-1",
-                                    p { class: "text-xs font-medium text-gray-700", "Users:" }
-                                    for user in users.clone().into_iter() {
-                                        {
-                                            let uname = user.username.clone();
-                                            rsx! {
-                                                div { class: "flex items-center gap-2",
-                                                    span { class: "text-xs text-gray-800 font-mono", "{user.username}" }
-                                                    button {
-                                                        class: "text-xs text-red-500 hover:text-red-700",
-                                                        onclick: move |_| {
-                                                            let un = uname.clone();
-                                                            busy.set(true);
-                                                            spawn(async move {
-                                                                let _ = server_remove_basic_auth_user(site_id, un).await;
-                                                                busy.set(false);
-                                                            });
-                                                        },
-                                                        "remove"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // Add user form
-                        div { class: "flex flex-wrap gap-2 items-end",
-                            input {
-                                r#type: "text",
-                                placeholder: "username",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_username}",
-                                oninput: move |e| ba_username.set(e.value()),
-                            }
-                            input {
-                                r#type: "password",
-                                placeholder: "password",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_password}",
-                                oninput: move |e| ba_password.set(e.value()),
-                            }
-                            button {
-                                class: "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50",
-                                disabled: busy() || ba_username().is_empty() || ba_password().is_empty(),
-                                onclick: move |_| {
-                                    let uname = ba_username();
-                                    let pass = ba_password();
-                                    busy.set(true);
-                                    row_error.set(None);
-                                    spawn(async move {
-                                        match server_add_basic_auth_user(site_id, uname, pass).await {
-                                            Ok(()) => {
-                                                ba_username.set(String::new());
-                                                ba_password.set(String::new());
-                                                sites_resource.restart();
-                                            }
-                                            Err(e) => row_error.set(Some(e.to_string())),
-                                        }
-                                        busy.set(false);
-                                    });
-                                },
-                                "Add User"
-                            }
-                        }
-                    }
-                }
+            BasicAuthPanel {
+                site_id,
+                site_domain: site_domain.clone(),
+                basic_auth_on,
+                basic_auth_realm: basic_auth_realm.clone(),
+                col_span: 10,
+                busy,
+                row_error,
+                sites_resource,
             }
         }
     }
@@ -5332,6 +5391,7 @@ fn ResellerSettings() -> Element {
     let mut show_2fa_form = use_signal(|| false);
     let mut tfa_secret = use_signal(String::new);
     let mut tfa_qr_url = use_signal(String::new);
+    let mut tfa_qr_svg = use_signal(String::new);
     let mut tfa_code = use_signal(String::new);
     let mut tfa_loading = use_signal(|| false);
     let mut tfa_error = use_signal(|| None::<String>);
@@ -5487,6 +5547,7 @@ fn ResellerSettings() -> Element {
                                                             Ok(r) => {
                                                                 tfa_secret.set(r.secret);
                                                                 tfa_qr_url.set(r.qr_code_url);
+                                                                tfa_qr_svg.set(r.qr_code_svg);
                                                                 show_2fa_form.set(true);
                                                             }
                                                             Err(e) => tfa_error.set(Some(e.to_string())),
@@ -5510,6 +5571,14 @@ fn ResellerSettings() -> Element {
                                         }
                                         p { class: "text-sm text-gray-600",
                                             "Scan the QR code in your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm."
+                                        }
+                                        if !tfa_qr_svg().is_empty() {
+                                            div { class: "bg-white border border-black/[0.08] rounded-xl p-4 flex justify-center",
+                                                div {
+                                                    class: "w-48 h-48",
+                                                    dangerous_inner_html: tfa_qr_svg(),
+                                                }
+                                            }
                                         }
                                         div { class: "bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-700 break-all",
                                             strong { "Secret: " }
@@ -5786,6 +5855,7 @@ fn SiteRow(
         panel::models::site::SiteType::Php | panel::models::site::SiteType::WordPress
     );
     let basic_auth_on = site.basic_auth_enabled;
+    let basic_auth_realm = site.basic_auth_realm.clone();
     let mut sites_resource = sites_resource;
     let mut confirm_delete = use_signal(|| false);
     let mut row_error = use_signal(|| None::<String>);
@@ -5793,21 +5863,6 @@ fn SiteRow(
     let mut show_logs = use_signal(|| false);
     let mut show_cert = use_signal(|| false);
     let mut show_auth = use_signal(|| false);
-    let mut cert_email = use_signal(String::new);
-    let mut cert_include_www = use_signal(|| false);
-    let mut custom_cert_pem = use_signal(String::new);
-    let mut custom_key_pem = use_signal(String::new);
-    let mut show_custom_cert = use_signal(|| false);
-    let mut ba_realm = use_signal(|| site.basic_auth_realm.clone());
-    let mut ba_username = use_signal(String::new);
-    let mut ba_password = use_signal(String::new);
-    let ba_users = use_resource(move || async move {
-        if show_auth() {
-            server_list_basic_auth_users(site_id).await.ok()
-        } else {
-            None
-        }
-    });
     let mut php_ver = use_signal(|| {
         site.php_version
             .clone()
@@ -6084,208 +6139,28 @@ fn SiteRow(
         }
         // ── SSL Certificate Management Panel ────────────────────────────────
         if show_cert() {
-            tr {
-                td { colspan: "8", class: "px-6 pt-0 pb-4 bg-blue-50/40",
-                    div { class: "rounded-lg border border-blue-200 bg-white p-4 space-y-4",
-                        h4 { class: "text-sm font-semibold text-blue-900", "SSL Certificate — {site_domain}" }
-                        div { class: "space-y-2",
-                            p { class: "text-xs font-medium text-gray-700", "Let's Encrypt (Certbot)" }
-                            div { class: "flex flex-wrap gap-2 items-end",
-                                input {
-                                    r#type: "email",
-                                    placeholder: "admin@example.com",
-                                    class: "text-xs px-2 py-1 border border-gray-300 rounded w-56 focus:ring-1 focus:ring-blue-400",
-                                    value: "{cert_email}",
-                                    oninput: move |e| cert_email.set(e.value()),
-                                }
-                                label { class: "flex items-center gap-1 text-xs text-gray-600",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: cert_include_www(),
-                                        onchange: move |e| cert_include_www.set(e.checked()),
-                                    }
-                                    "include www"
-                                }
-                                button {
-                                    class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-                                    disabled: busy() || cert_email().is_empty(),
-                                    onclick: move |_| {
-                                        let email = cert_email();
-                                        let www = cert_include_www();
-                                        busy.set(true);
-                                        row_error.set(None);
-                                        spawn(async move {
-                                            match server_issue_site_certificate(site_id, email, www).await {
-                                                Ok(()) => {
-                                                    sites_resource.restart();
-                                                    show_cert.set(false);
-                                                }
-                                                Err(e) => row_error.set(Some(e.to_string())),
-                                            }
-                                            busy.set(false);
-                                        });
-                                    },
-                                    "Issue Certificate"
-                                }
-                            }
-                        }
-                        div { class: "space-y-2",
-                            button {
-                                class: "text-xs text-blue-700 underline",
-                                onclick: move |_| show_custom_cert.toggle(),
-                                if show_custom_cert() { "▲ hide custom cert" } else { "▼ upload custom cert" }
-                            }
-                            if show_custom_cert() {
-                                div { class: "space-y-2",
-                                    textarea {
-                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
-                                        placeholder: "-----BEGIN CERTIFICATE-----\n...",
-                                        value: "{custom_cert_pem}",
-                                        oninput: move |e| custom_cert_pem.set(e.value()),
-                                    }
-                                    textarea {
-                                        class: "text-xs w-full font-mono h-28 border border-gray-300 rounded p-2 focus:ring-1 focus:ring-blue-400",
-                                        placeholder: "-----BEGIN PRIVATE KEY-----\n...",
-                                        value: "{custom_key_pem}",
-                                        oninput: move |e| custom_key_pem.set(e.value()),
-                                    }
-                                    button {
-                                        class: "text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-                                        disabled: busy() || custom_cert_pem().is_empty() || custom_key_pem().is_empty(),
-                                        onclick: move |_| {
-                                            let cert = custom_cert_pem();
-                                            let key = custom_key_pem();
-                                            busy.set(true);
-                                            row_error.set(None);
-                                            spawn(async move {
-                                                match server_set_custom_cert(site_id, cert, key).await {
-                                                    Ok(()) => {
-                                                        sites_resource.restart();
-                                                        show_cert.set(false);
-                                                    }
-                                                    Err(e) => row_error.set(Some(e.to_string())),
-                                                }
-                                                busy.set(false);
-                                            });
-                                        },
-                                        "Save Custom Certificate"
-                                    }
-                                }
-                            }
-                        }
-                        if ssl_on {
-                            p { class: "text-xs text-emerald-700 font-medium", "✓ SSL is currently enabled for this site" }
-                        }
-                    }
-                }
+            SslCertPanel {
+                site_id,
+                site_domain: site_domain.clone(),
+                ssl_on,
+                col_span: 8,
+                busy,
+                row_error,
+                sites_resource,
+                on_close: move |_| show_cert.set(false),
             }
         }
         // ── HTTP Basic Authentication Panel ────────────────────────────────
         if show_auth() {
-            tr {
-                td { colspan: "8", class: "px-6 pt-0 pb-4 bg-orange-50/40",
-                    div { class: "rounded-lg border border-orange-200 bg-white p-4 space-y-4",
-                        h4 { class: "text-sm font-semibold text-orange-900", "HTTP Basic Auth — {site_domain}" }
-                        div { class: "flex flex-wrap gap-2 items-center",
-                            label { class: "text-xs font-medium text-gray-700", "Realm:" }
-                            input {
-                                r#type: "text",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-40 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_realm}",
-                                oninput: move |e| ba_realm.set(e.value()),
-                            }
-                            button {
-                                class: if basic_auth_on {
-                                    "text-xs px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
-                                } else {
-                                    "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
-                                },
-                                disabled: busy(),
-                                onclick: move |_| {
-                                    let realm = ba_realm();
-                                    let new_val = !basic_auth_on;
-                                    busy.set(true);
-                                    row_error.set(None);
-                                    spawn(async move {
-                                        match server_toggle_basic_auth(site_id, new_val, realm).await {
-                                            Ok(()) => sites_resource.restart(),
-                                            Err(e) => row_error.set(Some(e.to_string())),
-                                        }
-                                        busy.set(false);
-                                    });
-                                },
-                                if basic_auth_on { "Disable Auth" } else { "Enable Auth" }
-                            }
-                        }
-                        if let Some(Some(users)) = ba_users.read().as_ref() {
-                            if !users.is_empty() {
-                                div { class: "space-y-1",
-                                    p { class: "text-xs font-medium text-gray-700", "Users:" }
-                                    for user in users.clone().into_iter() {
-                                        {
-                                            let uname = user.username.clone();
-                                            rsx! {
-                                                div { class: "flex items-center gap-2",
-                                                    span { class: "text-xs text-gray-800 font-mono", "{user.username}" }
-                                                    button {
-                                                        class: "text-xs text-red-500 hover:text-red-700",
-                                                        onclick: move |_| {
-                                                            let un = uname.clone();
-                                                            busy.set(true);
-                                                            spawn(async move {
-                                                                let _ = server_remove_basic_auth_user(site_id, un).await;
-                                                                busy.set(false);
-                                                            });
-                                                        },
-                                                        "remove"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        div { class: "flex flex-wrap gap-2 items-end",
-                            input {
-                                r#type: "text",
-                                placeholder: "username",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_username}",
-                                oninput: move |e| ba_username.set(e.value()),
-                            }
-                            input {
-                                r#type: "password",
-                                placeholder: "password",
-                                class: "text-xs px-2 py-1 border border-gray-300 rounded w-32 focus:ring-1 focus:ring-orange-400",
-                                value: "{ba_password}",
-                                oninput: move |e| ba_password.set(e.value()),
-                            }
-                            button {
-                                class: "text-xs px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50",
-                                disabled: busy() || ba_username().is_empty() || ba_password().is_empty(),
-                                onclick: move |_| {
-                                    let uname = ba_username();
-                                    let pass = ba_password();
-                                    busy.set(true);
-                                    row_error.set(None);
-                                    spawn(async move {
-                                        match server_add_basic_auth_user(site_id, uname, pass).await {
-                                            Ok(()) => {
-                                                ba_username.set(String::new());
-                                                ba_password.set(String::new());
-                                                sites_resource.restart();
-                                            }
-                                            Err(e) => row_error.set(Some(e.to_string())),
-                                        }
-                                        busy.set(false);
-                                    });
-                                },
-                                "Add User"
-                            }
-                        }
-                    }
-                }
+            BasicAuthPanel {
+                site_id,
+                site_domain: site_domain.clone(),
+                basic_auth_on,
+                basic_auth_realm: basic_auth_realm.clone(),
+                col_span: 8,
+                busy,
+                row_error,
+                sites_resource,
             }
         }
     }
@@ -9240,9 +9115,14 @@ fn clean_err(e: &str) -> String {
         .to_string()
 }
 
+/// Contact details edit card extracted from ClientSettings.
 #[component]
-fn ClientSettings() -> Element {
-    let mut user = use_resource(move || async move { server_get_current_user().await });
+fn ContactDetailsCard(
+    company: Option<String>,
+    address: Option<String>,
+    phone: Option<String>,
+    on_saved: EventHandler<()>,
+) -> Element {
     let mut edit_company = use_signal(String::new);
     let mut edit_address = use_signal(String::new);
     let mut edit_phone = use_signal(String::new);
@@ -9250,8 +9130,142 @@ fn ClientSettings() -> Element {
     let mut details_saving = use_signal(|| false);
     let mut details_error = use_signal(|| None::<String>);
     let mut details_success = use_signal(|| false);
+    rsx! {
+        div { class: "glass-card rounded-2xl p-6",
+            div { class: "flex items-center justify-between mb-4",
+                h3 { class: "text-lg font-semibold text-gray-700", "Contact Details" }
+                if !details_editing() {
+                    button {
+                        class: "px-3 py-1.5 text-sm bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors",
+                        onclick: {
+                            let co = company.clone().unwrap_or_default();
+                            let ad = address.clone().unwrap_or_default();
+                            let ph = phone.clone().unwrap_or_default();
+                            move |_| {
+                                edit_company.set(co.clone());
+                                edit_address.set(ad.clone());
+                                edit_phone.set(ph.clone());
+                                details_editing.set(true);
+                                details_success.set(false);
+                                details_error.set(None);
+                            }
+                        },
+                        "Edit"
+                    }
+                }
+            }
+            if details_editing() {
+                if let Some(err) = details_error() {
+                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-3 text-sm",
+                        "{err}"
+                    }
+                }
+                div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
+                    div {
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "Company"
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                            placeholder: "Acme Inc.",
+                            value: "{edit_company}",
+                            oninput: move |e| edit_company.set(e.value()),
+                        }
+                    }
+                    div {
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone" }
+                        input {
+                            r#type: "tel",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                            placeholder: "+1 555 000 0000",
+                            value: "{edit_phone}",
+                            oninput: move |e| edit_phone.set(e.value()),
+                        }
+                    }
+                    div {
+                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                            "Address"
+                        }
+                        input {
+                            r#type: "text",
+                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                            placeholder: "123 Main St, City",
+                            value: "{edit_address}",
+                            oninput: move |e| edit_address.set(e.value()),
+                        }
+                    }
+                }
+                div { class: "flex gap-2 mt-4",
+                    button {
+                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                        disabled: details_saving(),
+                        onclick: move |_| {
+                            details_saving.set(true);
+                            details_error.set(None);
+                            let company = edit_company();
+                            let address = edit_address();
+                            let phone = edit_phone();
+                            spawn(async move {
+                                let c = if company.trim().is_empty() { None } else { Some(company) };
+                                let a = if address.trim().is_empty() { None } else { Some(address) };
+                                let p = if phone.trim().is_empty() { None } else { Some(phone) };
+                                match server_update_user_details(0, c, a, p).await {
+                                    Ok(_) => {
+                                        details_editing.set(false);
+                                        details_success.set(true);
+                                        on_saved(());
+                                    }
+                                    Err(e) => details_error.set(Some(e.to_string())),
+                                }
+                                details_saving.set(false);
+                            });
+                        },
+                        if details_saving() { "Saving..." } else { "Save" }
+                    }
+                    button {
+                        class: "px-4 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors text-sm",
+                        onclick: move |_| {
+                            details_editing.set(false);
+                            details_error.set(None);
+                        },
+                        "Cancel"
+                    }
+                }
+            } else {
+                if details_success() {
+                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-3 text-sm",
+                        "Contact details updated."
+                    }
+                }
+                div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
+                    div {
+                        label { class: "block text-sm font-medium text-gray-500", "Company" }
+                        p { class: "text-gray-900 mt-0.5",
+                            if let Some(c) = &company { "{c}" } else { "—" }
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-500", "Phone" }
+                        p { class: "text-gray-900 mt-0.5",
+                            if let Some(p) = &phone { "{p}" } else { "—" }
+                        }
+                    }
+                    div {
+                        label { class: "block text-sm font-medium text-gray-500", "Address" }
+                        p { class: "text-gray-900 mt-0.5",
+                            if let Some(a) = &address { "{a}" } else { "—" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
-    // Change password
+/// Password + 2FA security section extracted from ClientSettings.
+#[component]
+fn SecuritySection(totp_enabled: bool, on_user_changed: EventHandler<()>) -> Element {
     let mut show_pw_form = use_signal(|| false);
     let mut pw_current = use_signal(String::new);
     let mut pw_new = use_signal(String::new);
@@ -9260,412 +9274,343 @@ fn ClientSettings() -> Element {
     let mut pw_error = use_signal(|| None::<String>);
     let mut pw_success = use_signal(|| false);
 
-    // 2FA setup
     let mut show_2fa_form = use_signal(|| false);
     let mut tfa_secret = use_signal(String::new);
     let mut tfa_qr_url = use_signal(String::new);
+    let mut tfa_qr_svg = use_signal(String::new);
     let mut tfa_code = use_signal(String::new);
     let mut tfa_loading = use_signal(|| false);
     let mut tfa_error = use_signal(|| None::<String>);
     let mut tfa_success = use_signal(|| false);
 
-    // Disable 2FA
     let mut show_disable_2fa = use_signal(|| false);
     let mut disable_2fa_pw = use_signal(String::new);
     let mut disable_2fa_saving = use_signal(|| false);
     let mut disable_2fa_error = use_signal(|| None::<String>);
 
     rsx! {
+        div { class: "glass-card rounded-2xl p-6",
+            h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Security" }
+            div { class: "flex gap-4 mb-4",
+                button {
+                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm",
+                    onclick: move |_| {
+                        show_pw_form.set(!show_pw_form());
+                        pw_error.set(None);
+                        pw_success.set(false);
+                        pw_current.set(String::new());
+                        pw_new.set(String::new());
+                        pw_confirm.set(String::new());
+                    },
+                    if show_pw_form() { "Cancel" } else { "Change Password" }
+                }
+                if totp_enabled {
+                    button {
+                        class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm",
+                        onclick: move |_| {
+                            show_disable_2fa.set(!show_disable_2fa());
+                            disable_2fa_error.set(None);
+                            disable_2fa_pw.set(String::new());
+                        },
+                        if show_disable_2fa() { "Cancel" } else { "Disable Two-Factor Auth" }
+                    }
+                } else {
+                    button {
+                        class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm",
+                        onclick: move |_| {
+                            if !show_2fa_form() {
+                                tfa_loading.set(true);
+                                tfa_error.set(None);
+                                tfa_success.set(false);
+                                tfa_code.set(String::new());
+                                spawn(async move {
+                                    match server_setup_2fa().await {
+                                        Ok(r) => {
+                                            tfa_secret.set(r.secret);
+                                            tfa_qr_url.set(r.qr_code_url);
+                                            tfa_qr_svg.set(r.qr_code_svg);
+                                            show_2fa_form.set(true);
+                                        }
+                                        Err(e) => tfa_error.set(Some(e.to_string())),
+                                    }
+                                    tfa_loading.set(false);
+                                });
+                            } else {
+                                show_2fa_form.set(false);
+                            }
+                        },
+                        if tfa_loading() {
+                            "Loading…"
+                        } else if show_2fa_form() {
+                            "Cancel"
+                        } else {
+                            "Enable Two-Factor Auth"
+                        }
+                    }
+                }
+            }
+            if pw_success() && !show_pw_form() {
+                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm",
+                    "Password changed successfully."
+                }
+            }
+            if show_pw_form() {
+                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
+                    if let Some(err) = pw_error() {
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm",
+                            "{clean_err(&err)}"
+                        }
+                    }
+                    div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
+                        div {
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                                "Current Password"
+                            }
+                            input {
+                                r#type: "password",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                                placeholder: "Current password",
+                                value: "{pw_current}",
+                                oninput: move |e| pw_current.set(e.value()),
+                            }
+                        }
+                        div {
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                                "New Password"
+                            }
+                            input {
+                                r#type: "password",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                                placeholder: "New password (12+ chars)",
+                                value: "{pw_new}",
+                                oninput: move |e| pw_new.set(e.value()),
+                            }
+                        }
+                        div {
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                                "Confirm New Password"
+                            }
+                            input {
+                                r#type: "password",
+                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
+                                placeholder: "Confirm new password",
+                                value: "{pw_confirm}",
+                                oninput: move |e| pw_confirm.set(e.value()),
+                            }
+                        }
+                    }
+                    button {
+                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                        disabled: pw_saving(),
+                        onclick: move |_| {
+                            let cur = pw_current();
+                            let new = pw_new();
+                            let conf = pw_confirm();
+                            if new != conf {
+                                pw_error.set(Some("Passwords do not match".to_string()));
+                                return;
+                            }
+                            if new.len() < 12 {
+                                pw_error.set(Some(
+                                    "New password must be at least 12 characters".to_string(),
+                                ));
+                                return;
+                            }
+                            pw_error.set(None);
+                            pw_saving.set(true);
+                            spawn(async move {
+                                match server_change_password(cur, new).await {
+                                    Ok(()) => {
+                                        pw_success.set(true);
+                                        pw_current.set(String::new());
+                                        pw_new.set(String::new());
+                                        pw_confirm.set(String::new());
+                                        show_pw_form.set(false);
+                                    }
+                                    Err(e) => pw_error.set(Some(e.to_string())),
+                                }
+                                pw_saving.set(false);
+                            });
+                        },
+                        if pw_saving() { "Saving…" } else { "Save Password" }
+                    }
+                }
+            }
+            if show_2fa_form() {
+                div { class: "border-t border-black/[0.05] pt-4 space-y-4",
+                    if let Some(err) = tfa_error() {
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm",
+                            "{clean_err(&err)}"
+                        }
+                    }
+                    p { class: "text-sm text-gray-600",
+                        "Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm."
+                    }
+                    if !tfa_qr_svg().is_empty() {
+                        div { class: "bg-white border border-black/[0.08] rounded-xl p-4 flex justify-center",
+                            div { class: "w-48 h-48", dangerous_inner_html: tfa_qr_svg() }
+                        }
+                    }
+                    div { class: "bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-700 break-all",
+                        strong { "Secret: " }
+                        "{tfa_secret}"
+                    }
+                    div { class: "bg-gray-50 rounded-lg p-4 text-xs text-gray-500 break-all",
+                        strong { "OTP URL: " }
+                        code { "{tfa_qr_url}" }
+                    }
+                    div { class: "flex items-end gap-4",
+                        div {
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                                "Verification Code"
+                            }
+                            input {
+                                r#type: "text",
+                                inputmode: "numeric",
+                                pattern: "[0-9]*",
+                                maxlength: "6",
+                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent w-40 font-mono text-center text-xl tracking-widest",
+                                placeholder: "000000",
+                                value: "{tfa_code}",
+                                oninput: move |e| tfa_code.set(e.value()),
+                            }
+                        }
+                        button {
+                            class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                            disabled: tfa_loading() || tfa_code().len() < 6,
+                            onclick: move |_| {
+                                let code = tfa_code();
+                                tfa_loading.set(true);
+                                tfa_error.set(None);
+                                spawn(async move {
+                                    match server_confirm_2fa(code).await {
+                                        Ok(()) => {
+                                            tfa_success.set(true);
+                                            show_2fa_form.set(false);
+                                            on_user_changed(());
+                                        }
+                                        Err(e) => tfa_error.set(Some(e.to_string())),
+                                    }
+                                    tfa_loading.set(false);
+                                });
+                            },
+                            if tfa_loading() { "Verifying…" } else { "Enable 2FA" }
+                        }
+                    }
+                }
+            }
+            if tfa_success() {
+                div { class: "border-t border-black/[0.05] pt-4",
+                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm",
+                        "Two-factor authentication has been enabled."
+                    }
+                }
+            }
+            if show_disable_2fa() {
+                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
+                    if let Some(err) = disable_2fa_error() {
+                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm",
+                            "{clean_err(&err)}"
+                        }
+                    }
+                    p { class: "text-sm text-gray-600",
+                        "Enter your password to disable two-factor authentication."
+                    }
+                    div { class: "flex items-end gap-4",
+                        div {
+                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5",
+                                "Password"
+                            }
+                            input {
+                                r#type: "password",
+                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64",
+                                placeholder: "Your current password",
+                                value: "{disable_2fa_pw}",
+                                oninput: move |e| disable_2fa_pw.set(e.value()),
+                            }
+                        }
+                        button {
+                            class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
+                            disabled: disable_2fa_saving(),
+                            onclick: move |_| {
+                                let pw = disable_2fa_pw();
+                                disable_2fa_saving.set(true);
+                                disable_2fa_error.set(None);
+                                spawn(async move {
+                                    match server_disable_2fa(pw).await {
+                                        Ok(()) => {
+                                            show_disable_2fa.set(false);
+                                            disable_2fa_pw.set(String::new());
+                                            on_user_changed(());
+                                        }
+                                        Err(e) => disable_2fa_error.set(Some(e.to_string())),
+                                    }
+                                    disable_2fa_saving.set(false);
+                                });
+                            },
+                            if disable_2fa_saving() { "Disabling…" } else { "Disable 2FA" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ClientSettings() -> Element {
+    let mut user = use_resource(move || async move { server_get_current_user().await });
+
+    rsx! {
         div { class: "p-6 lg:p-8",
-            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6", "Account Settings" }
+            h2 { class: "text-2xl font-semibold tracking-tight text-gray-900 mb-6",
+                "Account Settings"
+            }
             match &*user.read() {
                 Some(Ok(u)) => rsx! {
                     div { class: "space-y-6",
                         div { class: "glass-card rounded-2xl p-6",
-                            h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Profile Information" }
+                            h3 { class: "text-lg font-semibold text-gray-700 mb-4",
+                                "Profile Information"
+                            }
                             div { class: "grid grid-cols-2 gap-4",
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-500", "Username" }
+                                    label { class: "block text-sm font-medium text-gray-500",
+                                        "Username"
+                                    }
                                     p { class: "text-gray-900", "{u.username}" }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-500", "Email" }
+                                    label { class: "block text-sm font-medium text-gray-500",
+                                        "Email"
+                                    }
                                     p { class: "text-gray-900", "{u.email}" }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-500", "Role" }
+                                    label { class: "block text-sm font-medium text-gray-500",
+                                        "Role"
+                                    }
                                     p { class: "text-gray-900", "{u.role:?}" }
                                 }
                                 div {
-                                    label { class: "block text-sm font-medium text-gray-500", "Two-Factor Auth" }
+                                    label { class: "block text-sm font-medium text-gray-500",
+                                        "Two-Factor Auth"
+                                    }
                                     p { class: "text-gray-900",
                                         if u.totp_enabled { "Enabled ✅" } else { "Disabled" }
                                     }
                                 }
                             }
                         }
-                        // Contact details card
-                        div { class: "glass-card rounded-2xl p-6",
-                            div { class: "flex items-center justify-between mb-4",
-                                h3 { class: "text-lg font-semibold text-gray-700", "Contact Details" }
-                                if !details_editing() {
-                                    button {
-                                        class: "px-3 py-1.5 text-sm bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors",
-                                        onclick: {
-                                            let company = u.company.clone().unwrap_or_default();
-                                            let address = u.address.clone().unwrap_or_default();
-                                            let phone = u.phone.clone().unwrap_or_default();
-                                            move |_| {
-                                                edit_company.set(company.clone());
-                                                edit_address.set(address.clone());
-                                                edit_phone.set(phone.clone());
-                                                details_editing.set(true);
-                                                details_success.set(false);
-                                                details_error.set(None);
-                                            }
-                                        },
-                                        "Edit"
-                                    }
-                                }
-                            }
-                            if details_editing() {
-                                if let Some(err) = details_error() {
-                                    div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg mb-3 text-sm", "{err}" }
-                                }
-                                div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
-                                    div {
-                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Company" }
-                                        input {
-                                            r#type: "text",
-                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                            placeholder: "Acme Inc.",
-                                            value: "{edit_company}",
-                                            oninput: move |e| edit_company.set(e.value()),
-                                        }
-                                    }
-                                    div {
-                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Phone" }
-                                        input {
-                                            r#type: "tel",
-                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                            placeholder: "+1 555 000 0000",
-                                            value: "{edit_phone}",
-                                            oninput: move |e| edit_phone.set(e.value()),
-                                        }
-                                    }
-                                    div {
-                                        label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Address" }
-                                        input {
-                                            r#type: "text",
-                                            class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                            placeholder: "123 Main St, City",
-                                            value: "{edit_address}",
-                                            oninput: move |e| edit_address.set(e.value()),
-                                        }
-                                    }
-                                }
-                                div { class: "flex gap-2 mt-4",
-                                    button {
-                                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
-                                        disabled: details_saving(),
-                                        onclick: move |_| {
-                                            details_saving.set(true);
-                                            details_error.set(None);
-                                            let company = edit_company();
-                                            let address = edit_address();
-                                            let phone = edit_phone();
-                                            spawn(async move {
-                                                let c = if company.trim().is_empty() { None } else { Some(company) };
-                                                let a = if address.trim().is_empty() { None } else { Some(address) };
-                                                let p = if phone.trim().is_empty() { None } else { Some(phone) };
-                                                // Use 0 – server will resolve current user from JWT.
-                                                match server_update_user_details(0, c, a, p).await {
-                                                    Ok(_) => {
-                                                        details_editing.set(false);
-                                                        details_success.set(true);
-                                                        user.restart();
-                                                    }
-                                                    Err(e) => details_error.set(Some(e.to_string())),
-                                                }
-                                                details_saving.set(false);
-                                            });
-                                        },
-                                        if details_saving() { "Saving..." } else { "Save" }
-                                    }
-                                    button {
-                                        class: "px-4 py-2 bg-gray-100 hover:bg-black/[0.06] text-gray-600 rounded-lg transition-colors text-sm",
-                                        onclick: move |_| {
-                                            details_editing.set(false);
-                                            details_error.set(None);
-                                        },
-                                        "Cancel"
-                                    }
-                                }
-                            } else {
-                                if details_success() {
-                                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg mb-3 text-sm", "Contact details updated." }
-                                }
-                                div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
-                                    div {
-                                        label { class: "block text-sm font-medium text-gray-500", "Company" }
-                                        p { class: "text-gray-900 mt-0.5",
-                                            if let Some(c) = &u.company { "{c}" } else { "—" }
-                                        }
-                                    }
-                                    div {
-                                        label { class: "block text-sm font-medium text-gray-500", "Phone" }
-                                        p { class: "text-gray-900 mt-0.5",
-                                            if let Some(p) = &u.phone { "{p}" } else { "—" }
-                                        }
-                                    }
-                                    div {
-                                        label { class: "block text-sm font-medium text-gray-500", "Address" }
-                                        p { class: "text-gray-900 mt-0.5",
-                                            if let Some(a) = &u.address { "{a}" } else { "—" }
-                                        }
-                                    }
-                                }
-                            }
+                        ContactDetailsCard {
+                            company: u.company.clone(),
+                            address: u.address.clone(),
+                            phone: u.phone.clone(),
+                            on_saved: move |_| user.restart(),
                         }
-                        div { class: "glass-card rounded-2xl p-6",
-                            h3 { class: "text-lg font-semibold text-gray-700 mb-4", "Security" }
-                            div { class: "flex gap-4 mb-4",
-                                button {
-                                    class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm",
-                                    onclick: move |_| {
-                                        show_pw_form.set(!show_pw_form());
-                                        pw_error.set(None);
-                                        pw_success.set(false);
-                                        pw_current.set(String::new());
-                                        pw_new.set(String::new());
-                                        pw_confirm.set(String::new());
-                                    },
-                                    if show_pw_form() { "Cancel" } else { "Change Password" }
-                                }
-                                if u.totp_enabled {
-                                    button {
-                                        class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm",
-                                        onclick: move |_| {
-                                            show_disable_2fa.set(!show_disable_2fa());
-                                            disable_2fa_error.set(None);
-                                            disable_2fa_pw.set(String::new());
-                                        },
-                                        if show_disable_2fa() { "Cancel" } else { "Disable Two-Factor Auth" }
-                                    }
-                                } else {
-                                    button {
-                                        class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm",
-                                        onclick: move |_| {
-                                            if !show_2fa_form() {
-                                                tfa_loading.set(true);
-                                                tfa_error.set(None);
-                                                tfa_success.set(false);
-                                                tfa_code.set(String::new());
-                                                spawn(async move {
-                                                    match server_setup_2fa().await {
-                                                        Ok(r) => {
-                                                            tfa_secret.set(r.secret);
-                                                            tfa_qr_url.set(r.qr_code_url);
-                                                            show_2fa_form.set(true);
-                                                        }
-                                                        Err(e) => tfa_error.set(Some(e.to_string())),
-                                                    }
-                                                    tfa_loading.set(false);
-                                                });
-                                            } else {
-                                                show_2fa_form.set(false);
-                                            }
-                                        },
-                                        if tfa_loading() { "Loading…" } else if show_2fa_form() { "Cancel" } else { "Enable Two-Factor Auth" }
-                                    }
-                                }
-                            }
-
-                            // Change password success (shown after form closes)
-                            if pw_success() && !show_pw_form() {
-                                div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm", "Password changed successfully." }
-                            }
-
-                            // Change password form
-                            if show_pw_form() {
-                                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
-                                    if let Some(err) = pw_error() {
-                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
-                                    }
-                                    div { class: "grid grid-cols-1 md:grid-cols-3 gap-4",
-                                        div {
-                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Current Password" }
-                                            input {
-                                                r#type: "password",
-                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                                placeholder: "Current password",
-                                                value: "{pw_current}",
-                                                oninput: move |e| pw_current.set(e.value()),
-                                            }
-                                        }
-                                        div {
-                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "New Password" }
-                                            input {
-                                                r#type: "password",
-                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                                placeholder: "New password (12+ chars)",
-                                                value: "{pw_new}",
-                                                oninput: move |e| pw_new.set(e.value()),
-                                            }
-                                        }
-                                        div {
-                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Confirm New Password" }
-                                            input {
-                                                r#type: "password",
-                                                class: "w-full px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-black/[0.15] focus:border-transparent",
-                                                placeholder: "Confirm new password",
-                                                value: "{pw_confirm}",
-                                                oninput: move |e| pw_confirm.set(e.value()),
-                                            }
-                                        }
-                                    }
-                                    button {
-                                        class: "px-4 py-2 bg-gray-900 hover:bg-gray-900/90 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
-                                        disabled: pw_saving(),
-                                        onclick: move |_| {
-                                            let cur = pw_current();
-                                            let new = pw_new();
-                                            let conf = pw_confirm();
-                                            if new != conf {
-                                                pw_error.set(Some("Passwords do not match".to_string()));
-                                                return;
-                                            }
-                                            if new.len() < 12 {
-                                                pw_error.set(Some("New password must be at least 12 characters".to_string()));
-                                                return;
-                                            }
-                                            pw_error.set(None);
-                                            pw_saving.set(true);
-                                            spawn(async move {
-                                                match server_change_password(cur, new).await {
-                                                    Ok(()) => {
-                                                        pw_success.set(true);
-                                                        pw_current.set(String::new());
-                                                        pw_new.set(String::new());
-                                                        pw_confirm.set(String::new());
-                                                        show_pw_form.set(false);
-                                                    }
-                                                    Err(e) => pw_error.set(Some(e.to_string())),
-                                                }
-                                                pw_saving.set(false);
-                                            });
-                                        },
-                                        if pw_saving() { "Saving…" } else { "Save Password" }
-                                    }
-                                }
-                            }
-
-                            // 2FA setup form
-                            if show_2fa_form() {
-                                div { class: "border-t border-black/[0.05] pt-4 space-y-4",
-                                    if let Some(err) = tfa_error() {
-                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
-                                    }
-                                    p { class: "text-sm text-gray-600",
-                                        "Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm."
-                                    }
-                                    // Show OTP URI as a link for manual entry
-                                    div { class: "bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-700 break-all",
-                                        strong { "Secret: " }
-                                        "{tfa_secret}"
-                                    }
-                                    div { class: "bg-gray-50 rounded-lg p-4 text-xs text-gray-500 break-all",
-                                        strong { "OTP URL: " }
-                                        code { "{tfa_qr_url}" }
-                                    }
-                                    div { class: "flex items-end gap-4",
-                                        div {
-                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Verification Code" }
-                                            input {
-                                                r#type: "text",
-                                                inputmode: "numeric",
-                                                pattern: "[0-9]*",
-                                                maxlength: "6",
-                                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent w-40 font-mono text-center text-xl tracking-widest",
-                                                placeholder: "000000",
-                                                value: "{tfa_code}",
-                                                oninput: move |e| tfa_code.set(e.value()),
-                                            }
-                                        }
-                                        button {
-                                            class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
-                                            disabled: tfa_loading() || tfa_code().len() < 6,
-                                            onclick: move |_| {
-                                                let code = tfa_code();
-                                                tfa_loading.set(true);
-                                                tfa_error.set(None);
-                                                spawn(async move {
-                                                    match server_confirm_2fa(code).await {
-                                                        Ok(()) => {
-                                                            tfa_success.set(true);
-                                                            show_2fa_form.set(false);
-                                                            user.restart();
-                                                        }
-                                                        Err(e) => tfa_error.set(Some(e.to_string())),
-                                                    }
-                                                    tfa_loading.set(false);
-                                                });
-                                            },
-                                            if tfa_loading() { "Verifying…" } else { "Enable 2FA" }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 2FA success message
-                            if tfa_success() {
-                                div { class: "border-t border-black/[0.05] pt-4",
-                                    div { class: "bg-emerald-500/[0.08] text-emerald-700 p-3 rounded-lg text-sm", "Two-factor authentication has been enabled." }
-                                }
-                            }
-
-                            // Disable 2FA form
-                            if show_disable_2fa() {
-                                div { class: "border-t border-black/[0.05] pt-4 space-y-3",
-                                    if let Some(err) = disable_2fa_error() {
-                                        div { class: "bg-red-500/[0.08] text-red-600 p-3 rounded-lg text-sm", "{clean_err(&err)}" }
-                                    }
-                                    p { class: "text-sm text-gray-600", "Enter your password to disable two-factor authentication." }
-                                    div { class: "flex items-end gap-4",
-                                        div {
-                                            label { class: "block text-[13px] font-medium text-gray-700 mb-1.5", "Password" }
-                                            input {
-                                                r#type: "password",
-                                                class: "px-4 py-2 border border-black/[0.08] rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64",
-                                                placeholder: "Your current password",
-                                                value: "{disable_2fa_pw}",
-                                                oninput: move |e| disable_2fa_pw.set(e.value()),
-                                            }
-                                        }
-                                        button {
-                                            class: "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50",
-                                            disabled: disable_2fa_saving(),
-                                            onclick: move |_| {
-                                                let pw = disable_2fa_pw();
-                                                disable_2fa_saving.set(true);
-                                                disable_2fa_error.set(None);
-                                                spawn(async move {
-                                                    match server_disable_2fa(pw).await {
-                                                        Ok(()) => {
-                                                            show_disable_2fa.set(false);
-                                                            disable_2fa_pw.set(String::new());
-                                                            user.restart();
-                                                        }
-                                                        Err(e) => disable_2fa_error.set(Some(e.to_string())),
-                                                    }
-                                                    disable_2fa_saving.set(false);
-                                                });
-                                            },
-                                            if disable_2fa_saving() { "Disabling…" } else { "Disable 2FA" }
-                                        }
-                                    }
-                                }
-                            }
+                        SecuritySection {
+                            totp_enabled: u.totp_enabled,
+                            on_user_changed: move |_| user.restart(),
                         }
                     }
                 },

@@ -117,6 +117,7 @@ pub struct ChangePasswordRequest {
 pub struct Enable2FAResponse {
     pub secret: String,
     pub qr_code_url: String,
+    pub qr_code_svg: String,
 }
 
 impl std::fmt::Debug for Enable2FAResponse {
@@ -124,6 +125,7 @@ impl std::fmt::Debug for Enable2FAResponse {
         f.debug_struct("Enable2FAResponse")
             .field("secret", &"[REDACTED]")
             .field("qr_code_url", &"[REDACTED]")
+            .field("qr_code_svg", &"[REDACTED]")
             .finish()
     }
 }

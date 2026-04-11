@@ -358,6 +358,8 @@ pub async fn server_setup_2fa() -> Result<Enable2FAResponse, ServerFnError> {
 
     let (secret, qr_url) = crate::auth::TotpManager::generate_credentials(&claims.username)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let qr_svg = crate::auth::totp::generate_qr_code_svg(&qr_url)
+        .map_err(|e| ServerFnError::new(format!("Failed to generate QR code: {e}")))?;
 
     // Store the pending secret server-side so that server_confirm_2fa can verify
     // against it without trusting the client to echo back the correct secret
@@ -377,6 +379,7 @@ pub async fn server_setup_2fa() -> Result<Enable2FAResponse, ServerFnError> {
     Ok(Enable2FAResponse {
         secret,
         qr_code_url: qr_url,
+        qr_code_svg: qr_svg,
     })
 }
 

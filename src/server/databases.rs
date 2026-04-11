@@ -498,6 +498,35 @@ pub async fn server_list_db_users(
 #[cfg(feature = "server")]
 use crate::services::shell;
 
+#[cfg(feature = "server")]
+async fn mysql_admin_exec(args: &[&str]) -> Result<std::process::Output, String> {
+    let mut full_args = vec!["mysql"];
+    full_args.extend_from_slice(args);
+    shell::exec("sudo", &full_args)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(feature = "server")]
+async fn mysql_admin_exec_stdin(sql: &[u8]) -> Result<(), String> {
+    shell::exec_stdin("sudo", &["mysql"], sql)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(feature = "server")]
+async fn mysql_admin_output(args: &[&str]) -> Result<std::process::Output, String> {
+    use tokio::process::Command;
+
+    Command::new("sudo")
+        .args(["mysql"])
+        .args(args)
+        .output()
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Provision a MySQL database and create a scoped user with GRANT only on that database.
 /// Also records the MySQL user in the SQLite panel database for tracking.
 #[cfg(feature = "server")]
@@ -513,9 +542,7 @@ async fn provision_mysql_database(
     // block shell-special characters when a shell is involved — Command::new
     // never invokes a shell, but removing the guard is a larger change).
     let create_db_sql = format!("CREATE DATABASE IF NOT EXISTS `{}`;\n", db_name);
-    shell::exec_stdin("mysql", &[], create_db_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(create_db_sql.as_bytes()).await?;
 
     // Create the MySQL user if it doesn't exist (user is shared across all databases for this panel user)
     let mysql_user = format!("pma_{}", panel_username);
@@ -526,22 +553,16 @@ async fn provision_mysql_database(
         "CREATE USER IF NOT EXISTS '{}'@'localhost' IDENTIFIED BY '{}';",
         mysql_user, password
     );
-    shell::exec_stdin("mysql", &[], create_user_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(create_user_sql.as_bytes()).await?;
 
     // Grant privileges on this specific database only — pipe via stdin to keep SQL off ps output.
     let grant_sql = format!(
         "GRANT ALL PRIVILEGES ON `{}`.* TO '{}'@'localhost';\n",
         db_name, mysql_user
     );
-    shell::exec_stdin("mysql", &[], grant_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(grant_sql.as_bytes()).await?;
 
-    shell::exec("mysql", &["-e", "FLUSH PRIVILEGES"])
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec(&["-e", "FLUSH PRIVILEGES"]).await?;
 
     // Persist the MySQL user in SQLite for tracking (password_hash not stored here — creds live in MySQL)
     let privileges = format!("ALL PRIVILEGES ON `{}`.*", db_name);
@@ -573,9 +594,7 @@ async fn provision_mysql_database(
 #[cfg(feature = "server")]
 async fn drop_mysql_database(db_name: &str) -> Result<(), String> {
     let drop_sql = format!("DROP DATABASE IF EXISTS `{}`;\n", db_name);
-    shell::exec_stdin("mysql", &[], drop_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(drop_sql.as_bytes()).await?;
     Ok(())
 }
 
@@ -600,8 +619,8 @@ async fn get_or_create_mysql_session_password(
     );
 
     // Try create first, then alter to reset password — both via stdin
-    let create_result = shell::exec_stdin("mysql", &[], create_sql.as_bytes()).await;
-    let alter_result = shell::exec_stdin("mysql", &[], alter_sql.as_bytes()).await;
+    let create_result = mysql_admin_exec_stdin(create_sql.as_bytes()).await;
+    let alter_result = mysql_admin_exec_stdin(alter_sql.as_bytes()).await;
 
     // If both failed, MySQL is likely unavailable or the panel user lacks
     // sufficient privileges — surface the alter error (more informative).
@@ -614,9 +633,7 @@ async fn get_or_create_mysql_session_password(
         );
     }
 
-    shell::exec("mysql", &["-e", "FLUSH PRIVILEGES"])
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec(&["-e", "FLUSH PRIVILEGES"]).await?;
 
     Ok(password)
 }
@@ -652,30 +669,23 @@ fn parse_mysql_kv_output(output: &str) -> std::collections::HashMap<String, Stri
 /// Collect key MySQL/MariaDB status and variable metrics.
 #[cfg(feature = "server")]
 async fn collect_mysql_status() -> Result<MySqlStatus, String> {
-    use tokio::process::Command;
     // These SQL strings are internal constants, not user input — bypass the
     // shell::exec injection guard which rejects the ( ) chars in IN (...).
-    let status_out = Command::new("mysql")
-        .args([
+    let status_out = mysql_admin_output(&[
             "-N",
             "-B",
             "-e",
             "SHOW GLOBAL STATUS WHERE Variable_name IN ('Uptime','Threads_connected','Questions','Slow_queries')",
         ])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
-    let var_out = Command::new("mysql")
-        .args([
+    let var_out = mysql_admin_output(&[
             "-N",
             "-B",
             "-e",
             "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('version','max_connections','innodb_buffer_pool_size','datadir')",
         ])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let status = parse_mysql_kv_output(&String::from_utf8_lossy(&status_out.stdout));
     let vars = parse_mysql_kv_output(&String::from_utf8_lossy(&var_out.stdout));
@@ -714,19 +724,15 @@ async fn collect_mysql_status() -> Result<MySqlStatus, String> {
 /// Build MySQL performance recommendations by inspecting key global variables.
 #[cfg(feature = "server")]
 async fn build_mysql_recommendations() -> Result<Vec<MySqlRecommendation>, String> {
-    use tokio::process::Command;
     // These SQL strings are internal constants, not user input — bypass the
     // shell::exec injection guard which rejects the ( ) chars in IN (...).
-    let out = Command::new("mysql")
-        .args([
+    let out = mysql_admin_output(&[
             "-N",
             "-B",
             "-e",
             "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('innodb_buffer_pool_size','slow_query_log','innodb_file_per_table','log_bin','max_connections')",
         ])
-        .output()
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let vars = parse_mysql_kv_output(&String::from_utf8_lossy(&out.stdout));
     let mut recs = Vec::new();
@@ -978,21 +984,15 @@ async fn create_mysql_user(db_name: &str, username: &str, password: &str) -> Res
         "CREATE USER IF NOT EXISTS '{}'@'localhost' IDENTIFIED BY '{}';",
         username, password
     );
-    shell::exec_stdin("mysql", &[], create_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(create_sql.as_bytes()).await?;
 
     let grant_sql = format!(
         "GRANT ALL PRIVILEGES ON `{}`.* TO '{}'@'localhost';\n",
         db_name, username
     );
-    shell::exec_stdin("mysql", &[], grant_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(grant_sql.as_bytes()).await?;
 
-    shell::exec_stdin("mysql", &[], b"FLUSH PRIVILEGES;\n")
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(b"FLUSH PRIVILEGES;\n").await?;
 
     Ok(())
 }
@@ -1001,13 +1001,9 @@ async fn create_mysql_user(db_name: &str, username: &str, password: &str) -> Res
 #[cfg(feature = "server")]
 async fn delete_mysql_user(username: &str) -> Result<(), String> {
     let drop_sql = format!("DROP USER IF EXISTS '{}'@'localhost';\n", username);
-    shell::exec_stdin("mysql", &[], drop_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(drop_sql.as_bytes()).await?;
 
-    shell::exec_stdin("mysql", &[], b"FLUSH PRIVILEGES;\n")
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(b"FLUSH PRIVILEGES;\n").await?;
 
     Ok(())
 }
@@ -1020,13 +1016,9 @@ async fn change_mysql_user_password(username: &str, new_password: &str) -> Resul
         "ALTER USER '{}'@'localhost' IDENTIFIED BY '{}';",
         username, new_password
     );
-    shell::exec_stdin("mysql", &[], alter_sql.as_bytes())
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec_stdin(alter_sql.as_bytes()).await?;
 
-    shell::exec("mysql", &["-e", "FLUSH PRIVILEGES"])
-        .await
-        .map_err(|e| e.to_string())?;
+    mysql_admin_exec(&["-e", "FLUSH PRIVILEGES"]).await?;
 
     Ok(())
 }

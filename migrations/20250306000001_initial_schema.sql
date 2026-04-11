@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS sites (
     owner_id                INTEGER  NOT NULL,
     domain                  TEXT     NOT NULL UNIQUE,
     doc_root                TEXT     NOT NULL,
-    site_type               TEXT     NOT NULL CHECK(site_type IN ('Static', 'PHP', 'ReverseProxy', 'NodeJS')) DEFAULT 'Static',
+    site_type               TEXT     NOT NULL CHECK(site_type IN ('Static', 'PHP', 'WordPress', 'ReverseProxy', 'NodeJS')) DEFAULT 'Static',
     status                  TEXT     NOT NULL CHECK(status IN ('Active', 'Suspended', 'Inactive')) DEFAULT 'Active',
 
     -- SSL/TLS

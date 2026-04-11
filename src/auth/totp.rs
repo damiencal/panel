@@ -25,6 +25,20 @@ pub fn generate_totp_secret(username: &str, issuer: &str) -> Result<(String, Str
     Ok((secret_string, qr_code_url))
 }
 
+#[cfg(feature = "server")]
+pub fn generate_qr_code_svg(otpauth_url: &str) -> Result<String, AuthError> {
+    use qrcode::{render::svg, QrCode};
+
+    let code = QrCode::new(otpauth_url.as_bytes()).map_err(|_| AuthError::InvalidTotpCode)?;
+
+    Ok(code
+        .render::<svg::Color>()
+        .min_dimensions(192, 192)
+        .dark_color(svg::Color("#111827"))
+        .light_color(svg::Color("#ffffff"))
+        .build())
+}
+
 /// Verify a TOTP code against a stored secret, with SQLite-backed replay prevention.
 ///
 /// Uses the database to persist used codes across process restarts so that a
