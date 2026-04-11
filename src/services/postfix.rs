@@ -16,7 +16,6 @@ const VIRTUAL_ALIAS_FILE: &str = "/etc/postfix/virtual_aliases";
 const VMAIL_USER: &str = "vmail";
 const VMAIL_UID: &str = "5000";
 const VMAIL_GID: &str = "5000";
-const POLICY_SERVICE_PORT: u16 = crate::services::postfix_policy::POLICY_PORT;
 
 /// Postfix MTA service manager.
 pub struct PostfixService;
@@ -86,7 +85,12 @@ impl ManagedService for PostfixService {
 impl PostfixService {
     /// Configure Postfix for virtual domain hosting.
     /// Sets up virtual mailbox domains, mailboxes, and aliases using hash files.
-    pub async fn configure_virtual_hosting(&self, hostname: &str) -> Result<(), ServiceError> {
+    /// `policy_port` is read from `[postfix] policy_port` in `panel.toml`.
+    pub async fn configure_virtual_hosting(
+        &self,
+        hostname: &str,
+        policy_port: u16,
+    ) -> Result<(), ServiceError> {
         // Defense-in-depth: validate hostname at service layer
         crate::utils::validators::validate_domain(hostname)
             .map_err(|e| ServiceError::CommandFailed(e.to_string()))?;
@@ -149,7 +153,7 @@ impl PostfixService {
         };
 
         // Write new main.cf atomically
-        let main_cf = generate_main_cf(hostname);
+        let main_cf = generate_main_cf(hostname, policy_port);
         let main_cf_tmp = format!("{}.tmp", POSTFIX_MAIN_CF);
         fs::write(&main_cf_tmp, &main_cf)
             .await
@@ -485,7 +489,7 @@ impl PostfixService {
 }
 
 /// Generate Postfix main.cf for virtual domain hosting.
-fn generate_main_cf(hostname: &str) -> String {
+fn generate_main_cf(hostname: &str, policy_port: u16) -> String {
     format!(
         r#"# Postfix main.cf - Managed by Hosting Control Panel
 # Do not edit manually — changes will be overwritten.
@@ -567,7 +571,7 @@ virtual_mailbox_limit = 0
         vmailbase = VIRTUAL_MAILBOX_BASE,
         vuid = VMAIL_UID,
         vgid = VMAIL_GID,
-        policy_port = POLICY_SERVICE_PORT,
+        policy_port = policy_port,
     )
 }
 

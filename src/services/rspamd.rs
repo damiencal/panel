@@ -319,8 +319,8 @@ impl ClamAvService {
         let safe_path = validate_scan_target(path)?;
 
         info!("clamdscan scanning: {safe_path}");
-        let out = shell::exec_output("clamdscan", &["--infected", "--no-summary", &safe_path])
-            .await?;
+        let out =
+            shell::exec_output("clamdscan", &["--infected", "--no-summary", &safe_path]).await?;
 
         let stdout = String::from_utf8_lossy(&out.stdout).to_string();
         Ok(parse_clamscan_output(&stdout))

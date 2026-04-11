@@ -223,10 +223,15 @@ pub async fn server_clamav_get_db_info() -> Result<ClamDbInfo, ServerFnError> {
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
 
-    ClamAvService
-        .get_db_info()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    match ClamAvService.get_db_info().await {
+        Ok(info) => Ok(info),
+        Err(crate::services::ServiceError::NotInstalled) => Ok(ClamDbInfo {
+            version: "Not installed".to_string(),
+            signatures: 0,
+            database_date: "-".to_string(),
+        }),
+        Err(e) => Err(ServerFnError::new(e.to_string())),
+    }
 }
 
 /// Update ClamAV virus database via `freshclam`.

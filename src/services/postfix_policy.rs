@@ -20,21 +20,23 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tracing::{debug, error, info, warn};
 
-/// TCP port the policy service listens on (localhost only).
+/// Fallback port used when the config does not specify one.
 pub const POLICY_PORT: u16 = 10031;
 
 /// Start the policy service as a background tokio task.
-/// This should be called once during server initialisation.
-pub fn start(pool: SqlitePool) {
+/// `port` is read from `[postfix] policy_port` in `panel.toml`; it defaults
+/// to `POLICY_PORT` (10031) when the config key is absent.
+/// This function should be called once during server initialisation.
+pub fn start(pool: SqlitePool, port: u16) {
     tokio::spawn(async move {
-        if let Err(e) = run(pool).await {
+        if let Err(e) = run(pool, port).await {
             error!("Postfix policy service terminated: {e}");
         }
     });
 }
 
-async fn run(pool: SqlitePool) -> std::io::Result<()> {
-    let bind_addr = format!("127.0.0.1:{POLICY_PORT}");
+async fn run(pool: SqlitePool, port: u16) -> std::io::Result<()> {
+    let bind_addr = format!("127.0.0.1:{port}");
     let listener = TcpListener::bind(&bind_addr).await?;
     info!("Postfix policy service listening on {bind_addr}");
 

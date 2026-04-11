@@ -89,7 +89,7 @@ pub async fn get_service_status(service_type: ServiceType) -> Result<ServiceStat
         ServiceType::Redis => Some("redis-server"),
     };
 
-        if let Some(pattern) = pgrep_pattern {
+    if let Some(pattern) = pgrep_pattern {
         // pgrep -f searches the full command line; exit 0 means ≥1 match found.
         if let Ok(out) = super::shell::exec_output("pgrep", &["-f", pattern]).await {
             if out.status.success() {
@@ -291,9 +291,7 @@ pub async fn is_service_installed(service_type: ServiceType) -> bool {
 
 /// Check if a binary exists in PATH.
 async fn which(binary: &str) -> bool {
-    super::shell::exec("which", &[binary])
-        .await
-        .is_ok()
+    super::shell::exec("which", &[binary]).await.is_ok()
 }
 
 /// Get system metrics (CPU, RAM, disk).

@@ -17,10 +17,17 @@ pub async fn server_ufw_get_status() -> Result<UfwStatus, ServerFnError> {
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
 
-    UfwService
-        .get_status()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    match UfwService.get_status().await {
+        Ok(status) => Ok(status),
+        Err(crate::services::ServiceError::NotInstalled) => Ok(UfwStatus {
+            active: false,
+            logging: "Off (ufw not installed)".to_string(),
+            default_incoming: "deny".to_string(),
+            default_outgoing: "allow".to_string(),
+            rules: vec![],
+        }),
+        Err(e) => Err(ServerFnError::new(e.to_string())),
+    }
 }
 
 /// Enable (start) UFW.
@@ -147,10 +154,11 @@ pub async fn server_ufw_get_numbered_rules() -> Result<Vec<UfwStatusRule>, Serve
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
 
-    UfwService
-        .get_numbered_rules()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    match UfwService.get_numbered_rules().await {
+        Ok(rules) => Ok(rules),
+        Err(crate::services::ServiceError::NotInstalled) => Ok(vec![]),
+        Err(e) => Err(ServerFnError::new(e.to_string())),
+    }
 }
 
 /// Add a new UFW rule.

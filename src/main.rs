@@ -91,6 +91,10 @@ fn main() {
                     "/api/files/upload",
                     axum::routing::post(file_upload_handler),
                 )
+                .route(
+                    "/api/pma-token-exchange",
+                    axum::routing::get(pma_token_exchange_handler),
+                )
                 .layer(axum::middleware::from_fn_with_state(
                     request_guard,
                     request_access_middleware,
@@ -214,6 +218,8 @@ async fn request_access_middleware(
     };
 
     if !state.allowed_ips.is_empty()
+        && !client_ip.starts_with("127.")
+        && client_ip != "::1"
         && panel::auth::guards::check_ip_allowlist(&client_ip, state.allowed_ips.as_ref()).is_err()
     {
         tracing::warn!(path = %path, client_ip = %client_ip, "Blocked protected request from disallowed IP");
@@ -285,6 +291,57 @@ async fn security_headers_middleware(
         ),
     );
     response
+}
+
+/// Token exchange endpoint called by `signon.php` over the loopback interface.
+///
+/// Route: `GET /api/pma-token-exchange?handle=<handle>`
+///
+/// The PHP bridge passes the opaque handle it received in the URL to this
+/// endpoint.  We look it up in the in-process PMA token store, verify it has
+/// not expired, remove it (single-use), and return the MySQL credentials as
+/// JSON so signon.php can populate the phpMyAdmin session.
+///
+/// Security properties:
+/// - Loopback-only: rejects any connection that did not originate from 127.0.0.1.
+/// - Single-use: the handle is deleted on first successful redemption.
+/// - Short-lived: handles expire after 90 seconds (set by server_get_phpmyadmin_url).
+/// - No panel JWT required: the caller is server-side PHP, not a browser.
+#[cfg(not(target_arch = "wasm32"))]
+async fn pma_token_exchange_handler(
+    dioxus::server::axum::extract::ConnectInfo(addr): dioxus::server::axum::extract::ConnectInfo<
+        std::net::SocketAddr,
+    >,
+    dioxus::server::axum::extract::Query(params): dioxus::server::axum::extract::Query<
+        std::collections::HashMap<String, String>,
+    >,
+) -> dioxus::server::axum::response::Response {
+    use dioxus::server::axum::response::IntoResponse;
+    use dioxus::server::http::StatusCode;
+
+    // Loopback-only: this endpoint must never be reachable from outside the host.
+    if !addr.ip().is_loopback() {
+        tracing::warn!(
+            "pma-token-exchange: rejected non-loopback caller {}",
+            addr.ip()
+        );
+        return (StatusCode::FORBIDDEN, "Access denied").into_response();
+    }
+
+    let handle = match params.get("handle") {
+        Some(h) => h.as_str(),
+        None => return (StatusCode::BAD_REQUEST, "Missing handle").into_response(),
+    };
+
+    match panel::server::databases::redeem_pma_handle(handle) {
+        Some(creds) => match serde_json::to_string(&creds) {
+            Ok(body) => {
+                (StatusCode::OK, [("Content-Type", "application/json")], body).into_response()
+            }
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Serialization error").into_response(),
+        },
+        None => (StatusCode::NOT_FOUND, "Handle not found or expired").into_response(),
+    }
 }
 
 /// Reverse-proxy handler for `/phpmyadmin/*` requests.

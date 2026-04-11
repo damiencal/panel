@@ -113,10 +113,19 @@ pub struct ChangePasswordRequest {
     pub new_password: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Enable2FAResponse {
     pub secret: String,
     pub qr_code_url: String,
+}
+
+impl std::fmt::Debug for Enable2FAResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Enable2FAResponse")
+            .field("secret", &"[REDACTED]")
+            .field("qr_code_url", &"[REDACTED]")
+            .finish()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -39,6 +39,15 @@ $cfg['LoginCookieDeleteAll'] = true;
 $cfg['CheckConfigurationPermissions'] = false;
 $cfg['ExecTimeLimit'] = 300;
 
+/* Prevent connecting to arbitrary MySQL servers (SSRF hardening) */
+$cfg['AllowArbitraryServer'] = false;
+
+/* Disable root MySQL login through the panel signon flow */
+$cfg['Servers'][$i]['AllowRoot'] = false;
+
+/* Disable server-side file import/export (prevents MySQL LOAD DATA INFILE abuse) */
+$cfg['Servers'][$i]['AllowLocalInfile'] = false;
+
 /* Disable version check (managed by system packages) */
 $cfg['VersionCheck'] = false;
 

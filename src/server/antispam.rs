@@ -310,9 +310,11 @@ pub async fn server_list_mail_queue() -> Result<Vec<MailQueueEntry>, ServerFnErr
     let claims = verify_auth()?;
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    crate::services::mail_queue::list_queue()
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+    match crate::services::mail_queue::list_queue().await {
+        Ok(entries) => Ok(entries),
+        Err(crate::services::ServiceError::NotInstalled) => Ok(vec![]),
+        Err(_) => Ok(vec![]),
+    }
 }
 
 /// Flush the deferred mail queue — attempt immediate redelivery (admin only).

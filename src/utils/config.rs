@@ -76,6 +76,16 @@ pub struct MariaDbConfig {
 pub struct PostfixConfig {
     pub hostname: String,
     pub virtual_mailbox_base: String,
+    /// TCP port for the Postfix SMTP policy daemon (localhost only).
+    /// Defaults to 10031.  Change this only if the port is already in use.
+    #[serde(default = "PostfixConfig::default_policy_port")]
+    pub policy_port: u16,
+}
+
+impl PostfixConfig {
+    fn default_policy_port() -> u16 {
+        10031
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,6 +135,7 @@ impl Default for PostfixConfig {
         Self {
             hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "mail.localhost".to_string()),
             virtual_mailbox_base: "/var/mail/vhosts".to_string(),
+            policy_port: Self::default_policy_port(),
         }
     }
 }

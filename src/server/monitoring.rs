@@ -798,8 +798,7 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
     }
 
     // Step 3: perform the upgrade
-    let upgrade_out =
-        run_apt_with_retries(&["-y", "upgrade"], "apt-get upgrade", 600, 4).await?;
+    let upgrade_out = run_apt_with_retries(&["-y", "upgrade"], "apt-get upgrade", 600, 4).await?;
 
     let stdout = String::from_utf8_lossy(&upgrade_out.stdout).to_string();
     let stderr = String::from_utf8_lossy(&upgrade_out.stderr).to_string();
@@ -1155,8 +1154,8 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
         ));
     }
 
-    let chown_out = run_command_output_with_timeout("chown", &["panel:panel", tmp_binary], 30)
-        .await?;
+    let chown_out =
+        run_command_output_with_timeout("chown", &["panel:panel", tmp_binary], 30).await?;
     if !chown_out.status.success() {
         return Err(ServerFnError::new(
             "chown panel:panel failed on the new binary — update aborted.".to_string(),
@@ -1188,9 +1187,11 @@ pub async fn server_trigger_panel_update() -> Result<PanelUpdateResult, ServerFn
         }
         if let Err(e) = timeout(
             Duration::from_secs(30),
-            Command::new("systemctl").args(["restart", "panel"]).status(),
+            Command::new("systemctl")
+                .args(["restart", "panel"])
+                .status(),
         )
-            .await
+        .await
         {
             tracing::error!("Failed to restart panel service after update: {e:?}");
         }

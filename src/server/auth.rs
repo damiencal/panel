@@ -151,7 +151,9 @@ pub async fn server_login(
 
     // Find user, but always verify password against *some* Argon2 hash so
     // unknown users and inactive users have comparable timing to valid users.
-    let user = crate::db::users::get_by_username(pool, &username).await.ok();
+    let user = crate::db::users::get_by_username(pool, &username)
+        .await
+        .ok();
     let hash_for_verify = user
         .as_ref()
         .map(|u| u.password_hash.clone())

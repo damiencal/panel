@@ -103,7 +103,8 @@ pub(crate) mod helpers {
 
                 // Start the Postfix per-domain send-rate-limit policy daemon.
                 let policy_pool = crate::db::get_pool_ref().clone();
-                crate::services::postfix_policy::start(policy_pool);
+                let policy_port = config.postfix.policy_port;
+                crate::services::postfix_policy::start(policy_pool, policy_port);
 
                 // Spawn background task for cleaning up old audit logs (runs every 24 hours).
                 // Retention period is configurable via panel.toml [audit] log_retention_days.

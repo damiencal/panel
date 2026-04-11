@@ -3,18 +3,69 @@ use crate::models::database::{Database, DatabaseType};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// Short-lived in-memory store for phpMyAdmin signon tokens.
-/// Maps an opaque random handle → (hmac_token, expiry_unix_seconds).
-/// This keeps the MySQL password out of the URL and browser history.
+/// Credentials stored under a short-lived opaque handle in the PMA token store.
+#[cfg(feature = "server")]
+struct PmaSessionCreds {
+    user: String,
+    password: String,
+    db: Option<String>,
+    host: String,
+}
+
+/// Short-lived in-memory store for phpMyAdmin signon handles.
+/// Maps an opaque random handle → (credentials, expiry_unix_seconds).
+/// This keeps the MySQL credentials out of the URL and browser history.
 #[cfg(feature = "server")]
 static PMA_TOKEN_STORE: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashMap<String, (String, i64)>>,
+    std::sync::Mutex<std::collections::HashMap<String, (PmaSessionCreds, i64)>>,
 > = std::sync::OnceLock::new();
 
 #[cfg(feature = "server")]
-fn pma_token_store() -> &'static std::sync::Mutex<std::collections::HashMap<String, (String, i64)>>
-{
+fn pma_token_store(
+) -> &'static std::sync::Mutex<std::collections::HashMap<String, (PmaSessionCreds, i64)>> {
     PMA_TOKEN_STORE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+/// JSON payload returned by the `/api/pma-token-exchange` REST endpoint.
+/// Consumed by the signon.php bridge over loopback.
+#[cfg(feature = "server")]
+#[derive(serde::Serialize)]
+pub struct PmaCredJson {
+    pub user: String,
+    pub password: String,
+    pub host: String,
+    pub db: String,
+}
+
+/// Redeem a short-lived phpMyAdmin signon handle and return the associated
+/// MySQL credentials.  Called by the `/api/pma-token-exchange` Axum handler
+/// (loopback-only REST endpoint).  The handle is single-use: it is removed
+/// from the store on the first successful call, preventing replay.
+#[cfg(feature = "server")]
+pub fn redeem_pma_handle(handle: &str) -> Option<PmaCredJson> {
+    // Validate handle characters before touching shared state.
+    if handle.is_empty()
+        || handle.len() > 64
+        || !handle
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return None;
+    }
+    let mut store = pma_token_store().lock().ok()?;
+    let now = chrono::Utc::now().timestamp();
+    // Evict stale entries opportunistically.
+    store.retain(|_, (_, e)| *e > now);
+    let (creds, exp) = store.remove(handle)?;
+    if exp <= now {
+        return None;
+    }
+    Some(PmaCredJson {
+        user: creds.user,
+        password: creds.password,
+        host: creds.host,
+        db: creds.db.unwrap_or_default(),
+    })
 }
 
 /// MySQL/MariaDB server status snapshot.
@@ -281,26 +332,18 @@ pub async fn server_get_phpmyadmin_url(db_id: Option<i64>) -> Result<String, Ser
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    // Generate HMAC-signed token with 60-second expiry
+    // Resolve base path for the phpMyAdmin signon URL.
     let config = crate::utils::PanelConfig::load(Some("panel.toml"))
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    let pma_token = generate_phpmyadmin_token(
-        &config.server.secret_key,
-        &mysql_user,
-        &mysql_password,
-        db_name.as_deref(),
-    )
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     let base_path = config.phpmyadmin.url_base_path.trim_end_matches('/');
 
     // FIND-27-03: keep MySQL credentials out of the URL to prevent credential
     // leakage via browser history, access logs, and HTTP Referer headers.
-    // Store the token server-side under a random opaque handle; the signon.php
-    // bridge redeems the handle via server_redeem_pma_token which is only
-    // reachable from the same origin (same-origin Fetch, no cross-site).
+    // Credentials are stored server-side under a random opaque handle; the
+    // signon.php bridge redeems them via the loopback-only REST endpoint
+    // `/api/pma-token-exchange`, which enforces single-use and expiry.
     #[cfg(feature = "server")]
     let url = {
         use std::io::Read;
@@ -310,7 +353,7 @@ pub async fn server_get_phpmyadmin_url(db_id: Option<i64>) -> Result<String, Ser
             .map_err(|_| ServerFnError::new("Failed to generate PMA handle"))?;
         use base64::Engine;
         let handle = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf);
-        let exp = chrono::Utc::now().timestamp() + 90; // slightly longer than token TTL
+        let exp = chrono::Utc::now().timestamp() + 90;
         {
             let mut store = pma_token_store()
                 .lock()
@@ -318,7 +361,18 @@ pub async fn server_get_phpmyadmin_url(db_id: Option<i64>) -> Result<String, Ser
             // Evict expired entries to prevent unbounded growth.
             let now = chrono::Utc::now().timestamp();
             store.retain(|_, (_, e)| *e > now);
-            store.insert(handle.clone(), (pma_token, exp));
+            store.insert(
+                handle.clone(),
+                (
+                    PmaSessionCreds {
+                        user: mysql_user.clone(),
+                        password: mysql_password.clone(),
+                        db: db_name.clone(),
+                        host: "localhost".to_string(),
+                    },
+                    exp,
+                ),
+            );
         }
         format!("{}/signon.php?handle={}", base_path, handle)
     };
@@ -339,44 +393,9 @@ pub async fn server_get_phpmyadmin_url(db_id: Option<i64>) -> Result<String, Ser
     Ok(url)
 }
 
-/// Redeem a short-lived phpMyAdmin signon handle for the actual HMAC token.
-/// Called by the signon.php bridge (same-origin only).  The handle is single-use:
-/// it is deleted from the store on first successful redemption, preventing replay.
-#[server]
-pub async fn server_redeem_pma_token(handle: String) -> Result<String, ServerFnError> {
-    use super::helpers::*;
-
-    ensure_init().await.map_err(ServerFnError::new)?;
-    // Require a valid session — the signon bridge is only called from the panel UI.
-    let claims = verify_auth()?;
-    let pool = get_pool()?;
-    check_token_not_revoked(pool, &claims).await?;
-
-    // Validate handle characters: URL-safe base64 only (A-Z a-z 0-9 - _).
-    if !handle
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-        || handle.len() > 64
-    {
-        return Err(ServerFnError::new("Invalid handle"));
-    }
-
-    #[cfg(feature = "server")]
-    {
-        let mut store = pma_token_store()
-            .lock()
-            .map_err(|_| ServerFnError::new("PMA token store lock poisoned"))?;
-        let now = chrono::Utc::now().timestamp();
-        if let Some((token, exp)) = store.remove(&handle) {
-            if exp > now {
-                return Ok(token);
-            }
-        }
-        Err(ServerFnError::new("Handle not found or expired"))
-    }
-    #[cfg(not(feature = "server"))]
-    Err(ServerFnError::new("Not available"))
-}
+// server_redeem_pma_token has been replaced by the `/api/pma-token-exchange`
+// Axum REST handler in main.rs, which is called by signon.php over loopback
+// and does not require a panel JWT.  See `redeem_pma_handle()` above.
 
 /// Get MySQL/MariaDB server status. Admin only.
 #[server]
@@ -387,7 +406,19 @@ pub async fn server_mysql_status() -> Result<MySqlStatus, ServerFnError> {
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
-    collect_mysql_status().await.map_err(ServerFnError::new)
+    match collect_mysql_status().await {
+        Ok(status) => Ok(status),
+        Err(_) => Ok(MySqlStatus {
+            version: "Not installed".to_string(),
+            uptime_seconds: 0,
+            threads_connected: 0,
+            questions: 0,
+            slow_queries: 0,
+            max_connections: 0,
+            innodb_buffer_pool_size_mb: 0,
+            data_dir: String::new(),
+        }),
+    }
 }
 
 /// Restart MariaDB/MySQL service. Admin only.
@@ -424,9 +455,17 @@ pub async fn server_mysql_recommendations() -> Result<Vec<MySqlRecommendation>, 
     crate::auth::guards::require_admin(&claims).map_err(|e| ServerFnError::new(e.to_string()))?;
     let pool = get_pool()?;
     check_token_not_revoked(pool, &claims).await?;
-    build_mysql_recommendations()
-        .await
-        .map_err(ServerFnError::new)
+    match build_mysql_recommendations().await {
+        Ok(recs) => Ok(recs),
+        Err(_) => Ok(vec![MySqlRecommendation {
+            severity: "info".into(),
+            variable: "mysql".into(),
+            current: "not installed".into(),
+            recommendation:
+                "Install MariaDB/MySQL on this host to view performance metrics and recommendations."
+                    .into(),
+        }]),
+    }
 }
 
 /// List tracked database users for a specific database.
@@ -574,43 +613,6 @@ async fn get_or_create_mysql_session_password(
         .map_err(|e| e.to_string())?;
 
     Ok(password)
-}
-
-/// Generate an HMAC-SHA256-signed token for phpMyAdmin signon.
-/// Token format: base64(json_payload).base64(hmac_signature)
-/// Payload: {"u": mysql_user, "p": mysql_password, "d": db_name, "exp": unix_timestamp}
-#[cfg(feature = "server")]
-fn generate_phpmyadmin_token(
-    secret_key: &str,
-    mysql_user: &str,
-    mysql_password: &str,
-    db_name: Option<&str>,
-) -> Result<String, String> {
-    use base64::Engine;
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-
-    let exp = chrono::Utc::now().timestamp() + 60; // 60-second expiry
-
-    let payload = serde_json::json!({
-        "u": mysql_user,
-        "p": mysql_password,
-        "d": db_name.unwrap_or(""),
-        "exp": exp,
-    });
-
-    let payload_str = payload.to_string();
-    let payload_b64 =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_str.as_bytes());
-
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret_key.as_bytes())
-        .map_err(|e| format!("HMAC key error: {}", e))?;
-    mac.update(payload_b64.as_bytes());
-    let signature = mac.finalize().into_bytes();
-
-    let sig_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature);
-
-    Ok(format!("{}.{}", payload_b64, sig_b64))
 }
 
 /// Generate a cryptographically secure random password for MySQL users.

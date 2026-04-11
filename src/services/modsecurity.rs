@@ -130,7 +130,9 @@ impl ModSecurityService {
             // Download (no shell injection risk; URL is a compile-time constant)
             shell::exec("curl", &["-fsSL", "-o", "/tmp/owasp-crs.tar.gz", owasp_url])
                 .await
-                .map_err(|_| ServiceError::CommandFailed("Failed to download OWASP CRS".to_string()))?;
+                .map_err(|_| {
+                    ServiceError::CommandFailed("Failed to download OWASP CRS".to_string())
+                })?;
 
             // Verify the SHA-256 checksum before extracting to prevent a
             // compromised CDN, MITM, or redirect from injecting malicious WAF rules.
@@ -164,7 +166,9 @@ impl ModSecurityService {
             // Move into place
             shell::exec("mv", &["/tmp/owasp-crs", OWASP_DIR])
                 .await
-                .map_err(|_| ServiceError::CommandFailed("Failed to install OWASP CRS".to_string()))?;
+                .map_err(|_| {
+                    ServiceError::CommandFailed("Failed to install OWASP CRS".to_string())
+                })?;
         }
 
         // Set up CRS setup.conf from example
