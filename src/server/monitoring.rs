@@ -703,6 +703,11 @@ fn is_apt_lock_error(stderr: &str) -> bool {
 }
 
 #[cfg(feature = "server")]
+fn needs_privileged_package_manager() -> bool {
+    unsafe { nix::libc::geteuid() != 0 }
+}
+
+#[cfg(feature = "server")]
 async fn run_apt_with_retries(
     args: &[&str],
     label: &str,
@@ -718,13 +723,27 @@ async fn run_apt_with_retries(
         ));
     }
 
+    let use_sudo = needs_privileged_package_manager();
+    if use_sudo && !crate::services::shell::is_allowed("sudo") {
+        return Err(ServerFnError::new(
+            "sudo is not in the command allowlist".to_string(),
+        ));
+    }
+
     for attempt in 1..=max_attempts {
+        let mut command = if use_sudo {
+            let mut cmd = Command::new("sudo");
+            cmd.arg("-n").arg("apt-get").args(args);
+            cmd
+        } else {
+            let mut cmd = Command::new("apt-get");
+            cmd.args(args);
+            cmd
+        };
+
         let out = timeout(
             Duration::from_secs(timeout_secs),
-            Command::new("apt-get")
-                .args(args)
-                .env("DEBIAN_FRONTEND", "noninteractive")
-                .output(),
+            command.env("DEBIAN_FRONTEND", "noninteractive").output(),
         )
         .await
         .map_err(|_| ServerFnError::new(format!("{} timed out after {} s", label, timeout_secs)))?
@@ -783,10 +802,24 @@ pub async fn server_trigger_os_update() -> Result<OsUpdateResult, ServerFnError>
             "dpkg is not in the command allowlist".to_string(),
         ));
     }
+    let use_sudo = needs_privileged_package_manager();
+    if use_sudo && !crate::services::shell::is_allowed("sudo") {
+        return Err(ServerFnError::new(
+            "sudo is not in the command allowlist".to_string(),
+        ));
+    }
+    let mut dpkg_command = if use_sudo {
+        let mut cmd = Command::new("sudo");
+        cmd.arg("-n").arg("dpkg").args(["--configure", "-a"]);
+        cmd
+    } else {
+        let mut cmd = Command::new("dpkg");
+        cmd.args(["--configure", "-a"]);
+        cmd
+    };
     let _ = timeout(
         Duration::from_secs(60),
-        Command::new("dpkg")
-            .args(["--configure", "-a"])
+        dpkg_command
             .env("DEBIAN_FRONTEND", "noninteractive")
             .output(),
     )

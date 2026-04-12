@@ -4,7 +4,7 @@
 
 # Hosting Control Panel
 
-A modern, open-source web hosting control panel written in **Rust**, designed as an alternative to cPanel, Plesk, DirectAdmin, CyberPanel..
+A modern, open-source web hosting control panel written in **Rust**, designed as an alternative to cPanel, Plesk, DirectAdmin, and CyberPanel.
 
 ## Features
 
@@ -139,8 +139,9 @@ The development server will be available at `http://localhost:3030` with fronten
 ```
 panel/
 ├── src/
-│   ├── main.rs               # Entry point
-│   ├── app.rs                # Root Dioxus component
+│   ├── main.rs               # Binary entry point
+│   ├── lib.rs                # Shared app/library modules
+│   ├── server/               # Server function modules and HTTP integration
 │   ├── auth/                 # JWT, TOTP, role guards
 │   ├── models/               # Shared data types
 │   ├── db/                   # Database layer
@@ -166,7 +167,7 @@ cargo test
 cargo test -- --nocapture
 
 # Run specific test
-cargo test models::user::tests::test_admin_can_access_everything
+cargo test auth::guards::tests::test_admin_can_access_everything
 ```
 
 ### Code Quality
@@ -255,20 +256,14 @@ The panel implements three distinct portals with role-based hierarchy:
 
 ### Database Schema
 
-The panel uses SQLite with 11 core tables:
-- `users` - User accounts with role, parent, and branding info
-- `packages` - Hosting package definitions
-- `resource_quotas` - Resource limits per user
-- `sites` - OpenLiteSpeed virtual hosts
-- `databases` - Database instances
-- `database_users` - Database user accounts
-- `dns_zones` - DNS zones
-- `dns_records` - DNS records
-- `email_domains` - Email domains
-- `mailboxes` - Email mailbox accounts
-- `support_tickets` & `ticket_messages` - Support system
-- `audit_logs` - Action audit trail
-- `usage_logs` - Bandwidth/storage tracking
+The panel uses SQLite with a consolidated schema that includes user/accounts, hosting resources, and service-specific tables such as:
+- `users`, `packages`, `resource_quotas`, `resource_usage`
+- `sites`, `databases`, `database_users`
+- `dns_zones`, `dns_records`
+- `email_domains`, `mailboxes`, `email_forwarders`, `dkim_keys`, `email_stats`
+- `ftp_accounts`, `ftp_session_stats`
+- `support_tickets`, `ticket_messages`
+- `audit_logs`, `usage_logs`, `daily_usage_aggregates`, `monthly_usage_snapshots`
 
 See [migrations/](migrations/) for complete schema.
 
@@ -447,7 +442,7 @@ This repository uses a dual-licensing model:
 The AGPL applies to the community code published in this repository. The copyright owner may also grant GPLv3 licenses to specific requesters by separate written permission. The `Multi-Server Cloud Service` feature is reserved for separate commercial licensing by the copyright owner unless a specific implementation is explicitly released under AGPL or expressly included in a separate written grant.
 ## Support
 
-- **Documentation**: See [docs/](docs/) directory
+- **Documentation**: See [README.md](README.md), [QUICK_START.md](QUICK_START.md), [DEVELOPMENT.md](DEVELOPMENT.md), and [TESTING.md](TESTING.md)
 - **Issues**: Report bugs on [GitHub Issues](https://github.com/damiencal/panel/issues)
 - **Discussions**: Join [GitHub Discussions](https://github.com/damiencal/panel/discussions)
 
@@ -465,4 +460,4 @@ If you discover a security vulnerability, please email security@example.com inst
 
 ## Acknowledgments
 
-Built with ❤️ using Rust and Dioxus
+Built with ❤️ using Rust.
