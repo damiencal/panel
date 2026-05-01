@@ -3150,6 +3150,11 @@ fn PackagesPage() -> Element {
                 ssl,
                 shell,
                 backup,
+                None, // cpu_quota_percent
+                None, // memory_max_mb
+                None, // tasks_max
+                None, // io_weight
+                None, // max_db_connections
             )
             .await
             {

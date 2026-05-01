@@ -225,9 +225,64 @@ pub async fn server_update_user_status(
         _ => return Err(ServerFnError::new("Access denied")),
     }
 
-    crate::db::users::update_status(pool, user_id, status)
+    crate::db::users::update_status(pool, user_id, status.clone())
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // OS-level suspend/unsuspend for Client accounts.
+    if target.role == Role::Client {
+        let php_ver = crate::services::phpfpm::DEFAULT_PHP_VERSION;
+        match &status {
+            AccountStatus::Suspended => {
+                if let Some(uid) = target.system_uid {
+                    if let Err(e) =
+                        crate::services::cgroups::suspend_limits(uid as u32).await
+                    {
+                        tracing::warn!(user_id, uid, "cgroup suspension failed: {e}");
+                    }
+                }
+                if let Err(e) =
+                    crate::services::phpfpm::suspend_pool(&target.username, php_ver).await
+                {
+                    tracing::warn!(user_id, "PHP-FPM pool suspension failed: {e}");
+                } else {
+                    let _ = crate::services::phpfpm::reload(php_ver).await;
+                }
+            }
+            AccountStatus::Active => {
+                let (cpu, mem, tasks, io_weight) = if let Some(pkg_id) = target.package_id {
+                    match crate::db::packages::get(pool, pkg_id).await {
+                        Ok(pkg) => (
+                            pkg.cpu_quota_percent as u32,
+                            pkg.memory_max_mb as u64,
+                            pkg.tasks_max as u32,
+                            pkg.io_weight as u32,
+                        ),
+                        Err(_) => (50, 512, 40, 50),
+                    }
+                } else {
+                    (50, 512, 40, 50)
+                };
+                if let Some(uid) = target.system_uid {
+                    if let Err(e) = crate::services::cgroups::apply_limits(
+                        uid as u32, cpu, mem, tasks, io_weight,
+                    )
+                    .await
+                    {
+                        tracing::warn!(user_id, uid, "cgroup unsuspend failed: {e}");
+                    }
+                }
+                if let Err(e) =
+                    crate::services::phpfpm::unsuspend_pool(&target.username, php_ver).await
+                {
+                    tracing::warn!(user_id, "PHP-FPM pool unsuspend failed: {e}");
+                } else {
+                    let _ = crate::services::phpfpm::reload(php_ver).await;
+                }
+            }
+            _ => {}
+        }
+    }
 
     audit_log(
         claims.sub,
@@ -264,6 +319,37 @@ pub async fn server_delete_user(user_id: i64) -> Result<(), ServerFnError> {
 
     crate::auth::guards::check_ownership(&claims, target.id, target.parent_id)
         .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    // OS-level cleanup for Client accounts.
+    if target.role == Role::Client {
+        let php_ver = crate::services::phpfpm::DEFAULT_PHP_VERSION;
+
+        // Archive home before deletion.
+        if let Err(e) = crate::services::osuser::archive_home(&target.username).await {
+            tracing::warn!(user_id, "Failed to archive home directory: {e}");
+        }
+
+        // Revert cgroup limits (systemctl revert user-{uid}.slice).
+        if let Some(uid) = target.system_uid {
+            if let Err(e) = crate::services::cgroups::reset_limits(uid as u32).await {
+                tracing::warn!(user_id, uid, "cgroup revert failed: {e}");
+            }
+        }
+
+        // Delete PHP-FPM pool config.
+        if let Err(e) =
+            crate::services::phpfpm::delete_pool(&target.username, php_ver).await
+        {
+            tracing::warn!(user_id, "PHP-FPM pool deletion failed: {e}");
+        } else {
+            let _ = crate::services::phpfpm::reload(php_ver).await;
+        }
+
+        // Remove OS user (userdel -r).
+        if let Err(e) = crate::services::osuser::delete_user(&target.username).await {
+            tracing::warn!(user_id, "OS user deletion failed: {e}");
+        }
+    }
 
     // Before deleting from the DB, remove the user's virtual FTP accounts from
     // the Pure-FTPd passwd database.  The DB rows will be cascade-deleted by the

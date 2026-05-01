@@ -39,6 +39,16 @@ pub async fn server_create_package(
     ssl_enabled: bool,
     shell_access: bool,
     backup_enabled: bool,
+    #[allow(unused)]
+    cpu_quota_percent: Option<i32>,
+    #[allow(unused)]
+    memory_max_mb: Option<i64>,
+    #[allow(unused)]
+    tasks_max: Option<i32>,
+    #[allow(unused)]
+    io_weight: Option<i32>,
+    #[allow(unused)]
+    max_db_connections: Option<i32>,
 ) -> Result<i64, ServerFnError> {
     use super::helpers::*;
 
@@ -140,6 +150,11 @@ pub async fn server_create_package(
         ssl_enabled,
         shell_access,
         backup_enabled,
+        cpu_quota_percent.unwrap_or(50),
+        memory_max_mb.unwrap_or(512),
+        tasks_max.unwrap_or(40),
+        io_weight.unwrap_or(50),
+        max_db_connections.unwrap_or(5),
     )
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;

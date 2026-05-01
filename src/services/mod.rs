@@ -4,6 +4,7 @@
 pub mod awstats;
 pub mod basic_auth;
 pub mod certbot;
+pub mod cgroups;
 pub mod clamav_stub;
 #[cfg(feature = "server")]
 pub mod cloudflare;
@@ -18,7 +19,9 @@ pub mod mailscanner;
 pub mod mariadb;
 pub mod modsecurity;
 pub mod openlitespeed;
+pub mod osuser;
 pub mod phpmyadmin;
+pub mod phpfpm;
 pub mod postfix;
 pub mod postfix_policy;
 pub mod pureftpd;
@@ -74,6 +77,9 @@ pub mod shell {
         "useradd",
         "userdel",
         "groupadd",
+        "getent",
+        "usermod",
+        "id",
         "chown",
         "chmod",
         "ufw",

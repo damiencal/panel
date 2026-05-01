@@ -52,13 +52,20 @@ pub async fn create(
     ssl_enabled: bool,
     shell_access: bool,
     backup_enabled: bool,
+    cpu_quota_percent: i32,
+    memory_max_mb: i64,
+    tasks_max: i32,
+    io_weight: i32,
+    max_db_connections: i32,
 ) -> Result<i64, sqlx::Error> {
     let result = sqlx::query(
-        "INSERT INTO packages (name, description, created_by, max_sites, max_databases, 
-            max_email_accounts, max_ftp_accounts, disk_limit_mb, bandwidth_limit_mb, 
-            max_subdomains, max_addon_domains, php_enabled, ssl_enabled, 
-            shell_access, backup_enabled, is_active, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+        "INSERT INTO packages (name, description, created_by, max_sites, max_databases,
+            max_email_accounts, max_ftp_accounts, disk_limit_mb, bandwidth_limit_mb,
+            max_subdomains, max_addon_domains, php_enabled, ssl_enabled,
+            shell_access, backup_enabled, is_active,
+            cpu_quota_percent, memory_max_mb, tasks_max, io_weight, max_db_connections,
+            created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)",
     )
     .bind(name)
     .bind(description)
@@ -75,6 +82,11 @@ pub async fn create(
     .bind(ssl_enabled)
     .bind(shell_access)
     .bind(backup_enabled)
+    .bind(cpu_quota_percent)
+    .bind(memory_max_mb)
+    .bind(tasks_max)
+    .bind(io_weight)
+    .bind(max_db_connections)
     .bind(Utc::now())
     .execute(pool)
     .await?;

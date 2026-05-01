@@ -149,8 +149,22 @@ pub async fn server_create_database(
 
     // Provision the actual database on the database server when MySQL is available.
     if database_type == DatabaseType::MariaDB {
+        // Look up caller's package to enforce per-plan DB connection limit.
+        let max_db_connections: u32 = {
+            let caller = crate::db::users::get(pool, claims.sub).await.ok();
+            let pkg_id = caller.and_then(|u| u.package_id);
+            if let Some(pkg_id) = pkg_id {
+                crate::db::packages::get(pool, pkg_id)
+                    .await
+                    .map(|p| p.max_db_connections as u32)
+                    .unwrap_or(5)
+            } else {
+                5 // Starter default
+            }
+        };
+
         if crate::services::shell::command_exists("mysql").await {
-            if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username).await {
+            if let Err(e) = provision_mysql_database(pool, db_id, &name, &claims.username, max_db_connections).await {
                 // Roll back both the SQLite record and the quota counter.
                 // Log rollback failures so operators can reconcile orphan records.
                 if let Err(del_err) = crate::db::databases::delete(pool, db_id).await {
@@ -535,6 +549,7 @@ async fn provision_mysql_database(
     db_id: i64,
     db_name: &str,
     panel_username: &str,
+    max_connections: u32,
 ) -> Result<(), String> {
     // Create the database.
     // Route via stdin instead of the -e flag so that the backtick identifier
@@ -550,8 +565,8 @@ async fn provision_mysql_database(
 
     // Pipe CREATE USER SQL via stdin so the password is never visible in ps output.
     let create_user_sql = format!(
-        "CREATE USER IF NOT EXISTS '{}'@'localhost' IDENTIFIED BY '{}';",
-        mysql_user, password
+        "CREATE USER IF NOT EXISTS '{}'@'localhost' IDENTIFIED BY '{}' WITH MAX_USER_CONNECTIONS {};",
+        mysql_user, password, max_connections
     );
     mysql_admin_exec_stdin(create_user_sql.as_bytes()).await?;
 

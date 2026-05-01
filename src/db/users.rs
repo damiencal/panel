@@ -204,3 +204,23 @@ pub async fn update_package(
         .await?;
     Ok(())
 }
+
+/// Persist the OS uid/gid allocated for this hosting account.
+/// Both system_uid and system_gid are set to the same value (the allocated UID).
+pub async fn update_system_uid(
+    pool: &SqlitePool,
+    user_id: i64,
+    uid: i64,
+) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+    sqlx::query(
+        "UPDATE users SET system_uid = ?, system_gid = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(uid)
+    .bind(uid)
+    .bind(now)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
